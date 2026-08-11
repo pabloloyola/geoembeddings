@@ -13,8 +13,10 @@ The repository deliberately contains two logically separate systems:
 - a semi-synthetic Kanto data generator with protected latent truth;
 - an observed-data-only embedding pipeline plus a protected evaluator.
 
-They share `geoembeddings-dataset/1.0`, a versioned file contract. They should
-remain separate modules even though one CLI orchestrates them.
+New runs share `geoembeddings-dataset/2.0`, a versioned file contract that adds
+the observable recommendation tables. Event-only 1.0 runs remain explicitly
+readable by legacy modeling commands, without fabricating missing 2.0 tables.
+The systems should remain separate modules even though one CLI orchestrates them.
 
 ## Scientific decomposition
 
@@ -26,8 +28,11 @@ The final representation should expose three distinct but related components:
 | `r_u,t` | Recurring routine and periodic state | weekday/weekend, time, repeated commute changes | unrelated single events |
 | `c_u,t` | Current episode and intent | arrival, search, check-in, local activity | pressure to remain globally stable |
 
-The existing `SingleVectorEncoder` compresses all three pressures into one
-128-dimensional vector. It is intentionally a failure-revealing baseline.
+The legacy `SingleVectorEncoder` compresses all three pressures into one vector
+and remains a failure-revealing baseline. A configuration-selected
+`factorized_pc` persistent/context encoder, capacity controls, ablations, and
+named component exports are implemented, but T2.7 lacks matched immutable
+artifacts; branch semantics and scientific factorization remain unmeasurable.
 
 ## Repository ownership map
 
@@ -56,15 +61,24 @@ recording/dropout, and noisy observed events. It supports controlled scenarios:
 - `exposure_confounded`
 - `observation_biased`
 
+The simulator also supports immutable paired exposure, opportunity,
+observation, temporary-trip, sustained-preference, and schedule-shift
+interventions with pair manifests, field-level integrity, protected paired and
+change evaluators. Dataset 2.0 publishes a synthetic Hakone recommendation
+catalog and request/impression/interaction logs.
+
 Important limitations:
 
 - coordinates and POIs are synthetic;
 - movement is stop-based and uses straight-line distance, not a transport graph;
 - POI opening hours, capacity, travel times, and request-time availability are
-  not public observed data;
+  public synthetic request-time fields, not measured real-world data;
 - scenario constants are experimental hypotheses, not calibrated population
   estimates;
-- the current simulator does not emit a complete recommendation interaction log.
+- recommendation attributes and intervention mechanisms are synthetic
+  hypotheses, not calibrated facts or external causal evidence;
+- observable rankers and candidate-aware recommendation evaluation are not yet
+  implemented.
 
 ## Current implemented model
 
@@ -111,10 +125,10 @@ canonical warning that stability without retained information is not success.
 
 The `compare` command can measure both representations fairly and merge matched
 episode, robustness, and spatial-transfer reports when those supplemental
-commands have been run. The historical 500-user reports are indexed, but their
-bytes are lost/unverifiable; do not interpret that reference as evidence that
-either representation is stronger. A replacement must use a new artifact
-identity and lineage.
+commands have been run. The historical T0.2 500-user bytes remain
+lost/unverifiable. The separately named T0.4 500-user replacement is indexed and
+accepted only for its documented, coverage-qualified diagnostic scope; its
+decision record selects no aggregate winner.
 
 ## Known bug history to preserve in tests
 
@@ -148,33 +162,29 @@ It can also execute deterministic sensitivity and transfer diagnostics:
 - distance retrieval, geohash-boundary pairs, held-out-region coverage, and
   seen/unseen geohash slices.
 
-It cannot yet establish:
+It still cannot establish:
 
 - persistent/routine/context separation;
-- matched counterfactual exposure invariance;
 - causal invariance or calibration to real GPS/timestamp/missingness processes;
 - unseen-POI or candidate-aware geographic transfer;
-- uncertainty, sustained preference change, privacy, or efficiency;
+- calibrated uncertainty, privacy, or online/training efficiency;
 - candidate-aware new-context recommendation.
+
+Matched exposure/opportunity/observation and temporary/sustained/schedule
+changes are executable simulator diagnostics. They establish internal paired
+integrity and metrics, not real-world causal validity or scientific success.
 
 ## Near-term research decision
 
-Do not choose the next model from next-event accuracy alone. Run the implemented
-dense/episode, deterministic robustness, and spatial-transfer surfaces for both
-representations and inspect their matched `compare` axes. Then compare:
+Execute the T2.7 gate: compare the statistical baseline,
+`capacity_matched_single`, `factorized_pc`, and required branch/loss ablations
+on identical data, cutoffs, and selected R1/R4/R5/R6/R7 axes. The present
+decision is unmeasurable, so do not add a routine branch. Independently, T3.4
+observable naive rankers are the next recommendation implementation option.
 
-1. statistical baseline;
-2. current single-vector GRU;
-3. single-vector ablations;
-4. two-way persistent/context factorization;
-5. three-way persistent/routine/context factorization.
+## Recommendation data contract
 
-The three-way model earns its additional complexity only if the evaluator can
-show that routine is neither merely persistent identity nor current episode.
-
-## Recommendation data contract target
-
-The simulator should eventually publish these observed tables:
+Dataset contract 2.0 publishes these observed tables:
 
 ```text
 observed/
@@ -184,11 +194,12 @@ observed/
 └── interactions.csv.gz
 ```
 
-Public candidate features may include category, coordinates, travel time,
+Public request-time features include category, coordinates, travel time,
 opening hours, price level, family suitability, indoor/outdoor state, local
-popularity, and request-time availability. True utility, latent preference,
-true episode, unshown alternatives, and counterfactual choice probabilities
-remain under `truth/`.
+popularity, and availability. True utility, latent preference, true episode,
+and counterfactual choice probabilities remain under `truth/`. T3.4 rankers are
+still required before this contract constitutes an end-to-end recommendation
+baseline.
 
 ## Handoff success criterion
 

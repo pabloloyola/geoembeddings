@@ -11,11 +11,9 @@ Evidence milestones:
    preparation contract. `docs/VERIFICATION.md` records the commands and
    limitations. This state verifies plumbing only and is not an archived
    scientific baseline.
-2. **Complete smoke manifest registered — pending.** Preserve or register an
-   index of the smoke outputs with immutable paths or external-storage
-   identifiers, source commit, dataset manifest hash, and a statement that the
-   baseline and learned reports share the same preparation contract. Large
-   generated binaries are not required to be committed to Git.
+2. **Artifact-index workflow — complete.** The unavailable historical smoke was
+   not relabeled. The stronger T0.4 replacement lineage exercises the completed
+   indexer across current base/supplemental artifacts and benchmark.
 3. **500-user reference evidence disposition recorded — closed as evidence
    lost/unverifiable.** The registered `docs/artifacts/t0.2-reference500.json`
    preserves historical hashes, but the exact bytes and recorded source commit
@@ -33,13 +31,19 @@ Evidence milestones:
    only `finish the evaluator gate`, declares no aggregate winner, and leaves
    every scientific axis without an authenticated conclusion. Completion closes
    the evidence-disposition decision; it does not make T0.2 scientific evidence.
-5. **Runtime/device metadata recorded.** Attach the environment evidence needed
-   to reproduce and interpret the scientific reference.
+5. **Runtime/device metadata — complete.** Versioned runtime provenance is
+   present in the current train/evaluation/comparison surfaces.
+6. **T0.4 replacement reference — complete for R2/R3 diagnostic acceptance.**
+   `docs/artifacts/t0.4-r2-r3-reference-20260811.json` passes comparability, and
+   `docs/decisions/t0.4-r2-r3-reference-20260811.md` records separate deltas,
+   coverage, unsupported claims, and no aggregate winner.
 
-Exit gate: milestone 3 is archived and indexed; the baseline and learned
-exports and reports share the same preparation contract, and the reports
-contain no unexplained missing users or non-finite values. Passing milestone 1
-alone does not satisfy the Phase 0 exit gate.
+Exit gate: either the historical milestone 3 bytes are authenticated or a
+separately named replacement is archived and indexed; baseline and learned
+exports/reports share one preparation contract, and missing users and
+non-finite values are explicitly audited. T0.4 supplies the accepted
+replacement for its stated R2/R3 diagnostic scope. It does not retroactively
+recover T0.2 or satisfy later factorization/paired-evidence gates.
 
 ## Phase 1 — Make the requirements measurable
 
@@ -63,9 +67,8 @@ history_event_count
 
 Do not write episode IDs into the model export.
 
-Status: the observed-only dense export foundation is implemented through
-`export-dense`, including configurable event stride and the schema above.
-Protected episode-boundary joining remains Phase 1.2 work.
+Status: the observed-only dense export and protected episode-boundary evaluator
+are implemented, including named component exports and matched comparison.
 
 ### 1.2 Robustness operators
 
@@ -101,6 +104,12 @@ Refactor simulator RNG streams so matched scenarios preserve users, latent
 preferences, world, and ideally episodes while changing only opportunity,
 exposure, or observation. Add pair manifests and an evaluator that matches
 user/time records.
+
+Status: named streams, stable identities, pair manifests, field-level integrity,
+configured exposure/opportunity/observation/schedule-shift pairs, paired
+representation evaluation, and temporary/sustained change evaluation are
+implemented. These are internally controlled simulator tests, not external
+causal validation.
 
 Exit gate: R1--R8 have direct executable tests or explicit, well-scoped blockers.
 
@@ -140,6 +149,11 @@ Candidate signals:
 Compare against single-vector capacity-matched baselines. Export branches
 separately and evaluate each on tasks it should and should not solve.
 
+Status: the typed interface, registry, component schema, `factorized_pc`,
+capacity-matched control, ablation configurations, observed-only loss routing,
+and component reports are implemented. The T2.7 matched artifact/decision gate
+is unmeasurable and blocks a routine branch.
+
 Exit gate: `persistent` improves invariance/persistent information, `context`
 improves episode response, and neither result is explained by collapse.
 
@@ -170,7 +184,7 @@ persistent preference or current context signal.
 
 Goal: expose realistic rank-time information without leaking utility.
 
-Add:
+Dataset contract 2.0 now adds:
 
 ```text
 observed/poi_catalog.csv.gz
@@ -199,8 +213,10 @@ Add opening hours, family suitability, indoor/outdoor, price, popularity,
 capacity, temporary availability, coordinates, and travel time. Begin with a
 formal onsen/restaurant/cafe/shop/hotel/attraction catalog around Hakone.
 
-Exit gate: simple popularity, nearest-POI, and category-preference baselines can
-run end to end without truth access.
+Status: the public schemas and synthetic Hakone request-time attributes are
+implemented, with explicit event-only dataset/1.0 compatibility. The exit gate
+is not met because T3.4 popularity, nearest-POI, and category-preference
+rankers remain the next implementation option.
 
 ## Phase 5 — Candidate-aware recommendation
 
@@ -243,6 +259,11 @@ Goal: make the representation usable beyond the controlled prototype.
 
 Exit gate: tradeoffs are reported explicitly; no simulator-only result is
 presented as real-world validation.
+
+Status: seeded three-cutoff reliability/repeatability and an observed-only
+offline frozen-export/evaluation benchmark are implemented. Calibrated
+uncertainty, privacy audits, training/online-update benchmarks, and external
+validation remain pending.
 
 ## T1.2 implementation note (R1, R4)
 

@@ -1,8 +1,8 @@
 # v0.5.0 release notes
 
-This is an agent-handoff release built around the tested v0.4.x simulator and
-model implementation. There is no intended change to data generation, model
-mathematics, training, export, evaluation, or comparison behavior.
+The repository has continued beyond the original agent-handoff snapshot. New
+simulations use `geoembeddings-dataset/2.0`; event-only 1.0 runs remain
+explicitly compatible with the legacy modeling path.
 
 Added:
 
@@ -30,3 +30,19 @@ Verified:
 Known scientific limitations remain explicit in `docs/CURRENT_STATUS.md` and
 `docs/REQUIREMENTS_MATRIX.md`.
 
+Implemented since the initial handoff:
+
+- immutable paired exposure, opportunity, observation, schedule-shift,
+  temporary-trip, and sustained-preference simulation with integrity-gated
+  paired/change evaluation;
+- accepted, indexed T0.4 replacement reference diagnostics and their no-aggregate
+  decision record;
+- typed component checkpoint/export schemas, the `factorized_pc` model, a
+  capacity-matched control, and branch/loss ablation configurations;
+- dataset contract 2.0 public POI, request, impression, and interaction tables,
+  including synthetic Hakone request-time attributes and explicit 1.0 reading;
+- seeded reliability/repeatability reports and observed-only offline benchmarks.
+
+The current gate is T2.7: factorization remains unmeasurable until matched
+immutable control/factorized artifacts are compared. T3.4 observable naive
+rankers are the next independent implementation option.
