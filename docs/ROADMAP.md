@@ -16,14 +16,16 @@ Evidence milestones:
    identifiers, source commit, dataset manifest hash, and a statement that the
    baseline and learned reports share the same preparation contract. Large
    generated binaries are not required to be committed to Git.
-3. **500-user scientific baseline archived — pending and immediate next.** The
-   registered `docs/artifacts/t0.2-reference500.json` currently records absent
-   evidence rather than a completed archive. Run
-   the matched baseline-versus-learned reference using the known working
-   settings. Preserve resolved simulation and embedding configs, source hashes,
+3. **500-user scientific baseline archived — evidence lost/unverifiable and
+   immediate next.** The registered `docs/artifacts/t0.2-reference500.json`
+   preserves historical hashes, but the exact bytes and recorded source commit
+   are unavailable and no durable archive was registered. Recover those exact
+   bytes, or run the matched baseline-versus-learned reference using the known
+   working settings under a new run/experiment identity and new evidence-index
+   lineage. Preserve resolved simulation and embedding configs, source hashes,
    seeds, cutoffs, checkpoint and training report, both cutoff exports, both
-   episode reports, both event-removal reports, and comparison JSON/Markdown.
-   Its artifact index must contain immutable paths or external-storage
+   episode reports, both event-removal reports, and comparison JSON/Markdown. Its
+   artifact index must contain immutable paths or external-storage
    identifiers, source commit, dataset manifest hash, and an explicit statement
    that baseline and learned reports share source hashes, cutoffs, categorical
    field order, users, and the same preparation contract.

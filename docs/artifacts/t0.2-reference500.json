@@ -1,16 +1,17 @@
 {
   "schema_version": "geoembeddings-evidence-index/1.0",
   "task_id": "T0.2",
-  "evidence_status": "complete",
-  "completion_claim": true,
+  "evidence_status": "evidence lost/unverifiable",
+  "completion_claim": false,
   "index_location": "docs/artifacts/t0.2-reference500.json",
   "storage": {
-    "immutable_artifact_roots": [
+    "immutable_artifact_roots": [],
+    "durable_external_identifier": null,
+    "immutability": "unverifiable; historical gitignored local roots are absent and no durable archive was registered",
+    "unavailable_historical_roots": [
       "runs/reference500",
       "experiments/reference500"
-    ],
-    "durable_external_identifier": null,
-    "immutability": "local roots made read-only after indexing; generated artifacts remain gitignored"
+    ]
   },
   "provenance": {
     "source_commit": "ec3dd6635e0845d35ce684148dd8285b3e58bbf4",
@@ -126,43 +127,43 @@
         "id": "dataset_manifest",
         "identifier": "runs/reference500/manifest.json",
         "sha256": "5d594b36ee59a2c2c682128a49f704d7ac6400f41a9b862e2225ff036b7f1115",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "resolved_simulation_config",
         "identifier": "runs/reference500/config.resolved.yaml",
         "sha256": "aa1a0ff4e270c552689f651495f67d93cdcedb81aef0b363875176dcadfc55e9",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "deep_validation_report",
         "identifier": "runs/reference500/deep_validation_report.json",
         "sha256": "1454b6d773be59841ca8ff87cffa966067ae27f0ee21567b40ce647e6cafbee5",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "prepared_metadata",
         "identifier": "experiments/reference500/prepared/prepared_metadata.json",
         "sha256": "e62f166b3bcaa9e138a8e98725344aae7c23ff4e9c52603b9f2dbd56ef13532c",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "resolved_embedding_config",
         "identifier": "experiments/reference500/prepared/config.resolved.yaml",
         "sha256": "9fd05312c13dc0b9456bb44e3dff94aee14675514b8395f54f310009d5f77f22",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "vocabularies",
         "identifier": "experiments/reference500/prepared/vocabularies.json",
         "sha256": "4145910adcc68dcc2f32dd536b4c3ca8b38a1890fdc46e4670c1ef5ba1ec1b99",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "command_log",
         "identifier": "experiments/reference500/t0.2_commands.log",
         "sha256": "c01f343528f5c6473f3b195eb703b0bafaa72e6afda3b366b6bae9222a348520",
-        "status": "present"
+        "status": "unavailable"
       }
     ],
     "baseline": [
@@ -170,31 +171,31 @@
         "id": "baseline_cutoff_export",
         "identifier": "experiments/reference500/statistical_baseline.npz",
         "sha256": "12667ade4bb82d239c0573ec7fefe6d92a4494bfce9e43ee64140c006f098fc7",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "baseline_dense_export",
         "identifier": "experiments/reference500/dense_statistical_baseline.npz",
         "sha256": "95fc30b9155bfb5792f848117f8cb7d55ff3f98d9a9ec8af5c97efbc1c5dcdeb",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "baseline_evaluation_report",
         "identifier": "experiments/reference500/baseline_evaluation.json",
         "sha256": "adab70eaaefb3782892cac87c67f3755aec544d3a73ac8283650c366d5476412",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "baseline_episode_response_report",
         "identifier": "experiments/reference500/baseline_episode_response.json",
         "sha256": "e1ef980e7e1751dd58fef270deb0d2109d9703d2a43c9e9788d0264fa3b67a65",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "baseline_robustness_report",
         "identifier": "experiments/reference500/robustness/baseline_robustness.json",
         "sha256": "7c266879e42b7e9feb1b8f16b29bb77b6ea8b711db51d6a108378f0a83d0aac0",
-        "status": "present"
+        "status": "unavailable"
       }
     ],
     "learned": [
@@ -202,43 +203,43 @@
         "id": "learned_checkpoint",
         "identifier": "experiments/reference500/model/best_model.pt",
         "sha256": "b351d264a3e42a4b0e083eb40f5c4ee744d5f1a3b97d1ab9d9ba6b1aac00ae07",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_training_report",
         "identifier": "experiments/reference500/model/training_report.json",
         "sha256": "cef7d54bea3f59cf1f78a7f0a8db17ed9702eb5481bbad162836e48db9dc257d",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_cutoff_export",
         "identifier": "experiments/reference500/embeddings.npz",
         "sha256": "83056b873622b5b2b01a120294beb10247a173f8936db1ea2ee067000fa3a986",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_dense_export",
         "identifier": "experiments/reference500/dense_embeddings.npz",
         "sha256": "45bcdf405971c5e42032459a09a26d9100d59f092c443cd959ac64222990c322",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_evaluation_report",
         "identifier": "experiments/reference500/evaluation.json",
         "sha256": "def3df3ca8926ee8245ea3b0b846ad988902a2d76127c787ef2bd78ce01ec9ba",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_episode_response_report",
         "identifier": "experiments/reference500/episode_response.json",
         "sha256": "d6c598c6e5c632f93d746ea4f92f1bc23ef76ed7673c34fae8bb8c82f2898343",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_robustness_report",
         "identifier": "experiments/reference500/robustness/learned_robustness.json",
         "sha256": "3086d33455e55b8c31ea4ab30babf3ffb8747d685617292dacc872ee574c9012",
-        "status": "present"
+        "status": "unavailable"
       }
     ],
     "robustness_views": [
@@ -246,121 +247,121 @@
         "id": "baseline_robustness_view_gps-c7496e439bdf",
         "identifier": "experiments/reference500/robustness/baseline/gps-c7496e439bdf.npz",
         "sha256": "5c91f58cf7f40882ce83ec49910d65ef59b7e043959e093ec4822660c871bf37",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "baseline_robustness_view_gps-8cec4e87e965",
         "identifier": "experiments/reference500/robustness/baseline/gps-8cec4e87e965.npz",
         "sha256": "2195da1e0941face5d31488e5a3f965af40dbcb836d7c01968fa7c3cbb2ea925",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "baseline_robustness_view_timestamp-c2d0b79c9324",
         "identifier": "experiments/reference500/robustness/baseline/timestamp-c2d0b79c9324.npz",
         "sha256": "9f51342482c92b32ddd893569f7ac07eb241588ee6165bace519fd4c27a413b2",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "baseline_robustness_view_timestamp-706d8a620c70",
         "identifier": "experiments/reference500/robustness/baseline/timestamp-706d8a620c70.npz",
         "sha256": "ce77363c44cf5de1c9b2764ec19eb1b876ddc9439851a13bf73a9956f05b9ae7",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "baseline_robustness_view_leave-one-service-out-ef2e655eab12",
         "identifier": "experiments/reference500/robustness/baseline/leave-one-service-out-ef2e655eab12.npz",
         "sha256": "a297b62cba93c750447aac24d10c9fc5c5a12f12ade20f4f07033d502acb453d",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "baseline_robustness_view_leave-one-service-out-ddf4e0f1f2b5",
         "identifier": "experiments/reference500/robustness/baseline/leave-one-service-out-ddf4e0f1f2b5.npz",
         "sha256": "25536f22fdc24636d001371bd70b769b97ccaa352b3cef857d99255ca26f3410",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "baseline_robustness_view_leave-one-service-out-d03630fb73d6",
         "identifier": "experiments/reference500/robustness/baseline/leave-one-service-out-d03630fb73d6.npz",
         "sha256": "47ba00b8c1626e66e523e794f047afe6a30a6dd7246665c4624e4485cc1628aa",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "baseline_robustness_view_leave-one-service-out-a72ae9f65c29",
         "identifier": "experiments/reference500/robustness/baseline/leave-one-service-out-a72ae9f65c29.npz",
         "sha256": "d253894bdfc0f4a5949a11044c00362d08686cd937b5a167e2d3391299a3c57c",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "baseline_robustness_view_recent-truncation-44df9f931c27",
         "identifier": "experiments/reference500/robustness/baseline/recent-truncation-44df9f931c27.npz",
         "sha256": "0a3203aec3fc302ac1f8f09e5754f9b165ef2bfda1ae673fd0ac2ee12f81fdbb",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "baseline_robustness_view_recent-truncation-097d92db106a",
         "identifier": "experiments/reference500/robustness/baseline/recent-truncation-097d92db106a.npz",
         "sha256": "692b32490cf828b0e38707ddf8580b61e22b10272f06331341ad5bfcefd43440",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_robustness_view_gps-c7496e439bdf",
         "identifier": "experiments/reference500/robustness/learned/gps-c7496e439bdf.npz",
         "sha256": "803b790050e81c54f27320ca46147cfabe290922aef7edc2bc306dc276a4cd3f",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_robustness_view_gps-8cec4e87e965",
         "identifier": "experiments/reference500/robustness/learned/gps-8cec4e87e965.npz",
         "sha256": "3650467943fc376e98ea2dceca7c3bcdb97a54ff7a346cc7bc411c1c9b1d5339",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_robustness_view_timestamp-c2d0b79c9324",
         "identifier": "experiments/reference500/robustness/learned/timestamp-c2d0b79c9324.npz",
         "sha256": "35e79db464cb84444bc962712b0d2fd64bd458c5f83bd35936ff40dee871c6b0",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_robustness_view_timestamp-706d8a620c70",
         "identifier": "experiments/reference500/robustness/learned/timestamp-706d8a620c70.npz",
         "sha256": "31ae8ce137ce69d0cd97556c109310a7955a79202abaa24b6093d185b59cadf4",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_robustness_view_leave-one-service-out-ef2e655eab12",
         "identifier": "experiments/reference500/robustness/learned/leave-one-service-out-ef2e655eab12.npz",
         "sha256": "f2e72b286c5aa7e91148df9229e0a3522554fa7736177d9f09133bc2fa3a1399",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_robustness_view_leave-one-service-out-ddf4e0f1f2b5",
         "identifier": "experiments/reference500/robustness/learned/leave-one-service-out-ddf4e0f1f2b5.npz",
         "sha256": "5f447bd7ab9b2a9ab6031eb68d7bf863238c7537de9b784d585a06582a7b30df",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_robustness_view_leave-one-service-out-d03630fb73d6",
         "identifier": "experiments/reference500/robustness/learned/leave-one-service-out-d03630fb73d6.npz",
         "sha256": "76a4399b736f1d1078316de49baba70d5665423128e806268ae3fc708b615eb4",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_robustness_view_leave-one-service-out-a72ae9f65c29",
         "identifier": "experiments/reference500/robustness/learned/leave-one-service-out-a72ae9f65c29.npz",
         "sha256": "35b4459bc04c46bc9ed48eac645ed4471f799a3ba34fb72ab8110f4a54f39fa2",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_robustness_view_recent-truncation-44df9f931c27",
         "identifier": "experiments/reference500/robustness/learned/recent-truncation-44df9f931c27.npz",
         "sha256": "0456b93a4b02856c805acf4e58d86821742a4419e7759c551d1844addabf6d7f",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "learned_robustness_view_recent-truncation-097d92db106a",
         "identifier": "experiments/reference500/robustness/learned/recent-truncation-097d92db106a.npz",
         "sha256": "1d91842aea46d4f0b9b59745d2227bc039cf8870f97326820deff5f5eff3fa4d",
-        "status": "present"
+        "status": "unavailable"
       }
     ],
     "comparison": [
@@ -368,13 +369,13 @@
         "id": "embedding_comparison_json",
         "identifier": "experiments/reference500/comparison/embedding_comparison.json",
         "sha256": "f616cdadfd72a32ef6bb6f7c053209b2a148d1940c1ce9c0880ae0603343948c",
-        "status": "present"
+        "status": "unavailable"
       },
       {
         "id": "embedding_comparison_markdown",
         "identifier": "experiments/reference500/comparison/embedding_comparison.md",
         "sha256": "733cd938d337d4a1fa82e0ed43aae6f209019555561239014cd9bd487052d3cb",
-        "status": "present"
+        "status": "unavailable"
       }
     ]
   },
@@ -388,8 +389,14 @@
     "preparation_contract_matches": true,
     "robustness_specifications_and_masks_match": true,
     "all_indexed_npz_values_finite": true,
-    "result": "passed",
-    "blocking_reasons": []
+    "result": "unverifiable",
+    "blocking_reasons": [
+      "indexed local artifact roots are absent",
+      "no durable external artifact identifier is registered",
+      "recorded source commit is unavailable in this clone",
+      "required artifact bytes cannot be reopened and authenticated against their recorded SHA-256 values"
+    ],
+    "historical_index_result": "passed before artifact loss; presently unauthenticated"
   },
   "coverage_and_missingness": {
     "simulated_users": 500,
@@ -406,7 +413,75 @@
     "explanation_missing_cutoffs": "Exports omit a user/cutoff only when that user has no observed history at that cutoff; no empty history is imputed.",
     "dense_rows": 22091,
     "episode_and_robustness_coverage": "Detailed label, bin, unencodable-view, and insufficient-history coverage is retained in the indexed reports; no report rows were filtered by the indexer.",
-    "absent_artifacts": [],
-    "artifact_note": "Historical separate *_event_removal.json files are not part of robustness-metrics/2.0; event-removal/truncation results are consolidated in each indexed *_robustness.json report."
+    "absent_artifacts": [
+      "runs/reference500/manifest.json",
+      "runs/reference500/config.resolved.yaml",
+      "runs/reference500/deep_validation_report.json",
+      "experiments/reference500/prepared/prepared_metadata.json",
+      "experiments/reference500/prepared/config.resolved.yaml",
+      "experiments/reference500/prepared/vocabularies.json",
+      "experiments/reference500/t0.2_commands.log",
+      "experiments/reference500/statistical_baseline.npz",
+      "experiments/reference500/dense_statistical_baseline.npz",
+      "experiments/reference500/baseline_evaluation.json",
+      "experiments/reference500/baseline_episode_response.json",
+      "experiments/reference500/robustness/baseline_robustness.json",
+      "experiments/reference500/model/best_model.pt",
+      "experiments/reference500/model/training_report.json",
+      "experiments/reference500/embeddings.npz",
+      "experiments/reference500/dense_embeddings.npz",
+      "experiments/reference500/evaluation.json",
+      "experiments/reference500/episode_response.json",
+      "experiments/reference500/robustness/learned_robustness.json",
+      "experiments/reference500/robustness/baseline/gps-c7496e439bdf.npz",
+      "experiments/reference500/robustness/baseline/gps-8cec4e87e965.npz",
+      "experiments/reference500/robustness/baseline/timestamp-c2d0b79c9324.npz",
+      "experiments/reference500/robustness/baseline/timestamp-706d8a620c70.npz",
+      "experiments/reference500/robustness/baseline/leave-one-service-out-ef2e655eab12.npz",
+      "experiments/reference500/robustness/baseline/leave-one-service-out-ddf4e0f1f2b5.npz",
+      "experiments/reference500/robustness/baseline/leave-one-service-out-d03630fb73d6.npz",
+      "experiments/reference500/robustness/baseline/leave-one-service-out-a72ae9f65c29.npz",
+      "experiments/reference500/robustness/baseline/recent-truncation-44df9f931c27.npz",
+      "experiments/reference500/robustness/baseline/recent-truncation-097d92db106a.npz",
+      "experiments/reference500/robustness/learned/gps-c7496e439bdf.npz",
+      "experiments/reference500/robustness/learned/gps-8cec4e87e965.npz",
+      "experiments/reference500/robustness/learned/timestamp-c2d0b79c9324.npz",
+      "experiments/reference500/robustness/learned/timestamp-706d8a620c70.npz",
+      "experiments/reference500/robustness/learned/leave-one-service-out-ef2e655eab12.npz",
+      "experiments/reference500/robustness/learned/leave-one-service-out-ddf4e0f1f2b5.npz",
+      "experiments/reference500/robustness/learned/leave-one-service-out-d03630fb73d6.npz",
+      "experiments/reference500/robustness/learned/leave-one-service-out-a72ae9f65c29.npz",
+      "experiments/reference500/robustness/learned/recent-truncation-44df9f931c27.npz",
+      "experiments/reference500/robustness/learned/recent-truncation-097d92db106a.npz",
+      "experiments/reference500/comparison/embedding_comparison.json",
+      "experiments/reference500/comparison/embedding_comparison.md"
+    ],
+    "artifact_note": "All indexed artifact bytes are unavailable. Historical coverage values below are preserved solely as identity metadata and cannot be reauthenticated or used for scientific conclusions."
+  },
+  "loss_audit": {
+    "audited_at": "2026-08-11",
+    "result": "evidence lost/unverifiable",
+    "checks": {
+      "indexed_local_roots_found": false,
+      "archive_found_on_available_filesystem": false,
+      "additional_artifact_filesystem_mounted": false,
+      "durable_external_identifier_registered": false,
+      "git_remote_registered": false,
+      "recorded_source_commit_available": false
+    },
+    "preserved_identity_fields": [
+      "source_commit",
+      "simulator_manifest_sha256",
+      "simulation_seed",
+      "training_seed",
+      "evaluation_seed",
+      "cutoffs",
+      "observed_source_hashes",
+      "preparation_metadata",
+      "categorical_field_order",
+      "continuous_field_order",
+      "user_set_sha256"
+    ],
+    "replacement_policy": "Any regenerated reference must use a new run/experiment identity and new evidence-index lineage; it must not claim the historical hashes."
   }
 }
