@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,7 @@ import pandas as pd
 
 from .io import read_json, write_json
 from .schema import load_observed
+from .runtime_metadata import collect_runtime_metadata
 
 
 def haversine_km(lat1: Any, lon1: Any, lat2: Any, lon2: Any) -> np.ndarray:
@@ -87,6 +89,7 @@ def evaluate_spatial_transfer(observed_dir: str | Path, prepared_dir: str | Path
                               embeddings_path: str | Path, output_path: str | Path,
                               config: dict[str, Any], *, kind: str) -> dict[str, Any]:
     """Evaluate frozen exports using public geography; this API cannot receive truth/."""
+    started = time.perf_counter()
     observed_dir = Path(observed_dir).resolve()
     if observed_dir.name != "observed":
         raise ValueError("Spatial transfer evaluation accepts only the canonical observed/ directory")
@@ -152,7 +155,9 @@ def evaluate_spatial_transfer(observed_dir: str | Path, prepared_dir: str | Path
                 for field, labels in fitted["known_labels"].items()}}
     definition = {key: settings[key] for key in sorted(settings)}
     definition_hash = hashlib.sha256(json.dumps(definition, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-    report = {"metric_contract": {"version": "spatial-transfer-metrics/1.0", "kind": kind,
+    report = {"runtime_metadata": collect_runtime_metadata(duration_seconds=time.perf_counter() - started,
+        seed=int(config.get("seed", 0)), device=None).to_dict(),
+        "metric_contract": {"version": "spatial-transfer-metrics/1.0", "kind": kind,
         "slice_definition": definition, "slice_definition_sha256": definition_hash,
         "source_hashes": metadata["source_files"], "train_end": metadata["train_end"],
         "validation_end": metadata["validation_end"], "prepared_metadata_sha256": hashlib.sha256(metadata_path.read_bytes()).hexdigest(),

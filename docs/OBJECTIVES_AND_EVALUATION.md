@@ -136,6 +136,19 @@ labels and the distance radius are fitted only from events at or before
 The report keeps distance retrieval, cross-geohash boundary-pair cosine,
 held-out-region coverage, and seen/unseen geohash-5/geohash-7 slices separate.
 Every slice reports rows, users, later-time coverage, and known-label coverage.
+
+## Report runtime provenance (R13)
+
+Scientific JSON reports retain their existing metric and lineage contracts and
+add a separate top-level `runtime_metadata` object. Version
+`geoembeddings-runtime-metadata/1.0` records the interpreter, package, PyTorch,
+OS, device class, Git commit, resolved integer seed, and finite non-negative
+wall-clock duration. Accelerator details are nullable and deliberately separate
+from required portable fields. Missing package, source, or device information is
+represented by explicit `null`, not omitted or guessed. This metadata supports
+reproduction and later efficiency evaluation; by itself it is neither a peak
+memory measurement nor a fair hardware benchmark, so R13 remains pending the
+T1.7 offline-efficiency harness.
 Empty slices are valid zero-coverage results, not silently substituted data.
 These public-observation metrics do not use protected truth, do not establish
 causal geographic invariance, and cannot measure unseen-POI transfer.

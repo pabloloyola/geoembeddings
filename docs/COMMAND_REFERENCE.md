@@ -318,6 +318,11 @@ Under `EXPERIMENT_DIR/model/`:
 - `training_report.json`: device, fields, window counts, best validation loss,
   checkpoint path, and metrics for every epoch.
 
+`training_report.json` also contains the shared `runtime_metadata` object
+described under **Runtime metadata schema** below. The timed interval covers
+dataset construction, model training, checkpoint selection, and report
+construction up to metadata collection.
+
 ### Reads protected truth?
 
 No.
@@ -512,6 +517,39 @@ By default under the learned experiment:
 
 - `comparison/embedding_comparison.json`;
 - `comparison/embedding_comparison.md`.
+
+Both formats expose the same `runtime_metadata` provenance (the Markdown report
+renders it as a runtime section). The comparison duration covers input
+validation, all frozen probes and optional supplemental-report merging.
+
+## Runtime metadata schema
+
+JSON reports produced by `train`, `evaluate` (base, episode, transfer, and
+temporal-routine modes), `robustness`, and `compare` contain a top-level
+`runtime_metadata` object using schema
+`geoembeddings-runtime-metadata/1.0`. Collection uses process, package, source
+checkout, and accelerator APIs only; it never opens `observed/` or `truth/`.
+
+Required keys are always serialized, including explicit JSON `null` when a
+portable value cannot be discovered:
+
+| Field | Type | Semantics |
+|---|---|---|
+| `schema_version` | string | Runtime metadata contract identifier. |
+| `python_version` | string | Running interpreter version. |
+| `package_version` | string or null | Installed `geoembeddings` distribution version; null for an uninstalled source tree. |
+| `pytorch_version` | string | Imported PyTorch version. |
+| `operating_system` | string | Python platform description of the host OS. |
+| `device_type` | string or null | PyTorch device class (`cpu`, `cuda`, or `mps`); null when the report does not execute model tensors. |
+| `source_commit` | string or null | Git `HEAD` commit of the source checkout; null outside a discoverable Git work tree. |
+| `wall_clock_duration_seconds` | finite non-negative number | Command-path interval measured with a monotonic clock, ending immediately before serialization. |
+| `seed` | integer | Resolved command/config seed; never coerced to a floating-point value. |
+
+`accelerator` is the only optional accelerator-specific value. It is an object
+for CUDA/MPS execution (and may itself contain null values when an API cannot
+name hardware) and is explicitly `null` for CPU or non-tensor evaluator paths.
+Runtime duration is reproducibility and rough-cost provenance, not a normalized
+cross-device benchmark.
 
 ### Reads protected truth?
 

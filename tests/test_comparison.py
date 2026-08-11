@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 from geoembeddings.comparison import compare_embeddings
@@ -30,3 +31,7 @@ def test_identical_exports_have_zero_comparison_deltas(tmp_path: Path) -> None:
     )
     assert (tmp_path / "embedding_comparison.json").is_file()
     assert (tmp_path / "embedding_comparison.md").is_file()
+    assert report["runtime_metadata"]["device_type"] is None
+    assert type(report["runtime_metadata"]["seed"]) is int
+    assert math.isfinite(report["runtime_metadata"]["wall_clock_duration_seconds"])
+    assert report["comparison_contract"]["shared_users"] > 0

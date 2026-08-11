@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .io import write_json
+from .runtime_metadata import collect_runtime_metadata
 
 
 LATENT_TRAITS = [
@@ -97,6 +99,7 @@ def evaluate_episode_response(
     truth_dir: str | Path, prepared_dir: str | Path, dense_path: str | Path,
     output_path: str | Path, config: dict[str, Any], *, kind: str,
 ) -> dict[str, Any]:
+    started = time.perf_counter()
     dense, embeddings, episodes = load_episode_evaluation_inputs(dense_path, truth_dir)
     settings = config.get("evaluation", {}).get("episode_response", {})
     edges = np.asarray(settings.get("boundary_bin_edges_hours", []), dtype=float)
@@ -153,6 +156,8 @@ def evaluate_episode_response(
     bins = [{"left_hours": float(edges[i]), "right_hours": float(edges[i+1]), "points": len(v),
              "mean_cosine_drift_from_pre_start": float(np.mean(v)) if v else None} for i, v in enumerate(curves)]
     report = {
+        "runtime_metadata": collect_runtime_metadata(duration_seconds=time.perf_counter() - started,
+            seed=int(config.get("seed", 0)), device=None).to_dict(),
         "metric_contract": {"version": "episode-response/1.0", "kind": kind,
             "interval_semantics": "start_time <= timestamp < end_time", "boundary_bin_edges_hours": edges.tolist(),
             "prepared_metadata_sha256": metadata_hash, "source_hashes": source_hashes,
@@ -231,6 +236,7 @@ def evaluate_embeddings(
     output_path: str | Path,
     config: dict[str, Any],
 ) -> dict[str, Any]:
+    started = time.perf_counter()
     truth_dir = Path(truth_dir)
     if truth_dir.name != "truth":
         raise ValueError("--truth-dir must point directly to the simulator's truth/ directory")
@@ -267,6 +273,8 @@ def evaluate_embeddings(
 
     learned_model = checkpoint_path is not None
     report = {
+        "runtime_metadata": collect_runtime_metadata(duration_seconds=time.perf_counter() - started,
+            seed=int(config.get("seed", 0)), device=None).to_dict(),
         "report_scope": {
             "name": "base_three_cutoff_evaluation",
             "description": "Persistent probes, cross-cutoff stability, and learned next-event metrics only.",
@@ -342,6 +350,7 @@ def evaluate_event_removal(
     export_manifest: dict[str, Any], output_path: str | Path, config: dict[str, Any],
 ) -> dict[str, Any]:
     """Evaluate matched clean/corrupted rows; truth opens only here for frozen probes."""
+    started = time.perf_counter()
     latent_path = Path(truth_dir) / "user_latents.csv.gz"
     if Path(truth_dir).name != "truth" or not latent_path.is_file():
         raise ValueError("robustness evaluation requires the canonical truth/ boundary")
@@ -379,7 +388,9 @@ def evaluate_event_removal(
             "coverage": len(keys) / max(len(original_map), 1), "cosine_drift": _summary(drifts),
             "matched_unmodified_probe": matched_original_probe, "probe": probe, "probe_mean_r2_degradation":
                 (base_r2 - thin_r2 if base_r2 is not None and thin_r2 is not None else None)})
-    report = {"metric_contract": {"version": "robustness-metrics/2.0",
+    report = {"runtime_metadata": collect_runtime_metadata(duration_seconds=time.perf_counter() - started,
+        seed=int(export_manifest["seed"]), device=None).to_dict(),
+        "metric_contract": {"version": "robustness-metrics/2.0",
         "source_hashes": export_manifest["source_hashes"], "algorithm": export_manifest["algorithm"],
         "seed": export_manifest["seed"], "kind": export_manifest["kind"],
         "field_order": export_manifest["field_order"],

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import time
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,7 @@ import pandas as pd
 
 from .io import read_json, write_json
 from .schema import load_observed
+from .runtime_metadata import collect_runtime_metadata
 
 
 PERSISTENT_TRAITS = [
@@ -50,6 +52,7 @@ def compare_embeddings(
     config: dict[str, Any],
 ) -> dict[str, Any]:
     """Compare two frozen representations with identical users, splits, and probes."""
+    started = time.perf_counter()
     truth_dir = Path(truth_dir)
     if truth_dir.name != "truth":
         raise ValueError("truth_dir must point directly to the simulator's truth/ directory")
@@ -255,6 +258,11 @@ def compare_embeddings(
         "json": str((output_dir / "embedding_comparison.json").resolve()),
         "markdown": str((output_dir / "embedding_comparison.md").resolve()),
     }
+    report["runtime_metadata"] = collect_runtime_metadata(
+        duration_seconds=time.perf_counter() - started,
+        seed=int(config.get("seed", 0)),
+        device=None,
+    ).to_dict()
     write_json(report, output_dir / "embedding_comparison.json")
     (output_dir / "embedding_comparison.md").write_text(
         _render_markdown(report), encoding="utf-8"
@@ -701,6 +709,7 @@ def _requirement_status() -> dict[str, Any]:
 
 def _render_markdown(report: dict[str, Any]) -> str:
     contract = report["comparison_contract"]
+    runtime = report["runtime_metadata"]
     persistent = report["persistent_information"]
     preferences = report["preference_information"]
     beyond = report["preference_beyond_geography_and_activity"]
@@ -723,6 +732,16 @@ def _render_markdown(report: dict[str, Any]) -> str:
         f"Shared users: **{contract['shared_users']}**  ",
         f"Probe split: **{contract['probe_train_users']} train / {contract['probe_test_users']} test users**  ",
         f"Dimensions: **{contract['baseline_embedding_dim']} baseline / {contract['learned_embedding_dim']} learned**",
+        "",
+        "## Runtime provenance",
+        "",
+        f"Schema: `{runtime['schema_version']}`  ",
+        f"Python / package / PyTorch: `{runtime['python_version']}` / "
+        f"`{runtime['package_version']}` / `{runtime['pytorch_version']}`  ",
+        f"OS / device: `{runtime['operating_system']}` / `{runtime['device_type']}`  ",
+        f"Source commit: `{runtime['source_commit']}`  ",
+        f"Seed: `{runtime['seed']}`  ",
+        f"Wall-clock duration: `{runtime['wall_clock_duration_seconds']:.6f}` seconds",
         "",
         "## Core comparison",
         "",
