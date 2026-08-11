@@ -92,10 +92,39 @@ definition of done in `AGENTS.md`.
 
 ## P1 — Simulator counterfactual support
 
-- [ ] **T1.11 (R5)** Split simulator randomness into named independent streams.
-- [ ] **T1.12 (R5)** Emit pair manifests for matched counterfactual runs.
-- [ ] **T1.13 (R5)** Preserve users/world/episodes while intervening on exposure.
-- [ ] **T1.14 (R5, R7)** Preserve latents while intervening on opportunity/observation.
+- [ ] **T1.11 (R5, R7) — Staged matched-counterfactual program.** There is no
+  valid matched-counterfactual baseline artifact yet; the current independent
+  scenario runs do not establish identity preservation. This program touches
+  the simulator, dataset manifest/contract/layout, truth-side validation, and
+  evaluator, but must not change the observed-data inputs available to modeling
+  commands. Complete the stages in order:
+  1. Introduce named, independent random streams in
+     `src/geoembeddings/simulator.py` for world/POI generation, user latents,
+     episodes, choice noise, and observation noise.
+  2. Through the centralized `contract.py` and `layout.py` path/schema
+     contract, record every stream seed and stable object identity in each
+     run's `manifest.json`.
+  3. Define and version a pair-manifest schema that identifies the reference
+     run, intervention run, invariant objects, changed parameters, source
+     hashes, and user/time/object matching keys.
+  4. Add pair-integrity validation proving that users, latent preferences,
+     world objects, and required episodes are byte-identical or identical on
+     explicitly enumerated fields across an exposure-only pair. Report precise
+     mismatches and fail before calculating representation metrics.
+  5. Add exposure, opportunity, and observation interventions one at a time.
+     Each intervention must declare the exact fields and objects allowed to
+     change; all other declared invariants must pass pair-integrity validation.
+  6. Implement evaluator-side user/time matching and report match coverage,
+     persistent-trait invariance, representation drift, and downstream-task
+     degradation separately for each intervention. Compare baseline and learned
+     exports made from the paired runs with matching source hashes, cutoffs,
+     users, and matching keys.
+
+  Keep latent values, invariant/changed-field declarations, intervention truth,
+  and pair-integrity evidence under `truth/`; `prepare`, `baseline`, `train`,
+  and `export` must continue to consume only `observed/`. **R5 remains
+  non-executable until both identity-preservation validation and the paired
+  evaluator pass their contract, boundary, and integration tests.**
 - [ ] **T1.15 (R11)** Add temporary-trip and sustained-preference-change scenarios.
 
 ## P2 — Factorized models
