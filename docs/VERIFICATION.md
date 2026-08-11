@@ -241,6 +241,33 @@ requiring every realized difference to match its declaration. This artifact is
 a prerequisite rather than an R5/R7 representation result; T1.11e and T1.11f
 remain open, and no external causal-validity claim is made.
 
+## T1.11e configured-intervention smoke (2026-08-11)
+
+Affected requirements are R5 and R7; the changed layer is the simulator and
+its protected pair-validation surface. The baseline is the passing T1.11d
+exposure-only integrity workflow. The fixed seed is `20260811` and the smoke
+scale is 10 users over two days:
+
+```bash
+for kind in exposure opportunity observation; do
+  uv run geoembed simulate-pair --intervention "$kind" \
+    --reference-run-dir "/tmp/t1.11e-${kind}-reference" \
+    --intervention-run-dir "/tmp/t1.11e-${kind}-intervention" \
+    --pair-dir "/tmp/t1.11e-${kind}-pair" \
+    --users 10 --days 2 --seed 20260811
+done
+uv run pytest tests/test_simulate_pair.py tests/test_pair_integrity.py tests/test_pair_manifest.py tests/test_cli_paths.py tests/test_layout.py
+```
+
+Each immutable pair produces `pair_manifest.json`, passing
+`pair_integrity.json`, and passing `behavioral_diagnostics.json`; each run also
+contains its normal validation report and deep structural/behavioral report.
+At smoke scale the deep report can retain coverage warnings or failures (for
+example sparse travel types), while the command requires every structural
+integrity check plus the intervention-specific fixed-seed direction to pass.
+This evidence tests the configured synthetic mechanisms and does not calibrate
+or validate constants against Tokyo or Kanto.
+
 ## T1.7 reliability and offline-efficiency smoke (2026-08-11)
 
 This evidence uses a new immutable replacement identity,

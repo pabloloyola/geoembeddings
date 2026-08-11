@@ -1,4 +1,4 @@
-config_version: 1
+config_version: 2
 
 run:
   users: 500
@@ -192,3 +192,28 @@ scenarios:
   opportunity_confounded: {distance_scale: 1.90, exposure_scale: 0.55, gps_scale: 0.85, dropout_scale: 0.90}
   exposure_confounded: {distance_scale: 0.95, exposure_scale: 2.30, gps_scale: 0.90, dropout_scale: 1.00}
   observation_biased: {distance_scale: 1.00, exposure_scale: 0.85, gps_scale: 1.70, dropout_scale: 2.10}
+
+# Controlled counterfactuals are experimental assumptions, not calibrated
+# descriptions of Tokyo, Kanto, platform exposure, or real-world missingness.
+interventions:
+  exposure:
+    config_overrides: {scenarios.mixed.exposure_scale: 2.30}
+    affected_random_streams: [choices]
+    reseed_streams: []
+    invariant_entities: [users, regions, pois, episodes, choices, trajectories]
+    permitted_changes: [truth.candidate_sets.utility_exposure, truth.candidate_sets.utility_total, truth.candidate_sets.is_chosen, truth.choices.chosen_poi_id, truth.trajectories.true_region_id, truth.trajectories.true_latitude, truth.trajectories.true_longitude, observed.events.*]
+    behavioral_diagnostics: {exposed_chosen_rate: increase}
+  opportunity:
+    config_overrides: {choice.candidate_count.default: 5}
+    affected_random_streams: [choices]
+    reseed_streams: []
+    invariant_entities: [users, regions, pois, episodes, choices]
+    permitted_changes: [truth.candidate_sets.*, truth.choices.*, truth.trajectories.*, observed.events.*]
+    behavioral_diagnostics: {mean_candidate_count: decrease}
+  observation:
+    config_overrides: {scenarios.mixed.gps_scale: 1.70, scenarios.mixed.dropout_scale: 2.10}
+    affected_random_streams: [observation]
+    reseed_streams: []
+    invariant_entities: [users, regions, pois, episodes, choices, trajectories]
+    permitted_changes: [observed.users.*, observed.events.*, truth.observation_process.*]
+    behavioral_diagnostics: {observed_event_count: decrease, mean_location_gps_sd_m: increase}

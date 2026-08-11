@@ -83,3 +83,13 @@ def test_pair_manifest_uses_run_roots_and_canonical_output() -> None:
     )
     assert str(validate.pair_manifest) == "pairs/pair_manifest.json"
     assert not hasattr(validate, "run_dir") and not hasattr(validate, "truth_dir")
+
+
+def test_simulate_pair_names_both_dataset_roots_and_pair_root() -> None:
+    args = build_parser().parse_args(["simulate-pair", "--intervention", "exposure",
+        "--reference-run-dir", "runs/ref", "--intervention-run-dir", "runs/int",
+        "--pair-dir", "pairs/exposure", "--users", "10", "--days", "2"])
+    assert args.intervention == "exposure"
+    assert str(args.reference_run_dir) == "runs/ref"
+    assert str(args.intervention_run_dir) == "runs/int"
+    assert str(args.pair_dir) == "pairs/exposure"

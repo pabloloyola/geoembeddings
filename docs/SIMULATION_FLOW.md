@@ -152,6 +152,36 @@ Passing establishes internal simulator-pair integrity only. It is not evidence
 that the intervention corresponds to a real causal mechanism or that results
 generalize outside the simulator.
 
+### Configured paired simulation (T1.11e; R5/R7)
+
+`geoembed simulate-pair` reads the versioned `interventions` section of the
+simulation YAML, creates two new run roots, runs structural validation, writes
+the protected pair manifest, executes pair integrity, and writes fixed-seed
+`behavioral_diagnostics.json`. All three destinations must be absent; this
+workflow intentionally has no overwrite option.
+
+```bash
+uv run geoembed simulate-pair --intervention exposure \
+  --reference-run-dir runs/t1.11e-exposure-reference \
+  --intervention-run-dir runs/t1.11e-exposure-intervention \
+  --pair-dir pairs/t1.11e-exposure --users 50 --days 7 --seed 20260811
+```
+
+The three declarations are:
+
+| Intervention | Invariant entities/fields | Permitted changes | Affected stream | Expected diagnostic |
+|---|---|---|---|---|
+| exposure | users, regions, POIs, episodes, decision and trajectory identities; user latents, episode state, world fields | exposure/total utility, chosen flags and POI, resulting true visit coordinates and observed events | `choices` (same seed, changed exposure coefficient) | exposed share among chosen candidates increases |
+| opportunity | users, regions, POIs, episodes, and decision identities; user latents, episode state, world fields | candidate membership/count/fields, choices, resulting trajectories and observed events | `choices` (same seed, smaller candidate set) | mean candidate count decreases |
+| observation | all six identity classes; user latents, episodes, candidates, choices, trajectories, world fields | observed users/events and protected observation-process fields | `observation` (same seed, changed GPS/dropout coefficients) | event count decreases and location GPS SD increases |
+
+Named streams remain independently derived even when their seeds are held
+fixed. Holding unaffected draws fixed is what makes the field-level comparison
+meaningful; “affected” identifies the mechanism consuming the changed
+configuration, not necessarily a reseeded stream. The coefficients and
+directions are controlled experimental assumptions, not empirical estimates or
+claims about Tokyo, Kanto, platform exposure, opportunity, or missingness.
+
 The declarations remain in root `manifest.json` and refer to evaluator-only
 truth entities without copying protected episodes, utilities, chosen flags, or
 coordinates into `observed/`.

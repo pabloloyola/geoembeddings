@@ -312,7 +312,7 @@ steps without losing PR traceability.
     This proves controlled simulator artifact integrity, not external causal
     validity; T1.11e/T1.11f remain required for executable R5/R7 deltas.
 
-- [ ] **T1.11e — Exposure, opportunity, and observation interventions.**
+- [x] **T1.11e — Exposure, opportunity, and observation interventions.**
   - **Requirement IDs:** R5, R7.
   - **Prerequisites:** T1.11d passes for exposure-only pairs.
   - **Affected layer:** simulator.
@@ -324,6 +324,16 @@ steps without losing PR traceability.
     passes structural plus behavioral diagnostics.
   - **Known limitation/blocker:** constants are experimental hypotheses, not
     calibrated facts about Tokyo/Kanto.
+  - **Completion note (2026-08-11):** simulation config v2 now declares each
+    intervention's override, invariant entities, permitted fields, affected
+    independent stream, and expected diagnostic. `simulate-pair` preflights and
+    refuses existing roots, creates matched stable-identity runs, preserves
+    unrelated user latent/world/episode state, runs structural validation,
+    writes the protected manifest and passing field-level integrity report, and
+    checks fixed-seed behavioral directions. Parameterized integration tests
+    cover exposure, opportunity, and observation plus immutability. These are
+    experimental simulator assumptions only; T1.11f is still required before
+    any representation-level R5/R7 conclusion.
 
 - [ ] **T1.11f — Matched counterfactual evaluator.**
   - **Requirement IDs:** R5, R7.

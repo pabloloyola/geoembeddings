@@ -124,7 +124,7 @@ def load_config(path: Path) -> dict[str, Any]:
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ValueError("The YAML root must be a mapping.")
-    required = {"run", "world", "population", "episodes", "choice", "observation", "events", "scenarios"}
+    required = {"run", "world", "population", "episodes", "choice", "observation", "events", "scenarios", "interventions"}
     missing = sorted(required - set(raw))
     if missing:
         raise ValueError(f"Missing required configuration sections: {missing}")
@@ -132,6 +132,10 @@ def load_config(path: Path) -> dict[str, Any]:
         raise ValueError("world.regions and world.poi_categories cannot be empty.")
     if raw["run"].get("scenario") not in raw["scenarios"]:
         raise ValueError("run.scenario must name an entry under scenarios.")
+    for name in ("exposure", "opportunity", "observation"):
+        definition = raw["interventions"].get(name)
+        if not isinstance(definition, dict) or not definition.get("config_overrides"):
+            raise ValueError(f"interventions.{name} must declare config_overrides")
     return raw
 
 
@@ -901,6 +905,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
         "days": args.days,
         "users": args.users,
         "scenario": args.scenario,
+        "intervention": CONFIG["run"].get("intervention"),
         "full_kanto": args.full_kanto,
         "coordinate_system": "WGS84; continuous synthetic locations sampled from overlapping Kanto hub catchments",
         "geographic_splits": {"development": "Tokyo, Kanagawa, Saitama, Chiba", "holdout": "Ibaraki, Tochigi, Gunma"},
