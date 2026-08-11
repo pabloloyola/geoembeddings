@@ -129,12 +129,37 @@ definition of done in `AGENTS.md`.
 
 ## P2 — Factorized models
 
-- [ ] **T2.1 (R1)** Define a versioned multi-component embedding export schema.
-- [ ] **T2.2 (R1)** Implement a capacity-matched persistent/context encoder.
-- [ ] **T2.3 (R1)** Add persistent-only, context-only, and fusion ablations.
-- [ ] **T2.4 (R1, R4)** Add branch-specific training objectives.
-- [ ] **T2.5 (R3, R4)** Implement routine branch only after routine tests exist.
-- [ ] **T2.6** Add configuration-driven model registry without breaking current CLI.
+P2 must not begin until all of the following entry gates are satisfied:
+
+- the 500-user reference is archived and the post-reference decision is recorded
+  under T0.2/T0.2a;
+- the R1/R4 episode metrics are executable;
+- the selected R5/R6/R7 invariance tests required to test the documented model
+  hypothesis are executable; and
+- collapse diagnostics are present, including separation, temporal retrieval,
+  centered effective rank, and task-information reporting.
+
+Once the entry gates pass, complete the work in this order:
+
+- [ ] **T2.1 (R1, R4)** Define a typed multi-component encoder output contract
+  with explicit `persistent`, `context`, and `combined` components.
+- [ ] **T2.2 (R1, R4)** Add a configuration-driven model registry behind the
+  existing CLI while preserving `SingleVectorEncoder` and its current behavior.
+- [ ] **T2.3 (R1, R4)** Define a versioned multi-component export schema with
+  explicit component names, dimensions, field order, source hashes, and
+  backward compatibility with existing single-vector exports.
+- [ ] **T2.4 (R1, R4)** Implement a capacity-matched persistent/context encoder.
+- [ ] **T2.5 (R1, R4)** Add a capacity-matched single-vector control and
+  persistent-only, context-only, fusion, and loss ablations.
+- [ ] **T2.6 (R1, R4, R5, R6, R7)** Add branch-specific objectives and
+  branch-specific evaluation reporting.
+- [ ] **T2.7 (R1, R4, R5, R6, R7)** Require a matched comparison demonstrating
+  that the persistent and context branches improve their intended requirement
+  axes without collapse or unacceptable regression on the other reported axes.
+
+The routine branch remains blocked until P1C can distinguish recurring routine
+from both persistent identity and temporary episode state. Do not add it to the
+P2 encoder merely because the persistent/context path is complete.
 
 ## P3 — Recommendation contract and ranking
 
