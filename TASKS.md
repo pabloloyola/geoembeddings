@@ -32,6 +32,24 @@ definition of done in `AGENTS.md`.
   explicit statement that the baseline and learned reports share the same
   preparation contract. Completion of this milestone, rather than the smoke
   run, establishes the archived scientific baseline for subsequent work.
+- [ ] **T0.2a (R1, R3, R4, R7) — Record the post-reference model decision.**
+  Immediately after archiving T0.2, write a decision record that compares the
+  statistical baseline and single-vector GRU **separately** on every axis below:
+  - persistent-trait probe R² and category-preference probe R²;
+  - incremental preference information beyond geography and event volume;
+  - same-user stability and different-user separation;
+  - temporal retrieval and centered effective rank;
+  - episode coherence, boundary response, and post-episode recovery;
+  - event-removal drift and probe degradation;
+  - next-event performance and known-label coverage.
+
+  Draw a conclusion for each axis; do not name or imply an aggregate winner.
+  Based on those per-axis conclusions, the record must choose exactly one next
+  action: (1) repair or ablate the single-vector baseline, (2) finish the
+  remaining evaluator gate, or (3) begin the persistent/context factorized
+  model. Record the artifact paths, artifact and source hashes, seed, cohort
+  size, cutoffs, limitations, and rationale in `docs/CURRENT_STATUS.md` or a
+  dedicated versioned decision document.
 - [ ] **T0.3** Add environment/runtime metadata to training and comparison reports.
 - [ ] **T0.4** Add majority/popularity next-event baselines and class-balance metrics.
 
