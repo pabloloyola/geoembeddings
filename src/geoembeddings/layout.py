@@ -84,6 +84,10 @@ class ExperimentLayout:
         return self.root / "embeddings.npz"
 
     @property
+    def dense_embeddings(self) -> Path:
+        return self.root / "dense_embeddings.npz"
+
+    @property
     def baseline_embeddings(self) -> Path:
         return self.root / "statistical_baseline.npz"
 

@@ -245,14 +245,76 @@ class UserCutoffDataset(Dataset[dict[str, Any]]):
         }
 
 
+def _dense_cutoff_offsets(event_count: int, event_stride: int) -> list[int]:
+    """Return event-aligned cutoff offsets, always retaining both endpoints."""
+    if event_stride < 1:
+        raise ValueError("event_stride must be at least 1")
+    if event_count < 1:
+        return []
+    offsets = list(range(0, event_count, event_stride))
+    if offsets[-1] != event_count - 1:
+        offsets.append(event_count - 1)
+    return offsets
+
+
+class DenseUserCutoffDataset(Dataset[dict[str, Any]]):
+    """Observed histories at event-aligned timestamps, without protected labels."""
+
+    def __init__(
+        self,
+        observed_dir: str | Path,
+        prepared_dir: str | Path,
+        config: dict[str, Any],
+        event_stride: int = 1,
+    ) -> None:
+        base = EventWindowDataset.__new__(EventWindowDataset)
+        _, events = load_observed(observed_dir)
+        base.metadata = read_json(Path(prepared_dir) / "prepared_metadata.json")
+        base.vocabularies = read_json(Path(prepared_dir) / "vocabularies.json")
+        base.categorical_fields = list(base.metadata["categorical_fields"])
+        base.continuous_fields = list(base.metadata["continuous_fields"])
+        base._validate_prepared_contract(config)
+        base.events = events
+        base.encoded_categories = base._encode_categories(events)
+        base.continuous = base._encode_continuous(events)
+        self.base = base
+        self.maximum = int(config["data"]["max_sequence_length"])
+        self.items: list[tuple[str, str, int, np.ndarray]] = []
+        for user_id, indices in events.groupby("user_id", sort=False).indices.items():
+            ordered = np.asarray(indices, dtype=np.int64)
+            for offset in _dense_cutoff_offsets(len(ordered), event_stride):
+                history_count = offset + 1
+                event_index = int(ordered[offset])
+                timestamp = pd.Timestamp(events.iloc[event_index]["timestamp"]).isoformat()
+                history = ordered[max(0, history_count - self.maximum) : history_count]
+                self.items.append((str(user_id), timestamp, history_count, history))
+
+    def __len__(self) -> int:
+        return len(self.items)
+
+    def __getitem__(self, index: int) -> dict[str, Any]:
+        user_id, timestamp, history_count, indices = self.items[index]
+        return {
+            "user_id": user_id,
+            "timestamp": timestamp,
+            "cutoff_kind": "observed_event",
+            "history_event_count": history_count,
+            "categorical": torch.from_numpy(self.base.encoded_categories[indices]).long(),
+            "continuous": torch.from_numpy(self.base.continuous[indices]).float(),
+        }
+
+
 def collate_user_cutoffs(samples: Iterable[dict[str, Any]]) -> dict[str, Any]:
     samples = list(samples)
     categorical = [sample["categorical"] for sample in samples]
     continuous = [sample["continuous"] for sample in samples]
-    return {
+    batch = {
         "user_id": [sample["user_id"] for sample in samples],
-        "cutoff": [sample["cutoff"] for sample in samples],
         "categorical": pad_sequence(categorical, batch_first=True, padding_value=0),
         "continuous": pad_sequence(continuous, batch_first=True, padding_value=0.0),
         "lengths": torch.tensor([len(sequence) for sequence in categorical], dtype=torch.long),
     }
+    for key in ("cutoff", "timestamp", "cutoff_kind", "history_event_count"):
+        if key in samples[0]:
+            batch[key] = [sample[key] for sample in samples]
+    return batch
