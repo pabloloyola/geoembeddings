@@ -31,7 +31,16 @@
 The historical release verification recorded in `docs/VERIFICATION.md` reports
 13 passing tests and a 50-user, 7-day learned pipeline plus baseline comparison
 completed end to end. That is a dated verification record, not the current test
-inventory.
+inventory. It marks the **execution/contract smoke as passed**; it does not mark
+the **500-user scientific baseline as archived**.
+
+## Phase 0 evidence milestones
+
+| Evidence state | Status | Meaning |
+|---|---|---|
+| 50-user execution/contract smoke passed | verified | The learned and baseline paths completed under one preparation contract, as recorded in `docs/VERIFICATION.md`; the small cohort is not scientific evidence. |
+| Complete smoke artifact manifest registered | pending | Record immutable paths or external-storage identifiers, source commit, dataset manifest hash, and the shared-preparation-contract statement; large generated binaries need not be committed. |
+| 500-user scientific baseline archived | pending — immediate next task | Run and index the matched baseline-versus-learned reference with configs, hashes, seeds, cutoffs, checkpoint/training report, exports, episode reports, event-removal reports, and comparison JSON/Markdown. |
 
 ## Requirement status
 
@@ -89,7 +98,10 @@ or disentanglement claim.
 
 ## Immediate instruction
 
-Preserve same-run baseline and learned episode/robustness reports alongside
-`embedding_comparison.json` and `.md` as pre-factorization references. Continue
-the remaining Phase 1 evaluator work in `docs/ROADMAP.md` before introducing a
-factorized model.
+Complete T0.2 next: run and archive the 500-user matched baseline-versus-learned
+scientific reference. Preserve same-run episode and event-removal reports
+alongside `embedding_comparison.json` and `.md`, and register every required
+output in an artifact index. The index must give immutable paths or external
+storage identifiers, source commit, dataset manifest hash, and an explicit
+same-preparation-contract statement. Only after this scientific reference is
+archived should it serve as the pre-factorization comparison baseline.

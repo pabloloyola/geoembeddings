@@ -5,8 +5,33 @@ definition of done in `AGENTS.md`.
 
 ## P0 — Reproduction and baselines
 
-- [ ] **T0.1** Run and preserve a 50-user learned/baseline comparison.
-- [ ] **T0.2** Run and preserve the 500-user reference comparison.
+- [x] **T0.1 — Execution/contract smoke verified.** The 50-user, 7-day
+  learned pipeline, statistical baseline, and matched comparison completed
+  successfully. This milestone verifies execution and cross-stage contracts,
+  not scientific model quality; the commands, seed, coverage, and limitations
+  are recorded in `docs/VERIFICATION.md`.
+- [ ] **T0.1a — Register the complete smoke artifact manifest.** Preserve an
+  index of every artifact produced by T0.1 using immutable repository-relative
+  paths or external-storage identifiers. Generated binaries do not have to be
+  committed to Git. The index must record the source commit and dataset
+  manifest hash and state that the baseline and learned reports use the same
+  preparation contract.
+- [ ] **T0.2 — Immediate next task: archive the 500-user scientific reference.**
+  Run the baseline-versus-learned comparison at the fixed 500-user reference
+  scale and preserve or externally register all of the following outputs:
+  - resolved simulation and embedding configurations;
+  - source hashes, simulator/model seeds, and evaluation cutoffs;
+  - learned checkpoint and training report;
+  - baseline and learned cutoff exports;
+  - baseline and learned episode reports;
+  - baseline and learned event-removal reports;
+  - comparison JSON and Markdown.
+
+  The reference must include an artifact index with immutable paths or external
+  storage identifiers, the source commit, the dataset manifest hash, and an
+  explicit statement that the baseline and learned reports share the same
+  preparation contract. Completion of this milestone, rather than the smoke
+  run, establishes the archived scientific baseline for subsequent work.
 - [ ] **T0.3** Add environment/runtime metadata to training and comparison reports.
 - [ ] **T0.4** Add majority/popularity next-event baselines and class-balance metrics.
 
