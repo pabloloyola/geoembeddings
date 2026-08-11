@@ -15,19 +15,12 @@ contracts, not scientific superiority or disentanglement.
 |---|---|---|---|
 | **T1.1 — Dense timestamped export** | R1, R4, R11 | `uv run pytest tests/test_dense_export.py tests/test_cli_paths.py`; `uv run geoembed export-dense --kind {baseline,learned} --event-stride 1 --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` | `dense_statistical_baseline.npz`; `dense_embeddings.npz`; verification notes in `docs/VERIFICATION.md` |
 | **T1.2 — Episode-boundary evaluation** | R1, R4 | `uv run pytest tests/test_episode_evaluation.py tests/test_dense_export.py tests/test_cli_paths.py`; `uv run geoembed evaluate --episodes --kind {baseline,learned} --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR`; `uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` | `baseline_episode_response.json`; `episode_response.json`; matched deltas in `comparison/embedding_comparison.{json,md}` |
+| **T1.4 — Complete deterministic robustness views** | R6, R7 | `uv run geoembed robustness --views gps,timestamp,leave-one-service-out,recent-truncation --kind {baseline,learned} --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR`; `uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` | `robustness/{kind}/{view_id}.npz`; `robustness/{kind}_robustness.json`; separate matched R6/R7 axes |
 | **T1.3 — Event-removal robustness** | R7 | `uv run geoembed robustness --kind {baseline,learned} --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR`; `uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` | `robustness/{kind}/removal_RATE.npz`; `robustness/{kind}_event_removal.json`; matched R7 axes in `comparison/embedding_comparison.{json,md}` |
 
 ## Now
 
-Work in this order. **T1.4 is the selected next evaluator package**, but its
-implementation starts only after the T0.2 reference is archived and T0.2a has
-reconciled status and selected the permitted next action.
-
-1. **T0.2:** create and archive the fixed 500-user matched reference.
-2. **T0.2a:** reconcile requirement/task status against that reference and
-   record a per-axis decision; do not name an aggregate winner.
-3. **T1.4:** finish the deterministic robustness package for GPS, timestamps,
-   missing services, and recent-history truncation (R6/R7).
+T0.2a selected the evaluator-gate path without naming an aggregate winner. T1.4 is complete; the next task must follow the remaining requirement gates.
 
 ## Later/gated
 
@@ -79,7 +72,7 @@ reconciled status and selected the permitted next action.
   - **Known limitation/blocker:** the run is semi-synthetic and compute-heavy;
     missing users or labels must be explained, never silently dropped.
 
-- [ ] **T0.2a — Reconcile status and record the post-reference decision.**
+- [x] **T0.2a — Reconcile status and record the post-reference decision.**
   - **Requirement IDs:** R1, R3, R4, R7.
   - **Prerequisites:** T0.2 and its complete artifact index.
   - **Affected layer:** evaluator, documentation.
@@ -125,14 +118,14 @@ reconciled status and selected the permitted next action.
 
 ## P1 — Evaluator foundations
 
-- [ ] **T1.4 (P1A) — Complete deterministic robustness views.**
+- [x] **T1.4 (P1A) — Complete deterministic robustness views.**
   - **Requirement IDs:** R6, R7.
   - **Prerequisites:** T1.3, T0.2/T0.2a; selected unless T0.2a explicitly chooses
     another permitted action.
   - **Affected layer:** evaluator.
   - **Baseline artifact required:** matched T0.2 baseline/learned exports and
     event-removal reports.
-  - **Command → expected artifact:** `uv run geoembed robustness --views gps,timestamp,leave-one-service-out,recent-truncation --kind {baseline,learned} --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` → versioned view exports and `robustness/{kind}_robustness.json`; `compare` → matched R6/R7 deltas (extended options are proposed).
+  - **Command → expected artifact:** `uv run geoembed robustness --views gps,timestamp,leave-one-service-out,recent-truncation --kind {baseline,learned} --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` → versioned view exports and `robustness/{kind}_robustness.json`; `compare` → matched R6/R7 deltas (implemented).
   - **Minimum coverage:** deterministic/view-ID unit tests, boundary cases and
     row-order independence; integration tests for matched masks/coverage,
     observed-only encoding, truth opened only for evaluation, and mismatch rejection.

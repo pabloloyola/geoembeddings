@@ -23,8 +23,7 @@
 - Protected episode evaluation that joins dense timestamps to half-open truth
   intervals and reports within/adjacent-episode coherence, boundary change,
   response curves, drift/recovery, a held-out intent probe, and collapse checks
-- Deterministic event-removal robustness curves with matched baseline/learned
-  masks, coverage, cosine drift, realized removal, and frozen-probe degradation
+- Versioned deterministic GPS, timestamp, leave-one-service-out, and recent-truncation robustness views with matched baseline/learned masks, coverage, cosine drift, realized corruption, and frozen-probe degradation
 - Protected latent probes, next-event evaluation, and fair frozen
   baseline-versus-learned comparison
 
@@ -41,6 +40,7 @@ the **500-user scientific baseline as archived**.
 | 50-user execution/contract smoke passed | verified | The learned and baseline paths completed under one preparation contract, as recorded in `docs/VERIFICATION.md`; the small cohort is not scientific evidence. |
 | Complete smoke artifact manifest registered | pending | Record immutable paths or external-storage identifiers, source commit, dataset manifest hash, and the shared-preparation-contract statement; large generated binaries need not be committed. |
 | 500-user scientific baseline archived | pending — immediate next task | Run and index the matched baseline-versus-learned reference with configs, hashes, seeds, cutoffs, checkpoint/training report, exports, episode reports, event-removal reports, and comparison JSON/Markdown. |
+| T0.2a post-reference action | completed | `docs/decisions/t0.2a-reference-decision.md` selects exactly the evaluator-gate path; it does not select an aggregate winner or authorize factorization. |
 
 ## Requirement status
 
@@ -56,8 +56,8 @@ executable while other named axes remain absent. Artifacts are relative to
 | R3 | partial | `train`; `evaluate` | `model/training_report.json` and `evaluation.json` cover future-time next-event prediction; routine, periodicity, and duration probes pending |
 | R4 | partial | `export-dense`; `evaluate --episodes`; `compare` | `dense_embeddings.npz`, `episode_response.json`, and matched episode deltas in `comparison/embedding_comparison.json`; factorized persistent/context separation and matched change scenarios pending |
 | R5 | pending | — | Matched counterfactual exposure/opportunity evaluator and artifacts pending |
-| R6 | pending | — | Leave-one-service-out views and cross-service evaluator pending |
-| R7 | partial | `robustness`; `compare` | `robustness/{kind}_event_removal.json` and matched R7 comparison axes; GPS, timestamp-jitter, and service-removal views pending |
+| R6 | partial | `robustness`; `compare` | Leave-one-service-out drift, coverage, and frozen-probe degradation are executable; candidate-aware cross-service transfer remains pending |
+| R7 | partial | `robustness`; `compare` | `robustness/{kind}_robustness.json` covers deterministic GPS, timestamp, and recent-truncation views; real-noise calibration and causal invariance remain unmeasurable |
 | R8 | partial | `prepare`; `evaluate` | Chronological split metadata in `prepared/prepared_metadata.json` and future-time metrics in `evaluation.json`; explicit geographic/POI holdouts pending |
 | R9 | blocked | — | Observable recommendation request, candidate, impression, and interaction contract is absent |
 | R10 | pending | — | Uncertainty evaluator and artifact pending |
@@ -75,7 +75,6 @@ artifacts rather than incorrectly marking their implemented axes as pending.
 
 - Factorized persistent/context and routine/context representation and metrics
 - Matched temporary-versus-sustained change scenarios
-- GPS noise, timestamp jitter, and missing-service robustness
 - Explicit geographic holdout experiments
 - Matched counterfactual exposure/opportunity invariance
 - Recommendation request/impression/interaction data contract
@@ -98,8 +97,7 @@ or disentanglement claim.
 
 ## Immediate instruction
 
-Complete T0.2 next: run and archive the 500-user matched baseline-versus-learned
-scientific reference. Preserve same-run episode and event-removal reports
+T0.2a selected the evaluator-gate path, and T1.4 is complete. Preserve the archived 500-user matched baseline-versus-learned scientific reference. Preserve same-run episode and event-removal reports
 alongside `embedding_comparison.json` and `.md`, and register every required
 output in an artifact index. The index must give immutable paths or external
 storage identifiers, source commit, dataset manifest hash, and an explicit

@@ -265,8 +265,8 @@ def evaluate_embeddings(
                 "R7_noise_and_sparsity_robustness": {
                     "command": "robustness",
                     "artifacts": [
-                        "robustness/learned_event_removal.json",
-                        "robustness/baseline_event_removal.json",
+                        "robustness/learned_robustness.json",
+                        "robustness/baseline_robustness.json",
                     ],
                 },
             },
@@ -309,8 +309,8 @@ def evaluate_embeddings(
             "R7_noise_and_sparsity_robustness": {
                 "status": "not_evaluated_in_base_report",
                 "supplemental_status": "partial",
-                "evidence": "robustness writes deterministic event-removal curves",
-                "missing": "GPS, timestamp-jitter, and service-removal views",
+                "evidence": "robustness writes deterministic GPS, timestamp, service-removal, and truncation views",
+                "missing": "real-noise calibration and causal invariance tests",
             },
             "R8_geographic_temporal_generalization": {"status": "pending"},
             "R9_new_context_recommendation": {
@@ -327,10 +327,10 @@ def evaluate_event_removal(
     truth_dir: str | Path, original_embeddings_path: str | Path,
     export_manifest: dict[str, Any], output_path: str | Path, config: dict[str, Any],
 ) -> dict[str, Any]:
-    """Evaluate matched unmodified/thinned rows; truth opens only here for frozen probes."""
+    """Evaluate matched clean/corrupted rows; truth opens only here for frozen probes."""
     latent_path = Path(truth_dir) / "user_latents.csv.gz"
     if Path(truth_dir).name != "truth" or not latent_path.is_file():
-        raise ValueError("event-removal evaluation requires the canonical truth/ boundary")
+        raise ValueError("robustness evaluation requires the canonical truth/ boundary")
     original = np.load(original_embeddings_path, allow_pickle=False)
     original_map = {(str(u), str(c)): e.astype(np.float64) for u, c, e in
                     zip(original["user_id"], original["cutoff"], original["embedding"])}
@@ -365,14 +365,18 @@ def evaluate_event_removal(
             "coverage": len(keys) / max(len(original_map), 1), "cosine_drift": _summary(drifts),
             "matched_unmodified_probe": matched_original_probe, "probe": probe, "probe_mean_r2_degradation":
                 (base_r2 - thin_r2 if base_r2 is not None and thin_r2 is not None else None)})
-    report = {"metric_contract": {"version": "event-removal/1.0",
+    report = {"metric_contract": {"version": "robustness-metrics/2.0",
         "source_hashes": export_manifest["source_hashes"], "algorithm": export_manifest["algorithm"],
         "seed": export_manifest["seed"], "kind": export_manifest["kind"],
         "field_order": export_manifest["field_order"],
-        "removal_rates": [a["rate"] for a in export_manifest["artifacts"]]},
-        "unmodified_rows": len(original_map), "unmodified_probe": original_probe, "rates": rates,
-        "R7_axes": ["cosine_drift", "coverage", "realized_removal", "frozen_probe_degradation"],
-        "limitations": "Event removal tests sparsity only; it does not establish GPS, service-missingness, or causal invariance.",
+        "specification_hash": export_manifest.get("specification_hash"),
+        "requested_views": export_manifest.get("requested_views"),
+        "view_ids": [a.get("view_id") for a in export_manifest["artifacts"]],
+        "mask_hashes": [a.get("mask_hash") for a in export_manifest["artifacts"]]},
+        "unmodified_rows": len(original_map), "unmodified_probe": original_probe, "views": rates,
+        "R6_axes": ["leave-one-service-out_cosine_drift", "frozen_probe_degradation", "coverage"],
+        "R7_axes": ["gps_and_timestamp_drift", "recent_truncation", "coverage", "frozen_probe_degradation"],
+        "limitations": "Deterministic corruptions are sensitivity analyses, not evidence of real-world noise or causal invariance.",
         "information_boundary": "truth/ is opened only by this evaluator; masks and encoders are observed-only"}
     write_json(report, output_path)
     return report

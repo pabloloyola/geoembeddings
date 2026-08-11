@@ -167,23 +167,29 @@ def compare_embeddings(
         }
         report["episode_response_comparison"] = {name: {"baseline": a, "learned": b,
             "learned_minus_baseline": (b-a) if a is not None and b is not None else None} for name, (a,b) in metrics.items()}
-    baseline_robust = Path(baseline_embeddings_path).parent / "robustness" / "baseline_event_removal.json"
-    learned_robust = Path(learned_embeddings_path).parent / "robustness" / "learned_event_removal.json"
+    baseline_robust = Path(baseline_embeddings_path).parent / "robustness" / "baseline_robustness.json"
+    learned_robust = Path(learned_embeddings_path).parent / "robustness" / "learned_robustness.json"
     if baseline_robust.is_file() or learned_robust.is_file():
         if not (baseline_robust.is_file() and learned_robust.is_file()):
             raise ValueError("R7 comparison requires both baseline and learned robustness reports")
         left, right = read_json(baseline_robust), read_json(learned_robust)
-        contract_fields = ("source_hashes", "algorithm", "seed", "field_order", "removal_rates")
+        contract_fields = ("source_hashes", "algorithm", "seed", "field_order", "specification_hash",
+                           "requested_views", "view_ids", "mask_hashes")
         mismatch = [key for key in contract_fields if left["metric_contract"].get(key) != right["metric_contract"].get(key)]
         if mismatch:
             raise ValueError(f"R7 reports are not matched; mismatched fields: {mismatch}")
         compared = []
-        for a, b in zip(left["rates"], right["rates"]):
-            row_fields = ("rate", "removed_events", "realized_removal_rate", "encoded_keys")
+        if len(left["views"]) != len(right["views"]):
+            raise ValueError("R6/R7 reports are not matched; view counts differ")
+        for a, b in zip(left["views"], right["views"]):
+            row_fields = ("view_id", "kind", "parameters", "mask_hash", "encoded_keys", "unencodable_keys")
             bad = [key for key in row_fields if a.get(key) != b.get(key)]
             if bad:
                 raise ValueError(f"R7 rate reports are not matched; mismatched fields: {bad}")
-            compared.append({"rate": a["rate"], "matched_rows": a["matched_rows"],
+            if a.get("matched_rows") != b.get("matched_rows") or a.get("coverage") != b.get("coverage"):
+                raise ValueError("R6/R7 reports are not matched; eligible populations differ")
+            compared.append({"view_id": a["view_id"], "view_kind": a["kind"],
+                "parameters": a["parameters"], "matched_rows": a["matched_rows"],
                 "cosine_drift_mean": {"baseline": a["cosine_drift"]["mean"],
                     "learned": b["cosine_drift"]["mean"],
                     "learned_minus_baseline": _nullable_delta(b["cosine_drift"]["mean"], a["cosine_drift"]["mean"])},
@@ -192,7 +198,9 @@ def compare_embeddings(
                 "probe_mean_r2_degradation": {"baseline": a["probe_mean_r2_degradation"],
                     "learned": b["probe_mean_r2_degradation"],
                     "learned_minus_baseline": _nullable_delta(b["probe_mean_r2_degradation"], a["probe_mean_r2_degradation"])}})
-        report["R7_event_removal_comparison"] = {"axes_are_not_composited": True, "rates": compared}
+        report["R6_R7_robustness_comparison"] = {"axes_are_not_composited": True,
+            "R6_views": [row for row in compared if row["view_kind"] == "leave-one-service-out"],
+            "R7_views": [row for row in compared if row["view_kind"] != "leave-one-service-out"]}
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     report["outputs"] = {

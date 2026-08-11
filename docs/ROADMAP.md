@@ -233,3 +233,11 @@ presented as real-world validation.
 ## T1.2 implementation note (R1, R4)
 
 The episode-response evaluator is executable through `evaluate --episodes`. Configured half-open response bins, coherence/boundary change, single-vector drift/recovery, held-out intent probes, separation, and effective rank are reported. It does not claim persistent/context disentanglement; matched dense baseline and learned reports are required for deltas.
+
+### T1.4 robustness gate (completed)
+
+The selected T0.2a action was the evaluator-gate path. `robustness --views`
+now covers versioned GPS, timestamp, leave-one-service-out, and recent-history
+truncation views for R6/R7, with matched baseline/learned populations and strict
+comparison contracts. The sensitivity suite does not establish causal
+invariance, calibration to real noise, or representation disentanglement.
