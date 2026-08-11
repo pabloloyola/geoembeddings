@@ -35,6 +35,14 @@ class DatasetLayout:
     def manifest_path(self) -> Path:
         return self.root / "manifest.json"
 
+    @property
+    def resolved_config(self) -> Path:
+        return self.root / "config.resolved.yaml"
+
+    @property
+    def deep_validation_report(self) -> Path:
+        return self.root / "deep_validation_report.json"
+
     def validate(self, *, require_truth: bool = False) -> dict[str, Any]:
         required = [self.observed / name for name in OBSERVED_FILES.values()]
         if require_truth:
@@ -76,8 +84,28 @@ class ExperimentLayout:
         return self.root / "model"
 
     @property
+    def prepared_metadata(self) -> Path:
+        return self.prepared / "prepared_metadata.json"
+
+    @property
+    def resolved_config(self) -> Path:
+        return self.prepared / "config.resolved.yaml"
+
+    @property
+    def vocabularies(self) -> Path:
+        return self.prepared / "vocabularies.json"
+
+    @property
     def checkpoint(self) -> Path:
         return self.model / "best_model.pt"
+
+    @property
+    def training_report(self) -> Path:
+        return self.model / "training_report.json"
+
+    @property
+    def command_log(self) -> Path:
+        return self.root / "t0.2_commands.log"
 
     @property
     def embeddings(self) -> Path:
@@ -116,6 +144,14 @@ class ExperimentLayout:
         return self.root / "comparison"
 
     @property
+    def comparison_json(self) -> Path:
+        return self.comparison_dir / "embedding_comparison.json"
+
+    @property
+    def comparison_markdown(self) -> Path:
+        return self.comparison_dir / "embedding_comparison.md"
+
+    @property
     def robustness_dir(self) -> Path:
         return self.root / "robustness"
 
@@ -124,3 +160,8 @@ class ExperimentLayout:
 
     def robustness_report(self, kind: str) -> Path:
         return self.robustness_dir / f"{kind}_robustness.json"
+
+    def robustness_view_dir(self, kind: str) -> Path:
+        if kind not in {"baseline", "learned"}:
+            raise ValueError(f"Unsupported robustness artifact kind: {kind}")
+        return self.robustness_dir / kind
