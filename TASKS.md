@@ -1,200 +1,563 @@
 # Executable backlog
 
-Select one coherent task at a time. Each completed task must satisfy the
-definition of done in `AGENTS.md`.
+Select one coherent task at a time. Completion still requires the definition of
+done in `AGENTS.md`. Commands marked **proposed** are acceptance contracts for
+commands that do not exist yet; completing the task includes implementing and
+documenting that command. Artifact paths are relative to `RUN_DIR` or
+`EXPERIMENT_DIR` unless another root is shown.
 
-## P0 — Reproduction and baselines
+## Completed and verified
 
-- [x] **T0.1 — Execution/contract smoke verified.** The 50-user, 7-day
-  learned pipeline, statistical baseline, and matched comparison completed
-  successfully. This milestone verifies execution and cross-stage contracts,
-  not scientific model quality; the commands, seed, coverage, and limitations
-  are recorded in `docs/VERIFICATION.md`.
-- [ ] **T0.1a — Register the complete smoke artifact manifest.** Preserve an
-  index of every artifact produced by T0.1 using immutable repository-relative
-  paths or external-storage identifiers. Generated binaries do not have to be
-  committed to Git. The index must record the source commit and dataset
-  manifest hash and state that the baseline and learned reports use the same
-  preparation contract.
-- [ ] **T0.2 — Immediate next task: archive the 500-user scientific reference.**
-  Run the baseline-versus-learned comparison at the fixed 500-user reference
-  scale and preserve or externally register all of the following outputs:
-  - resolved simulation and embedding configurations;
-  - source hashes, simulator/model seeds, and evaluation cutoffs;
-  - learned checkpoint and training report;
-  - baseline and learned cutoff exports;
-  - baseline and learned episode reports;
-  - baseline and learned event-removal reports;
-  - comparison JSON and Markdown.
+These milestones are complete. Their evidence verifies execution and evaluator
+contracts, not scientific superiority or disentanglement.
 
-  The reference must include an artifact index with immutable paths or external
-  storage identifiers, the source commit, the dataset manifest hash, and an
-  explicit statement that the baseline and learned reports share the same
-  preparation contract. Completion of this milestone, rather than the smoke
-  run, establishes the archived scientific baseline for subsequent work.
-- [ ] **T0.2a (R1, R3, R4, R7) — Record the post-reference model decision.**
-  Immediately after archiving T0.2, write a decision record that compares the
-  statistical baseline and single-vector GRU **separately** on every axis below:
-  - persistent-trait probe R² and category-preference probe R²;
-  - incremental preference information beyond geography and event volume;
-  - same-user stability and different-user separation;
-  - temporal retrieval and centered effective rank;
-  - episode coherence, boundary response, and post-episode recovery;
-  - event-removal drift and probe degradation;
-  - next-event performance and known-label coverage.
+| Task | Requirements | Verification command | Verified artifact/report location |
+|---|---|---|---|
+| **T1.1 — Dense timestamped export** | R1, R4, R11 | `uv run pytest tests/test_dense_export.py tests/test_cli_paths.py`; `uv run geoembed export-dense --kind {baseline,learned} --event-stride 1 --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` | `dense_statistical_baseline.npz`; `dense_embeddings.npz`; verification notes in `docs/VERIFICATION.md` |
+| **T1.2 — Episode-boundary evaluation** | R1, R4 | `uv run pytest tests/test_episode_evaluation.py tests/test_dense_export.py tests/test_cli_paths.py`; `uv run geoembed evaluate --episodes --kind {baseline,learned} --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR`; `uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` | `baseline_episode_response.json`; `episode_response.json`; matched deltas in `comparison/embedding_comparison.{json,md}` |
+| **T1.3 — Event-removal robustness** | R7 | `uv run geoembed robustness --kind {baseline,learned} --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR`; `uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` | `robustness/{kind}/removal_RATE.npz`; `robustness/{kind}_event_removal.json`; matched R7 axes in `comparison/embedding_comparison.{json,md}` |
 
-  Draw a conclusion for each axis; do not name or imply an aggregate winner.
-  Based on those per-axis conclusions, the record must choose exactly one next
-  action: (1) repair or ablate the single-vector baseline, (2) finish the
-  remaining evaluator gate, or (3) begin the persistent/context factorized
-  model. Record the artifact paths, artifact and source hashes, seed, cohort
-  size, cutoffs, limitations, and rationale in `docs/CURRENT_STATUS.md` or a
-  dedicated versioned decision document.
-- [ ] **T0.3** Add environment/runtime metadata to training and comparison reports.
-- [ ] **T0.4** Add majority/popularity next-event baselines and class-balance metrics.
+## Now
+
+Work in this order. **T1.4 is the selected next evaluator package**, but its
+implementation starts only after the T0.2 reference is archived and T0.2a has
+reconciled status and selected the permitted next action.
+
+1. **T0.2:** create and archive the fixed 500-user matched reference.
+2. **T0.2a:** reconcile requirement/task status against that reference and
+   record a per-axis decision; do not name an aggregate winner.
+3. **T1.4:** finish the deterministic robustness package for GPS, timestamps,
+   missing services, and recent-history truncation (R6/R7).
+
+## Later/gated
+
+- **Counterfactual simulation:** T1.11a–T1.11f and T1.15 are gated by the
+  reference decision and strict truth-side pair integrity.
+- **Factorized model:** T2.1–T2.7 are gated by T0.2/T0.2a and the evaluator
+  gates stated below.
+- **Routine branch:** no implementation task is opened until T1.6 can
+  distinguish recurring routine from persistent identity and one-off context.
+- **Recommendation contract/ranking:** T3.1–T3.7 are gated by an observable,
+  versioned recommendation contract with leakage tests.
+- **Deployment audits:** T4.1–T4.5 follow scientific evaluator/model evidence;
+  simulator-only results must not be presented as external validation.
+
+## P0 — Reproduction, reference, and status
+
+- [x] **T0.1 — Execution/contract smoke verified.** The 50-user, 7-day learned
+  pipeline, statistical baseline, and matched comparison are recorded in
+  `docs/VERIFICATION.md`; this is plumbing evidence only.
+
+- [ ] **T0.1a — Register the complete smoke artifact manifest.**
+  - **Requirement IDs:** R1, R3, R4, R7 (evidence provenance only).
+  - **Prerequisites:** T0.1.
+  - **Affected layer:** documentation.
+  - **Baseline artifact required:** the existing T0.1 smoke `RUN_DIR` and
+    `EXPERIMENT_DIR`; if unavailable, record that loss rather than regenerating
+    and calling it the same artifact.
+  - **Command → expected artifact:** `uv run python scripts/index_artifacts.py --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR --output docs/artifacts/t0.1-smoke.json` → immutable artifact index (script is proposed if absent).
+  - **Minimum coverage:** unit tests for stable hashing/path normalization;
+    integration test rejecting mismatched source hashes or preparation metadata.
+  - **Completion evidence:** index records source commit, dataset manifest hash,
+    all report/export identifiers, and a same-preparation-contract assertion.
+  - **Known limitation/blocker:** generated binaries may live in external
+    storage; the smoke cohort is not scientific evidence.
+
+- [ ] **T0.2 — Archive the 500-user scientific reference.**
+  - **Requirement IDs:** R1–R8 (reference coverage; absent axes remain pending).
+  - **Prerequisites:** T0.1; clean immutable output roots and sufficient compute.
+  - **Affected layer:** model, evaluator, documentation.
+  - **Baseline artifact required:** statistical and learned exports made from
+    the same 500-user preparation metadata and observed-source hashes.
+  - **Command → expected artifact:** run `uv run geoembed pipeline --run-dir runs/reference500 --experiment-dir experiments/reference500 --mode learned --seed 20260811`, then the matched `baseline`, both `export-dense`, both episode `evaluate`, both `robustness`, and `compare` commands documented in `docs/COMMAND_REFERENCE.md` → resolved configs, checkpoint/training report, cutoff and dense exports, evaluation/episode/robustness reports, and `comparison/embedding_comparison.{json,md}`; run the T0.1a indexer → `docs/artifacts/t0.2-reference500.json`.
+  - **Minimum coverage:** existing full unit/integration suite plus artifact-index
+    integration checks for common users, cutoffs, field order, finiteness,
+    source hashes, masks, and preparation contract.
+  - **Completion evidence:** immutable index gives source commit, manifest hash,
+    seeds, cohort, cutoffs, hashes/locations for every required artifact, and
+    explicitly confirms one shared preparation contract.
+  - **Known limitation/blocker:** the run is semi-synthetic and compute-heavy;
+    missing users or labels must be explained, never silently dropped.
+
+- [ ] **T0.2a — Reconcile status and record the post-reference decision.**
+  - **Requirement IDs:** R1, R3, R4, R7.
+  - **Prerequisites:** T0.2 and its complete artifact index.
+  - **Affected layer:** evaluator, documentation.
+  - **Baseline artifact required:** `docs/artifacts/t0.2-reference500.json` and
+    its indexed baseline/learned reports.
+  - **Command → expected artifact:** `uv run python scripts/reconcile_status.py --artifact-index docs/artifacts/t0.2-reference500.json --output docs/decisions/t0.2a-reference-decision.md` → per-axis decision record and reconciled `docs/CURRENT_STATUS.md`/`TASKS.md` statuses (command is proposed).
+  - **Minimum coverage:** unit tests for status derivation and missing-axis
+    handling; integration test that mismatched hashes/cutoffs abort reconciliation.
+  - **Completion evidence:** separate conclusions for persistent/preference
+    probes, incremental information, geometry/collapse checks, episode response,
+    removal robustness, and next-event performance/coverage; exactly one next
+    action is selected: repair/ablate, finish evaluator gate, or factorize.
+  - **Known limitation/blocker:** no aggregate winner; observational and
+    single-vector metrics cannot establish causal invariance or disentanglement.
+
+- [ ] **T0.3 — Add runtime metadata to reports.**
+  - **Requirement IDs:** R13.
+  - **Prerequisites:** report schemas and T0.2 report inventory.
+  - **Affected layer:** model, evaluator.
+  - **Baseline artifact required:** indexed T0.2 reports without standardized
+    runtime metadata.
+  - **Command → expected artifact:** `uv run geoembed train ...` and `uv run geoembed compare ...` → reports containing schema version, Python/package/torch versions, OS, device, source commit, wall time, and seed.
+  - **Minimum coverage:** unit serialization tests; train/compare integration
+    tests asserting required finite fields on CPU and tolerant optional device data.
+  - **Completion evidence:** regenerated reports validate against the documented
+    metadata schema and preserve scientific metric fields.
+  - **Known limitation/blocker:** hardware metadata aids reproducibility but is
+    not a cross-device performance benchmark.
+
+- [ ] **T0.4 — Add naive next-event baselines and balance metrics.**
+  - **Requirement IDs:** R2, R3.
+  - **Prerequisites:** prepared train-only vocabularies and current evaluation.
+  - **Affected layer:** evaluator.
+  - **Baseline artifact required:** T0.2 learned next-event report and training
+    label counts.
+  - **Command → expected artifact:** `uv run geoembed evaluate --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` → `evaluation.json` with train-fitted majority/popularity accuracy, macro-F1 or balanced accuracy, class counts, and known-label coverage.
+  - **Minimum coverage:** unit tests for imbalance, unknown labels, and zero
+    coverage; integration test proving all baseline statistics fit train only.
+  - **Completion evidence:** T0.2 rerun reports learned-versus-naive deltas per
+    target without changing frozen embeddings.
+  - **Known limitation/blocker:** next-event prediction does not prove embedding
+    quality, spatial transfer, or disentanglement.
 
 ## P1 — Evaluator foundations
 
-- [x] **T1.1 (R1, R4, R11)** Add dense timestamped embedding export with no truth labels.
-- [x] **T1.2 (R1, R4)** Add evaluator-side episode-boundary joins and response curves.
-- [x] **T1.3 (R7)** Add deterministic event-removal robustness views. The
-  configuration-driven `robustness` command uses matched learned/baseline masks,
-  reports sparse coverage and frozen-probe degradation, and keeps GPS and
-  missing-service robustness explicitly pending under P1A.
+- [ ] **T1.4 (P1A) — Complete deterministic robustness views.**
+  - **Requirement IDs:** R6, R7.
+  - **Prerequisites:** T1.3, T0.2/T0.2a; selected unless T0.2a explicitly chooses
+    another permitted action.
+  - **Affected layer:** evaluator.
+  - **Baseline artifact required:** matched T0.2 baseline/learned exports and
+    event-removal reports.
+  - **Command → expected artifact:** `uv run geoembed robustness --views gps,timestamp,leave-one-service-out,recent-truncation --kind {baseline,learned} --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` → versioned view exports and `robustness/{kind}_robustness.json`; `compare` → matched R6/R7 deltas (extended options are proposed).
+  - **Minimum coverage:** deterministic/view-ID unit tests, boundary cases and
+    row-order independence; integration tests for matched masks/coverage,
+    observed-only encoding, truth opened only for evaluation, and mismatch rejection.
+  - **Completion evidence:** drift and frozen-downstream-degradation curves with
+    realized perturbations, matched coverage, hashes, and explicit unencodable rows.
+  - **Known limitation/blocker:** deterministic corruption is a sensitivity
+    analysis, not proof of real-world noise or causal invariance.
 
-### P1A — Complete the deterministic robustness framework (R6, R7)
+- [ ] **T1.5 (P1B) — Add spatial and transfer evaluation.**
+  - **Requirement IDs:** R2, R8.
+  - **Prerequisites:** T0.2, explicit train/test geography definitions.
+  - **Affected layer:** evaluator.
+  - **Baseline artifact required:** matched T0.2 exports and prepared metadata.
+  - **Command → expected artifact:** `uv run geoembed evaluate --transfer --kind {baseline,learned} --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` → `{kind}_transfer_evaluation.json`; `compare` → matched slice deltas (proposed).
+  - **Minimum coverage:** unit tests for held-out region/cell, later-time,
+    distance, boundary pairs, unknown labels, and zero coverage; integration test
+    proving split construction and normalization use no held-out information.
+  - **Completion evidence:** held-out-region, unseen-cell/geohash, later-time,
+    distance-retrieval, and boundary-consistency metrics each report user/label coverage.
+  - **Known limitation/blocker:** unseen-POI transfer remains gated by T3 contract.
 
-- [ ] Extend the existing `src/geoembeddings/robustness.py` implementation and
-  `geoembed robustness` command with GPS perturbation, timestamp jitter,
-  leave-one-service-out views, and recent-history truncation. Use shared,
-  deterministic view identifiers so learned and baseline reports have matched
-  coverage, and report representation-drift and frozen-downstream-degradation
-  curves.
+- [ ] **T1.6 (P1C) — Add temporal and routine diagnostics.**
+  - **Requirement IDs:** R3, R4.
+  - **Prerequisites:** T1.2 and simulator audit of routine/schedule truth validity.
+  - **Affected layer:** evaluator, documentation.
+  - **Baseline artifact required:** matched T0.2 dense exports and episode reports.
+  - **Command → expected artifact:** `uv run geoembed evaluate --temporal-routine --kind {baseline,learned} --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` → `{kind}_temporal_routine.json` (proposed).
+  - **Minimum coverage:** unit tests for cyclic hour/day labels, durations,
+    periodic retrieval, and one-off/repeated episode selection; integration test
+    for evaluator-only truth joins and matched baseline/learned populations.
+  - **Completion evidence:** hour/day probes, duration task, periodic retrieval,
+    and repeated-routine-versus-one-off results with coverage and collapse checks.
+  - **Known limitation/blocker:** declare schedule shift `blocked` if the simulator
+    lacks a controlled intervention; do not substitute an observational proxy.
 
-### P1B — Spatial and transfer evaluation (R2, R8)
+- [ ] **T1.7 (P1D) — Add reliability and offline-efficiency evaluation.**
+  - **Requirement IDs:** R10, R13.
+  - **Prerequisites:** T0.3 runtime schema and T0.2 fixed reference.
+  - **Affected layer:** evaluator.
+  - **Baseline artifact required:** T0.2 frozen exports/checkpoint and runtime metadata.
+  - **Command → expected artifact:** `uv run geoembed evaluate --reliability ...` → `{kind}_reliability.json`; `uv run geoembed benchmark --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` → `benchmarks/offline.json` (proposed).
+  - **Minimum coverage:** seeded resampling and calibration-bin unit tests;
+    integration tests for finite variance/coverage-risk plus benchmark schema and
+    CPU execution.
+  - **Completion evidence:** resampling variance, reliability-error and
+    coverage-risk curves, throughput/latency/peak-memory/export/artifact-size results.
+  - **Known limitation/blocker:** offline timing is hardware-specific and does
+    not satisfy online incremental-update latency (T4.4).
 
-- [ ] Add held-out-region, unseen-geohash/cell, and later-time slices; add
-  distance-aware retrieval and geohash-boundary pair consistency; and report
-  explicit label and user coverage for every slice and metric.
+## P1 — Matched counterfactual and change support
 
-### P1C — Temporal and routine diagnostics (R3, R4)
+T1.11 retains its historical program ID; suffixes separate auditable acceptance
+steps without losing PR traceability.
 
-- [ ] Add hour/day probes, duration-related tasks, periodic retrieval, and
-  repeated-routine-versus-one-off-episode tests. If the current simulator cannot
-  support a valid schedule-shift test, declare that test blocked rather than
-  substituting an observational proxy.
+- [ ] **T1.11a — Independent simulator random streams.**
+  - **Requirement IDs:** R5, R7.
+  - **Prerequisites:** T0.2a authorizes the counterfactual path.
+  - **Affected layer:** simulator.
+  - **Baseline artifact required:** fixed-seed T0.2 run/config for behavioral comparison.
+  - **Command → expected artifact:** `uv run geoembed simulate --seed 20260811 --run-dir RUN_DIR` → unchanged run contract plus reproducible named stream seeds.
+  - **Minimum coverage:** unit tests for stream independence/repeatability;
+    fixed-seed simulation/`validate` integration regression.
+  - **Completion evidence:** world, user, episode, choice, and observation streams
+    can be varied independently and resolved seeds are recorded.
+  - **Known limitation/blocker:** RNG refactoring can change historical draws;
+    document lineage rather than claiming bitwise compatibility.
 
-### P1D — Reliability and offline efficiency (R10, R13)
+- [ ] **T1.11b — Stable identities and stream manifest.**
+  - **Requirement IDs:** R5, R7.
+  - **Prerequisites:** T1.11a.
+  - **Affected layer:** simulator, observed contract.
+  - **Baseline artifact required:** T1.11a fixed-seed run.
+  - **Command → expected artifact:** `uv run geoembed simulate ...` → versioned `manifest.json` with stream seeds and stable object identities.
+  - **Minimum coverage:** manifest schema/hash unit tests; simulate/validate
+    integration and migration/contract tests for any version bump.
+  - **Completion evidence:** all required identities and seeds validate and
+    modeling commands still receive only `observed/`.
+  - **Known limitation/blocker:** contract changes require explicit versioning;
+    truth declarations must not enter observed tables.
 
-- [ ] Add window/event resampling variance, reliability-error curves, and
-  coverage-risk curves; benchmark training throughput, batch latency, peak
-  memory, export throughput, and artifact size.
+- [ ] **T1.11c — Versioned pair-manifest contract.**
+  - **Requirement IDs:** R5, R7.
+  - **Prerequisites:** T1.11b.
+  - **Affected layer:** simulator, observed contract, evaluator.
+  - **Baseline artifact required:** two identity-compatible fixed-seed runs.
+  - **Command → expected artifact:** `uv run geoembed pair-manifest --reference-run-dir REF --intervention-run-dir INT --output PAIR_DIR/pair_manifest.json` → versioned pair manifest (proposed).
+  - **Minimum coverage:** schema unit tests for invariant/changed fields and
+    keys; integration tests rejecting missing hashes, incompatible versions, or
+    overlapping invariant/change declarations.
+  - **Completion evidence:** manifest identifies both runs, intervention,
+    hashes, invariant objects, allowed changes, and user/time/object matching keys.
+  - **Known limitation/blocker:** declarations are protected truth and cannot be
+    inputs to prepare/train/export.
 
-## P1 — Simulator counterfactual support
+- [ ] **T1.11d — Pair-integrity validator.**
+  - **Requirement IDs:** R5, R7.
+  - **Prerequisites:** T1.11c.
+  - **Affected layer:** simulator, evaluator.
+  - **Baseline artifact required:** declared exposure-only pair.
+  - **Command → expected artifact:** `uv run geoembed validate-pair --pair-manifest PAIR_DIR/pair_manifest.json` → `PAIR_DIR/pair_integrity.json` (proposed).
+  - **Minimum coverage:** field-level match/mismatch unit tests; integration
+    tests proving exact failures occur before representation metrics execute.
+  - **Completion evidence:** users, preferences, world objects, and required
+    episodes are identical under enumerated invariants with precise diagnostics.
+  - **Known limitation/blocker:** R5 remains non-executable until this validator
+    and T1.11f both pass.
 
-- [ ] **T1.11 (R5, R7) — Staged matched-counterfactual program.** There is no
-  valid matched-counterfactual baseline artifact yet; the current independent
-  scenario runs do not establish identity preservation. This program touches
-  the simulator, dataset manifest/contract/layout, truth-side validation, and
-  evaluator, but must not change the observed-data inputs available to modeling
-  commands. Complete the stages in order:
-  1. Introduce named, independent random streams in
-     `src/geoembeddings/simulator.py` for world/POI generation, user latents,
-     episodes, choice noise, and observation noise.
-  2. Through the centralized `contract.py` and `layout.py` path/schema
-     contract, record every stream seed and stable object identity in each
-     run's `manifest.json`.
-  3. Define and version a pair-manifest schema that identifies the reference
-     run, intervention run, invariant objects, changed parameters, source
-     hashes, and user/time/object matching keys.
-  4. Add pair-integrity validation proving that users, latent preferences,
-     world objects, and required episodes are byte-identical or identical on
-     explicitly enumerated fields across an exposure-only pair. Report precise
-     mismatches and fail before calculating representation metrics.
-  5. Add exposure, opportunity, and observation interventions one at a time.
-     Each intervention must declare the exact fields and objects allowed to
-     change; all other declared invariants must pass pair-integrity validation.
-  6. Implement evaluator-side user/time matching and report match coverage,
-     persistent-trait invariance, representation drift, and downstream-task
-     degradation separately for each intervention. Compare baseline and learned
-     exports made from the paired runs with matching source hashes, cutoffs,
-     users, and matching keys.
+- [ ] **T1.11e — Exposure, opportunity, and observation interventions.**
+  - **Requirement IDs:** R5, R7.
+  - **Prerequisites:** T1.11d passes for exposure-only pairs.
+  - **Affected layer:** simulator.
+  - **Baseline artifact required:** validated reference run/pair manifest.
+  - **Command → expected artifact:** `uv run geoembed simulate-pair --intervention {exposure,opportunity,observation} ...` → immutable paired runs, pair manifests, and passing `pair_integrity.json` reports (proposed).
+  - **Minimum coverage:** intervention-specific unit tests for allowed changes;
+    fixed-seed simulate/validate/validate-pair integration per intervention.
+  - **Completion evidence:** each intervention changes only declared fields and
+    passes structural plus behavioral diagnostics.
+  - **Known limitation/blocker:** constants are experimental hypotheses, not
+    calibrated facts about Tokyo/Kanto.
 
-  Keep latent values, invariant/changed-field declarations, intervention truth,
-  and pair-integrity evidence under `truth/`; `prepare`, `baseline`, `train`,
-  and `export` must continue to consume only `observed/`. **R5 remains
-  non-executable until both identity-preservation validation and the paired
-  evaluator pass their contract, boundary, and integration tests.**
-- [ ] **T1.15 (R11)** Add temporary-trip and sustained-preference-change scenarios.
+- [ ] **T1.11f — Matched counterfactual evaluator.**
+  - **Requirement IDs:** R5, R7.
+  - **Prerequisites:** T1.11e and baseline/learned exports from both paired runs.
+  - **Affected layer:** evaluator.
+  - **Baseline artifact required:** validated pair plus statistical and learned
+    exports with matching source lineage, cutoffs, users, and keys.
+  - **Command → expected artifact:** `uv run geoembed evaluate-pair --pair-manifest PAIR_DIR/pair_manifest.json --baseline-experiment-dir ... --learned-experiment-dir ...` → `PAIR_DIR/counterfactual_comparison.{json,md}` (proposed).
+  - **Minimum coverage:** matching/coverage and metric unit tests; integration
+    tests for truth boundary, pair-integrity prerequisite, mismatch rejection,
+    and complete baseline/learned execution.
+  - **Completion evidence:** per-intervention match coverage, persistent-trait
+    invariance, embedding drift, and downstream degradation reported separately.
+  - **Known limitation/blocker:** paired simulator evidence supports controlled
+    causal claims only within the simulator, not external causal validity.
 
-## P2 — Factorized models
+- [ ] **T1.15 — Temporary-trip and sustained-preference-change scenarios.**
+  - **Requirement IDs:** R1, R11.
+  - **Prerequisites:** T1.11a–T1.11f.
+  - **Affected layer:** simulator, evaluator.
+  - **Baseline artifact required:** matched no-change pair and T0.2 representations.
+  - **Command → expected artifact:** `uv run geoembed simulate-pair --intervention {temporary-trip,sustained-preference} ...`; `uv run geoembed evaluate-change ...` → paired runs and `change_evaluation.{json,md}` (proposed).
+  - **Minimum coverage:** change-point/duration unit tests; integration tests for
+    invariant identities, evaluator-only change truth, adaptation and recovery.
+  - **Completion evidence:** temporary and sustained curves report adaptation,
+    forgetting, permanent drift, coverage, and baseline/learned deltas.
+  - **Known limitation/blocker:** validity depends on distinguishable simulator
+    interventions; one trip cannot be treated as long-term preference evidence.
 
-P2 must not begin until all of the following entry gates are satisfied:
+## P2 — Two-way factorized model
 
-- the 500-user reference is archived and the post-reference decision is recorded
-  under T0.2/T0.2a;
-- the R1/R4 episode metrics are executable;
-- the selected R5/R6/R7 invariance tests required to test the documented model
-  hypothesis are executable; and
-- collapse diagnostics are present, including separation, temporal retrieval,
-  centered effective rank, and task-information reporting.
+P2 begins only after T0.2/T0.2a, executable episode metrics, the R5/R6/R7 tests
+selected for the model hypothesis, and collapse diagnostics (separation,
+retrieval, centered effective rank, task information). The routine branch stays
+gated by T1.6.
 
-Once the entry gates pass, complete the work in this order:
+- [ ] **T2.1 — Typed multi-component encoder output.**
+  - **Requirement IDs:** R1, R4.
+  - **Prerequisites:** P2 entry gate.
+  - **Affected layer:** model.
+  - **Baseline artifact required:** T0.2 single-vector checkpoint/export.
+  - **Command → expected artifact:** `uv run pytest tests/test_model.py` → typed
+    `persistent`, `context`, and `combined` output contract.
+  - **Minimum coverage:** unit tests for names, shapes, finiteness, gradients,
+    device movement, and single-vector adapter; model smoke integration.
+  - **Completion evidence:** public APIs use the typed boundary rather than new
+    positional tuples, with no training behavior change yet.
+  - **Known limitation/blocker:** an interface alone is not factorization evidence.
 
-- [ ] **T2.1 (R1, R4)** Define a typed multi-component encoder output contract
-  with explicit `persistent`, `context`, and `combined` components.
-- [ ] **T2.2 (R1, R4)** Add a configuration-driven model registry behind the
-  existing CLI while preserving `SingleVectorEncoder` and its current behavior.
-- [ ] **T2.3 (R1, R4)** Define a versioned multi-component export schema with
-  explicit component names, dimensions, field order, source hashes, and
-  backward compatibility with existing single-vector exports.
-- [ ] **T2.4 (R1, R4)** Implement a capacity-matched persistent/context encoder.
-- [ ] **T2.5 (R1, R4)** Add a capacity-matched single-vector control and
-  persistent-only, context-only, fusion, and loss ablations.
-- [ ] **T2.6 (R1, R4, R5, R6, R7)** Add branch-specific objectives and
-  branch-specific evaluation reporting.
-- [ ] **T2.7 (R1, R4, R5, R6, R7)** Require a matched comparison demonstrating
-  that the persistent and context branches improve their intended requirement
-  axes without collapse or unacceptable regression on the other reported axes.
+- [ ] **T2.2 — Configuration-driven model registry.**
+  - **Requirement IDs:** R1, R4.
+  - **Prerequisites:** T2.1.
+  - **Affected layer:** model.
+  - **Baseline artifact required:** T0.2 config/checkpoint behavior.
+  - **Command → expected artifact:** `uv run geoembed train --config CONFIG ...` → checkpoint naming the registered model variant.
+  - **Minimum coverage:** registry/config validation unit tests; integration test
+    reproducing `SingleVectorEncoder` behavior and rejecting unknown variants.
+  - **Completion evidence:** existing CLI selects variants without truth inputs
+    and the legacy default remains compatible.
+  - **Known limitation/blocker:** registry flexibility does not justify model complexity.
 
-The routine branch remains blocked until P1C can distinguish recurring routine
-from both persistent identity and temporary episode state. Do not add it to the
-P2 encoder merely because the persistent/context path is complete.
+- [ ] **T2.3 — Multi-component export schema.**
+  - **Requirement IDs:** R1, R4.
+  - **Prerequisites:** T2.1–T2.2.
+  - **Affected layer:** model, observed contract, evaluator.
+  - **Baseline artifact required:** existing single-vector cutoff/dense exports.
+  - **Command → expected artifact:** `uv run geoembed export ...` and
+    `export-dense ...` → versioned component exports with names, dimensions,
+    field order, and source hashes.
+  - **Minimum coverage:** schema/migration unit tests; cross-stage integration
+    for legacy single-vector and multi-component readers plus mismatch rejection.
+  - **Completion evidence:** each component is independently addressable and
+    legacy exports remain readable under an explicit compatibility rule.
+  - **Known limitation/blocker:** exported branch names do not establish semantics.
+
+- [ ] **T2.4 — Capacity-matched persistent/context encoder.**
+  - **Requirement IDs:** R1, R4.
+  - **Prerequisites:** T2.1–T2.3 and approved hypothesis/evaluator set.
+  - **Affected layer:** model.
+  - **Baseline artifact required:** T0.2 GRU and capacity specification.
+  - **Command → expected artifact:** `uv run geoembed train --config configs/embedding/factorized_pc.yaml ...` → factorized checkpoint/training report.
+  - **Minimum coverage:** branch/update/masking unit tests including MPS-safe
+    final-state behavior; learned pipeline integration without truth access.
+  - **Completion evidence:** parameter budget is documented/matched and all
+    branches train/export with finite outputs.
+  - **Known limitation/blocker:** scientific completion waits for T2.7 comparison.
+
+- [ ] **T2.5 — Capacity controls and ablations.**
+  - **Requirement IDs:** R1, R4.
+  - **Prerequisites:** T2.4.
+  - **Affected layer:** model, evaluator.
+  - **Baseline artifact required:** T0.2 and T2.4 checkpoints/exports.
+  - **Command → expected artifact:** train/export configured `capacity_matched_single`, `persistent_only`, `context_only`, fusion, and loss ablations → separate immutable experiment reports.
+  - **Minimum coverage:** config/parameter-count unit tests; integration smoke
+    for every ablation and artifact provenance.
+  - **Completion evidence:** artifact index reports parameter counts, seeds,
+    hashes, and matched evaluation inputs for all controls.
+  - **Known limitation/blocker:** exhaustive ablations may be compute-limited;
+    omissions must be explicit.
+
+- [ ] **T2.6 — Branch-specific objectives and reports.**
+  - **Requirement IDs:** R1, R4, R5, R6, R7.
+  - **Prerequisites:** T2.4–T2.5 and relevant executable evaluators.
+  - **Affected layer:** model, evaluator.
+  - **Baseline artifact required:** capacity-matched single and branch ablations.
+  - **Command → expected artifact:** `train`, component `export`, and relevant
+    `evaluate`/`compare` commands → branch-specific losses and per-component reports.
+  - **Minimum coverage:** loss-routing/no-truth unit tests; cross-stage
+    integration proving each branch is evaluated on intended and failure axes.
+  - **Completion evidence:** reports separate persistent, context, and combined
+    task information, invariance, response, and collapse diagnostics.
+  - **Known limitation/blocker:** covariance/orthogonality is diagnostic only,
+    not semantic disentanglement.
+
+- [ ] **T2.7 — Matched factorization decision.**
+  - **Requirement IDs:** R1, R4, R5, R6, R7.
+  - **Prerequisites:** T2.5–T2.6.
+  - **Affected layer:** evaluator, documentation.
+  - **Baseline artifact required:** indexed capacity-matched single-vector and
+    factorized/ablation exports on identical data and cutoffs.
+  - **Command → expected artifact:** `uv run geoembed compare ...` →
+    `comparison/factorized_comparison.{json,md}` and decision record.
+  - **Minimum coverage:** comparison/mismatch unit tests; full matched
+    baseline/factorized integration across selected R1/R4/R5/R6/R7 axes.
+  - **Completion evidence:** intended branch improvements, regression axes,
+    retrieval/separation/effective-rank/task-information checks, hashes, and
+    limitations are reported separately.
+  - **Known limitation/blocker:** no aggregate winner; failure to beat controls
+    blocks routine expansion rather than being hidden by next-event accuracy.
 
 ## P3 — Recommendation contract and ranking
 
-- [ ] **T3.1 (R9)** Define POI catalog schema and version bump/migration.
-- [ ] **T3.2 (R9)** Define request, availability, impression, and interaction schemas.
-- [ ] **T3.3 (R9)** Extend Hakone POIs and request-time attributes.
-- [ ] **T3.4 (R9)** Implement popularity, nearest, and category-preference rankers.
-- [ ] **T3.5 (R9)** Implement frozen-embedding candidate ranker.
-- [ ] **T3.6 (R5, R9)** Add exposure-aware training and counterfactual evaluation.
-- [ ] **T3.7 (R8, R9)** Add unseen-region and unseen-POI recommendation slices.
+- [ ] **T3.1 — POI catalog schema and migration.**
+  - **Requirement IDs:** R9.
+  - **Prerequisites:** approved observable/truth field review.
+  - **Affected layer:** simulator, observed contract, documentation.
+  - **Baseline artifact required:** current dataset contract and POI truth tables.
+  - **Command → expected artifact:** `uv run geoembed simulate ...` → versioned
+    `observed/poi_catalog.csv.gz`, manifest/schema update, migration notes.
+  - **Minimum coverage:** schema, leakage, ID, timestamp, and migration unit
+    tests; simulate/validate/prepare integration.
+  - **Completion evidence:** catalog exposes only request-time public metadata
+    and old contract handling is explicit.
+  - **Known limitation/blocker:** synthetic POI attributes are not real Kanto facts.
+
+- [ ] **T3.2 — Request, availability, impression, interaction schemas.**
+  - **Requirement IDs:** R9.
+  - **Prerequisites:** T3.1.
+  - **Affected layer:** simulator, observed contract.
+  - **Baseline artifact required:** T3.1 catalog contract.
+  - **Command → expected artifact:** `simulate` → versioned
+    `observed/recommendation_requests.csv.gz`, `impressions.csv.gz`, and
+    `interactions.csv.gz` with manifest entries.
+  - **Minimum coverage:** referential/schema/leakage unit tests; end-to-end
+    simulate/validate and observed-only consumer integration.
+  - **Completion evidence:** available, shown, rank, response, and request-time
+    metadata semantics are documented and validated.
+  - **Known limitation/blocker:** utility, probabilities, latent intent, and
+    counterfactual outcomes must remain under `truth/`.
+
+- [ ] **T3.3 — Hakone catalog and request-time attributes.**
+  - **Requirement IDs:** R9.
+  - **Prerequisites:** T3.1–T3.2.
+  - **Affected layer:** simulator, observed contract.
+  - **Baseline artifact required:** valid empty/minimal recommendation contract.
+  - **Command → expected artifact:** fixed-seed `simulate`/`validate` → populated
+    public Hakone catalog/requests and behavioral validation report.
+  - **Minimum coverage:** availability/open-hours/travel-time/category unit
+    tests; fixed-seed behavioral integration with coverage diagnostics.
+  - **Completion evidence:** onsen/restaurant/cafe/shop/hotel/attraction
+    requests have usable candidates and plausible documented diagnostics.
+  - **Known limitation/blocker:** attributes are hypotheses, not calibrated reality.
+
+- [ ] **T3.4 — Observable naive rankers.**
+  - **Requirement IDs:** R9.
+  - **Prerequisites:** T3.1–T3.3.
+  - **Affected layer:** model, evaluator.
+  - **Baseline artifact required:** frozen request/candidate sets.
+  - **Command → expected artifact:** `uv run geoembed rank --model {popularity,nearest,category_preference} ...` → `ranking/{model}.{npz,json}` (proposed).
+  - **Minimum coverage:** scoring/tie/availability unit tests; integration test
+    proving rankers consume observed data only and share candidate sets.
+  - **Completion evidence:** Recall/NDCG/MRR/coverage per naive ranker with
+    immutable request/candidate hashes.
+  - **Known limitation/blocker:** popularity and proximity are controls, not personalization.
+
+- [ ] **T3.5 — Frozen-embedding candidate ranker.**
+  - **Requirement IDs:** R9.
+  - **Prerequisites:** T3.4 and a selected frozen embedding.
+  - **Affected layer:** model, evaluator.
+  - **Baseline artifact required:** T3.4 results and frozen embedding export.
+  - **Command → expected artifact:** `uv run geoembed rank --model frozen_embedding ...` → checkpoint, predictions, and `ranking/frozen_embedding.json` (proposed).
+  - **Minimum coverage:** causal cutoff/candidate scoring unit tests; integration
+    for observed-only training and frozen candidate comparison.
+  - **Completion evidence:** first-arrival/local-action ranking metrics beat or
+    contextualize naive baselines with coverage and no end-to-end tuning.
+  - **Known limitation/blocker:** stochastic-choice accuracy alone is insufficient.
+
+- [ ] **T3.6 — Exposure-aware ranking and counterfactual evaluation.**
+  - **Requirement IDs:** R5, R9.
+  - **Prerequisites:** T1.11f, T3.5.
+  - **Affected layer:** model, evaluator.
+  - **Baseline artifact required:** T3.4/T3.5 rankers on validated paired candidate sets.
+  - **Command → expected artifact:** train exposure-aware ranker and
+    `evaluate-pair --ranking ...` → `ranking/exposure_counterfactual.{json,md}` (proposed).
+  - **Minimum coverage:** propensity/weighting and clipping unit tests;
+    paired-run integration with truth restricted to evaluation.
+  - **Completion evidence:** observed ranking metrics, utility regret, and
+    probability recovery are separated with sensitivity diagnostics.
+  - **Known limitation/blocker:** exposure adjustment depends on simulator
+    identification assumptions and must not imply real-world causality.
+
+- [ ] **T3.7 — Unseen-region and unseen-POI ranking slices.**
+  - **Requirement IDs:** R8, R9.
+  - **Prerequisites:** T3.5 and explicit frozen split contract.
+  - **Affected layer:** evaluator.
+  - **Baseline artifact required:** identical T3.4/T3.5 predictions/candidate sets.
+  - **Command → expected artifact:** `uv run geoembed evaluate-ranking --slices unseen-region,unseen-poi ...` → `ranking/transfer_slices.json` (proposed).
+  - **Minimum coverage:** split/coverage/unknown-POI unit tests; integration test
+    preventing train leakage and candidate-set mismatch.
+  - **Completion evidence:** seen/unseen region and POI metrics, regret, coverage,
+    and early/late trip results are reported separately.
+  - **Known limitation/blocker:** synthetic transfer is not external validity.
 
 ## P4 — Responsible deployment evidence
 
-- [ ] **T4.1 (R10)** Calibrate representation uncertainty.
-- [ ] **T4.2 (R11)** Quantify adaptation and forgetting under change points.
-- [ ] **T4.3 (R12)** Add membership and sensitive-attribute inference audits.
-- [ ] **T4.4 (R13)** Add online incremental update latency benchmarks.
-- [ ] **T4.5** Document simulator calibration and external-validity limits.
+- [ ] **T4.1 — Calibrate representation uncertainty.**
+  - **Requirement IDs:** R10.
+  - **Prerequisites:** T1.7 and selected representation.
+  - **Affected layer:** evaluator.
+  - **Baseline artifact required:** T1.7 resampling/reliability reports.
+  - **Command → expected artifact:** `evaluate --reliability --calibrate ...` →
+    `reliability/calibration.json` (proposed).
+  - **Minimum coverage:** calibration/coverage-risk unit tests; held-out-user
+    integration preventing calibration/test reuse.
+  - **Completion evidence:** reliability-error and coverage-risk improve over
+    uncalibrated variance with uncertainty method/config recorded.
+  - **Known limitation/blocker:** simulator calibration may not transfer to real users.
 
-## Task template
+- [ ] **T4.2 — Adaptation and forgetting audit.**
+  - **Requirement IDs:** R11.
+  - **Prerequisites:** T1.15 and selected representation.
+  - **Affected layer:** evaluator.
+  - **Baseline artifact required:** no-change, temporary, and sustained paired reports.
+  - **Command → expected artifact:** `uv run geoembed evaluate-change ...` →
+    `audits/nonstationarity.{json,md}` (proposed).
+  - **Minimum coverage:** time-to-threshold/censoring unit tests; matched-scenario
+    integration for adaptation, forgetting, drift, and regret.
+  - **Completion evidence:** temporary decay and sustained update are compared
+    per component/control with coverage and uncertainty.
+  - **Known limitation/blocker:** the simulator defines the change semantics.
 
-Copy this into a work note or pull-request description:
+- [ ] **T4.3 — Privacy audits.**
+  - **Requirement IDs:** R12.
+  - **Prerequisites:** selected representation and threat-model document.
+  - **Affected layer:** evaluator, documentation.
+  - **Baseline artifact required:** matched statistical/single/factorized exports
+    and utility reports.
+  - **Command → expected artifact:** `uv run geoembed audit-privacy ...` →
+    `audits/privacy.{json,md}` (proposed).
+  - **Minimum coverage:** split/attack/imbalance unit tests; integration test for
+    held-out membership and sensitive-attribute protocols.
+  - **Completion evidence:** attack AUC, sensitive probes, utility/privacy curves,
+    confidence intervals, and threat model are reported.
+  - **Known limitation/blocker:** simulator privacy attacks do not certify real deployment.
+
+- [ ] **T4.4 — Online incremental-update benchmarks.**
+  - **Requirement IDs:** R13.
+  - **Prerequisites:** stable update/export API and T0.3 metadata schema.
+  - **Affected layer:** model, evaluator.
+  - **Baseline artifact required:** T1.7 offline benchmark and selected checkpoint.
+  - **Command → expected artifact:** `uv run geoembed benchmark --online ...` →
+    `benchmarks/online.json` (proposed).
+  - **Minimum coverage:** warmup/iteration/statistics unit tests; CPU integration
+    plus optional CUDA/MPS regression with identical workload metadata.
+  - **Completion evidence:** p50/p95 update latency, throughput, peak memory,
+    batch size, device/software metadata, and artifact size.
+  - **Known limitation/blocker:** hardware-specific results require comparable environments.
+
+- [ ] **T4.5 — Calibration and external-validity limits.**
+  - **Requirement IDs:** R1–R13 (claim boundaries).
+  - **Prerequisites:** current simulator/evaluator evidence inventory.
+  - **Affected layer:** documentation.
+  - **Baseline artifact required:** latest indexed reports and any licensed
+    aggregate calibration sources.
+  - **Command → expected artifact:** `uv run python scripts/check_evidence_links.py docs/EXTERNAL_VALIDITY.md` → validated evidence/limitation document (proposed).
+  - **Minimum coverage:** documentation link/artifact-hash check; integration
+    check that every quantitative claim names cohort, seed, source, and scope.
+  - **Completion evidence:** calibrated and uncalibrated assumptions, licensing,
+    representativeness, missing real-data tests, and prohibited claims are explicit.
+  - **Known limitation/blocker:** without appropriate real de-identified data,
+    external validity remains unmeasurable rather than proxied.
+
+## Task/PR work-note template
 
 ```text
-Task:
-Requirements affected:
+Task and requirement IDs:
+Prerequisite tasks:
+Affected layer(s):
 Hypothesis:
-Baseline artifact:
-Changed contract/modules:
-Information-boundary review:
-Tests added:
-Commands run:
-Artifacts produced:
-Metric deltas:
+Baseline artifact and hashes:
+Information-boundary/contract review:
+Unit and integration tests:
+Executable command:
+Expected and produced artifacts:
+Completion evidence and metric deltas:
 Regression axes:
-Limitations:
+Known limitation or blocker:
 Next decision:
 ```
