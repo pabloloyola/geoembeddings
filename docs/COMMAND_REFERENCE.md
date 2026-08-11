@@ -76,6 +76,20 @@ PAIR_DIR/
 └── counterfactual_comparison.md        # T1.11f
 ```
 
+`evaluate-pair` consumes the canonical protected pair manifest plus two ordered
+experiment directories (reference then intervention) for each representation:
+
+```bash
+uv run geoembed evaluate-pair --pair-manifest PAIR_DIR/pair_manifest.json \
+  --baseline-experiment-dir REF_BASELINE INT_BASELINE \
+  --learned-experiment-dir REF_LEARNED INT_LEARNED
+```
+
+It requires the passing hash-matched `pair_integrity.json` and writes the two
+versioned `counterfactual_comparison` reports. Existing reports require explicit
+`--overwrite`. The command is evaluator-only and is the only stage that joins
+protected invariant/intervention labels to frozen representation keys.
+
 ## `pair-manifest`
 
 ### Purpose
