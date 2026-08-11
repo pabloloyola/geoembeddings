@@ -69,3 +69,11 @@ def test_reliability_and_benchmark_use_canonical_roots() -> None:
     assert reliability.reliability and reliability.kind == "baseline"
     assert benchmark.warmup == 2 and benchmark.iterations == 7
     assert not hasattr(benchmark, "truth_dir")
+
+
+def test_pair_manifest_uses_run_roots_and_canonical_output() -> None:
+    args = build_parser().parse_args(["pair-manifest", "--reference-run-dir", "runs/ref",
+        "--intervention-run-dir", "runs/int", "--output", "pairs/pair_manifest.json"])
+    assert str(args.reference_run_dir) == "runs/ref"
+    assert str(args.intervention_run_dir) == "runs/int"
+    assert not hasattr(args, "observed_dir") and not hasattr(args, "truth_dir")

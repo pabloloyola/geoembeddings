@@ -118,6 +118,24 @@ candidate membership under opportunity changes, and resulting true/observed
 values are allowed to change. T1.11c/d will encode and enforce those
 intervention-specific rules; T1.11b does not itself establish pair validity.
 
+### Versioned pair declaration (T1.11c; R5/R7)
+
+`geoembed pair-manifest` joins two complete run roots without copying protected
+data into `observed/`. Its dedicated `geoembeddings-pair-manifest/1.0` artifact
+contains both run identities and manifest/config/table/entity hashes, inferred
+intervention and parameters, invariant entity classes, explicitly allowed field
+changes, semantic user/time/object matching keys, both named-stream lineages,
+and UTC/tool/runtime creation provenance. Observation-only pairs require all six
+identity classes to match. Exposure/opportunity declarations preserve the
+users/regions/POIs/episodes backbone while enumerating protected and observed
+fields that later pair-integrity validation may permit to differ.
+
+The pair declaration lives under a separate `PAIR_DIR/pair_manifest.json` and
+is simulator/evaluator-side. Modeling commands have no pair-manifest argument
+and continue to receive only a run root resolved to `observed/`. T1.11c validates
+the declaration and hashes but does not inspect field-level equality; that
+executable integrity check remains T1.11d.
+
 The declarations remain in root `manifest.json` and refer to evaluator-only
 truth entities without copying protected episodes, utilities, chosen flags, or
 coordinates into `observed/`.

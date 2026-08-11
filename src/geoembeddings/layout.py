@@ -70,6 +70,40 @@ class DatasetLayout:
 
 
 @dataclass(frozen=True)
+class PairLayout:
+    """Resolve protected paired-run artifacts from one pair directory."""
+
+    root: Path
+
+    @classmethod
+    def from_path(cls, value: str | Path) -> "PairLayout":
+        return cls(Path(value).expanduser().resolve())
+
+    @classmethod
+    def from_manifest_path(cls, value: str | Path) -> "PairLayout":
+        path = Path(value).expanduser().resolve()
+        if path.name != "pair_manifest.json":
+            raise ValueError("--output must name the canonical pair_manifest.json artifact")
+        return cls(path.parent)
+
+    @property
+    def manifest(self) -> Path:
+        return self.root / "pair_manifest.json"
+
+    @property
+    def integrity_report(self) -> Path:
+        return self.root / "pair_integrity.json"
+
+    @property
+    def counterfactual_comparison_json(self) -> Path:
+        return self.root / "counterfactual_comparison.json"
+
+    @property
+    def counterfactual_comparison_markdown(self) -> Path:
+        return self.root / "counterfactual_comparison.md"
+
+
+@dataclass(frozen=True)
 class ExperimentLayout:
     """Resolve every embedding artifact from a single experiment directory."""
 

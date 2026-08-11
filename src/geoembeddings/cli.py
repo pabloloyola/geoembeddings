@@ -30,6 +30,12 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--run-dir", required=True, type=Path)
     validate.add_argument("--output", type=Path)
 
+    pair_manifest = commands.add_parser("pair-manifest", help="Declare a protected matched simulator-run pair")
+    pair_manifest.add_argument("--reference-run-dir", required=True, type=Path)
+    pair_manifest.add_argument("--intervention-run-dir", required=True, type=Path)
+    pair_manifest.add_argument("--output", required=True, type=Path)
+    pair_manifest.add_argument("--overwrite", action="store_true")
+
     prepare = commands.add_parser("prepare", help="Fit leakage-safe preprocessing")
     _add_embedding_arguments(prepare)
 
@@ -393,6 +399,10 @@ def main() -> None:
         result = _simulate(args)
     elif args.command == "validate":
         result = _validate(DatasetLayout.from_path(args.run_dir), args.output)
+    elif args.command == "pair-manifest":
+        from .pair_manifest import create_pair_manifest
+        result = create_pair_manifest(args.reference_run_dir, args.intervention_run_dir,
+                                      args.output, overwrite=args.overwrite)
     elif args.command in {"prepare", "train", "baseline", "export", "export-dense", "evaluate", "robustness", "benchmark"}:
         run = DatasetLayout.from_path(args.run_dir)
         experiment = ExperimentLayout.from_path(args.experiment_dir)

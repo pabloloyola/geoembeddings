@@ -197,6 +197,29 @@ source-boundary tests continue to ensure `prepare`, `baseline`, `train`, and
 pair integrity remain limitations delegated to T1.11c--T1.11e; these hashes do
 not themselves prove counterfactual validity or causal invariance.
 
+## T1.11c pair-manifest smoke (2026-08-11)
+
+Affected requirements are R5 and R7; the affected layers are the protected
+simulator/evaluator contract and CLI. The baseline consists of two T1.11b-style
+fixed-root-seed runs that differ only in the observation stream. Reproduce with
+two new immutable run directories and then declare the pair:
+
+```bash
+uv run geoembed simulate --run-dir runs/t1.11c-reference --users 10 --days 2 --seed 20260811
+# Set run.random_streams.observation in a copied YAML before the second command.
+uv run geoembed simulate --config /tmp/t1.11c-observation.yaml --run-dir runs/t1.11c-intervention --users 10 --days 2 --seed 20260811
+uv run geoembed pair-manifest --reference-run-dir runs/t1.11c-reference --intervention-run-dir runs/t1.11c-intervention --output pairs/t1.11c-observation/pair_manifest.json
+uv run pytest tests/test_pair_manifest.py tests/test_cli_paths.py tests/test_layout.py
+```
+
+The integration test generates the two fixed-seed runs directly, changes only
+the observation stream, requires all six stable identity hashes to match, and
+checks immutability plus validated overwrite. Schema tests cover JSON round
+trip, missing hashes, unsupported versions, incompatible dataset contracts,
+overlapping declarations, and ambiguous matching keys. This task establishes a
+declaration only: field-level pair integrity and embedding counterfactual deltas
+remain T1.11d and T1.11f, so no causal-invariance claim or R5 metric is made.
+
 ## T1.7 reliability and offline-efficiency smoke (2026-08-11)
 
 This evidence uses a new immutable replacement identity,
