@@ -151,6 +151,52 @@ axes independently alongside different-user cosine and effective-rank ratio.
 The schedule-shift field must remain `blocked` until a controlled matched
 simulator intervention exists.
 
+## T1.11b stable-identity smoke (2026-08-11)
+
+Affected requirements are R5 and R7; the affected layers are simulator,
+run-level manifest contract, and simulator validation. The baseline is the
+T1.11a fixed-seed configuration at seed `20260811`; no representation metric or
+baseline/learned delta applies because this task establishes matching keys
+rather than evaluating embeddings. Reproduce into a new immutable directory:
+
+```bash
+uv run geoembed simulate --config configs/simulation/kanto_v1.yaml --run-dir runs/t1.11b-smoke-20260811 --users 50 --days 7 --seed 20260811
+uv run geoembed validate --run-dir runs/t1.11b-smoke-20260811
+uv run pytest tests/test_simulator_random_streams.py tests/test_layout.py
+```
+
+Expected artifacts are `runs/t1.11b-smoke-20260811/manifest.json` and
+`runs/t1.11b-smoke-20260811/deep_validation_report.json`. The fixed-seed local
+smoke passed validation with these manifest identity SHA-256 values: users
+`b323c39534aabc18dd0ddd3ffc0cbe42f370056add1a5e45f11c822603fbbff6`
+(50), regions
+`6641498b7ff41370905b4c4f3948f0ca4460760ded9ae9b0721a3f498910f21a`
+(13), POIs
+`599d52497e9967d67e109f16b00bffc524bc9b630f860d7fcff998fd86719901`
+(872), episodes
+`1fe7adf87a503dba92f65dbda017de67367e167e96c5cdbfc48b8d27a267640c`
+(350), choices
+`d4c63c48bfc6f592e45b7c826fc2feba0a7419da1585fe5a1fe15ffaadf8cecb`
+(350), and trajectories
+`9e98c593327c5a451f1b9951a7eb3bf2e6a96433239f948d2b1ea96281b3e859`
+(1,800). Observed gzip hashes were events
+`f4d03de5aa1a1d5a9ba12fb851108b482cca270bc02e88357935d1a11ac06d94`
+and users
+`38fecea5177dce38afe3e39f32926fe27c25ebd2b836452208cbb774a140c9c4`.
+The resolved stream seeds are world `15122758705215849765`, user latents
+`10408480750793963739`, episodes `2984504666824196055`, choices
+`61965804204990368`, and observation `11209042838108107995`.
+
+Unit/integration coverage serializes the manifest through JSON, rejects an
+unsupported identity schema and inconsistent hash, rejects duplicate identity
+inputs, proves identity-set hashes ignore row order, and changes only the
+observation stream while asserting all six entity declarations remain equal.
+The observed filenames remain exactly the two dataset/1.0 files, and existing
+source-boundary tests continue to ensure `prepare`, `baseline`, `train`, and
+`export` receive `observed/` only. Exposure/opportunity allowed-change rules and
+pair integrity remain limitations delegated to T1.11c--T1.11e; these hashes do
+not themselves prove counterfactual validity or causal invariance.
+
 ## T1.7 reliability and offline-efficiency smoke (2026-08-11)
 
 This evidence uses a new immutable replacement identity,

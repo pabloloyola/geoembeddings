@@ -19,12 +19,14 @@ import gzip
 import json
 import math
 import statistics
+import re
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterable
 
-from .contract import OBSERVED_FILES, TRUTH_FILES
+from .contract import OBSERVED_FILES, TRUTH_FILES, validate_identity_manifest
+from .simulator import RANDOM_STREAM_NAMES, identity_set_hash
 
 
 TABLES = {
@@ -129,6 +131,13 @@ def validate(root: Path) -> dict[str, Any]:
     observation = data["observation"]
     checks: list[dict[str, Any]] = []
 
+    identity_error = None
+    try:
+        validate_identity_manifest(manifest.get("identity"), stream_names=RANDOM_STREAM_NAMES)
+    except ValueError as exc:
+        identity_error = str(exc)
+    checks.append(check("Identity manifest schema", identity_error is None, identity_error or "complete", "Versioned identity and stream provenance is complete", "integrity"))
+
     # Contract and key integrity.
     row_counts = {relative: len(data[name]) for name, relative in TABLES.items()}
     expected_counts = manifest.get("table_rows", {})
@@ -148,6 +157,40 @@ def validate(root: Path) -> dict[str, Any]:
     ]
     duplicate_summary = {label: duplicate_count(rows, key) for label, rows, key in unique_specs}
     checks.append(check("Primary-key uniqueness", not any(duplicate_summary.values()), duplicate_summary, "Zero duplicate primary keys", "integrity"))
+
+    durable_pattern = re.compile(r"^(user|episode|decision|trajectory)_[0-9a-f]{24}$")
+    durable_values = [
+        *(row["user_id"] for row in users), *(row["episode_id"] for row in episodes),
+        *(row["decision_id"] for row in choices), *(row["trajectory_id"] for row in trajectories),
+    ]
+    malformed = sum(durable_pattern.fullmatch(value) is None for value in durable_values)
+    checks.append(check("Durable identity format", malformed == 0, malformed, "Generated identities use the versioned semantic-key format", "integrity"))
+
+    if identity_error is None:
+        declarations = manifest["identity"]["entities"]
+        actual_identity_sets = {
+            "users": [row["user_id"] for row in users],
+            "episodes": [row["episode_id"] for row in episodes],
+            "choices": [row["decision_id"] for row in choices],
+            "trajectories": [row["trajectory_id"] for row in trajectories],
+        }
+        inconsistent = {
+            name: {"declared": declaration, "actual_count": len(values), "actual_sha256": identity_set_hash(values)}
+            for name, values in actual_identity_sets.items()
+            if (declaration := declarations[name])["count"] != len(values)
+            or declaration["identity_sha256"] != identity_set_hash(values)
+        }
+        top_streams = manifest.get("random_streams", {})
+        nested_streams = manifest["identity"]["random_streams"]
+        if top_streams != nested_streams:
+            inconsistent["random_streams"] = {"top_level": top_streams, "identity": nested_streams}
+        referenced_pois = {row["candidate_poi_id"] for row in candidates}
+        if declarations["pois"]["count"] < len(referenced_pois):
+            inconsistent["pois"] = {"declared_count": declarations["pois"]["count"], "referenced_count": len(referenced_pois)}
+        referenced_regions = {row["region_id"] for row in events} | {row["home_region_id"] for row in users}
+        if declarations["regions"]["count"] < len(referenced_regions):
+            inconsistent["regions"] = {"declared_count": declarations["regions"]["count"], "referenced_count": len(referenced_regions)}
+        checks.append(check("Identity manifest consistency", not inconsistent, inconsistent or "all match", "Entity hashes/counts and stream declarations agree with tables", "integrity"))
 
     user_ids = {row["user_id"] for row in users}
     foreign_failures = {

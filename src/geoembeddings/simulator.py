@@ -28,6 +28,8 @@ from .contract import (
     DATASET_CONTRACT_VERSION,
     OBSERVED_FILES,
     TRUTH_FILES,
+    SIMULATION_IDENTITY_HASH_ALGORITHM,
+    SIMULATION_IDENTITY_MANIFEST_SCHEMA,
 )
 
 try:
@@ -44,6 +46,27 @@ JST = timezone(timedelta(hours=9))
 SIMULATOR_VERSION = "0.4.0"
 RANDOM_STREAM_ALGORITHM = "sha256-root-seed-and-stream-name/1.0"
 RANDOM_STREAM_NAMES = ("world", "user_latents", "episodes", "choices", "observation")
+IDENTITY_GENERATION_VERSION = "sha256-semantic-key/1.0"
+
+
+def stable_identifier(namespace: str, *components: object) -> str:
+    """Return a durable ID from a typed semantic key, never row order or ``hash()``."""
+    if not namespace or not components or any(component is None or str(component) == "" for component in components):
+        raise ValueError("stable identifiers require a namespace and non-empty semantic components")
+    material = json.dumps(
+        {"version": IDENTITY_GENERATION_VERSION, "namespace": namespace, "components": [str(value) for value in components]},
+        ensure_ascii=False, separators=(",", ":"), sort_keys=True,
+    ).encode("utf-8")
+    return f"{namespace}_{hashlib.sha256(material).hexdigest()[:24]}"
+
+
+def identity_set_hash(identifiers: Sequence[str]) -> str:
+    """Hash an identity set canonically so CSV row reordering cannot alter it."""
+    values = [str(value) for value in identifiers]
+    if any(not value for value in values) or len(values) != len(set(values)):
+        raise ValueError("identity hashing requires unique, non-empty identifiers")
+    payload = "\n".join(sorted(values)).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -237,7 +260,6 @@ def make_world(rng: random.Random) -> list[dict[str, Any]]:
     spatial = CONFIG["world"]["spatial"]
     attributes = CONFIG["world"]["poi_attributes"]
     pois: list[dict[str, Any]] = []
-    poi_number = 0
     for region in REGIONS:
         for category, (appeal, base_price) in POI_CATEGORIES.items():
             tourism_bonus = (
@@ -249,13 +271,12 @@ def make_world(rng: random.Random) -> list[dict[str, Any]]:
                 int(spatial["poi_min_count"]),
                 round(float(spatial["poi_base_count"]) + region.density * float(spatial["poi_density_count"]) + tourism_bonus),
             )
-            for _ in range(count):
-                poi_number += 1
+            for object_slot in range(count):
                 spread = float(spatial["poi_spread_km_base"]) + (1.0 - region.density) * float(spatial["poi_spread_km_low_density_bonus"])
                 lat, lon = gaussian_point(rng, region.lat, region.lon, spread, float(spatial["east_west_anisotropy"]))
                 pois.append(
                     {
-                        "poi_id": f"poi_{poi_number:05d}",
+                        "poi_id": stable_identifier("poi", region.region_id, category, object_slot),
                         "region_id": region.region_id,
                         "prefecture": region.prefecture,
                         "category": category,
@@ -309,7 +330,7 @@ def create_user(rng: random.Random, index: int, full_kanto: bool) -> tuple[dict[
     latent_means = population["latent_means"]
     latent_sd = float(population["latent_sd"])
     latent = {
-        "user_id": f"user_{index:06d}",
+        "user_id": stable_identifier("user", index),
         "price_sensitivity": normal01(rng, float(latent_means["price_sensitivity"]), latent_sd),
         "distance_sensitivity": normal01(rng, float(latent_means["distance_sensitivity"]), latent_sd),
         "novelty_seeking": normal01(rng, float(latent_means["novelty_seeking"]), latent_sd),
@@ -598,8 +619,6 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
     schedule = CONFIG["episodes"]["schedule_hours"]
     event_cfg = CONFIG["events"]
     spatial = CONFIG["world"]["spatial"]
-    decision_number = episode_number = 0
-
     for user_index in range(1, args.users + 1):
         observed_user, latent_user = create_user(user_rng, user_index, args.full_kanto)
         users_observed.append(observed_user)
@@ -616,9 +635,8 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
             current_day = start_day + timedelta(days=day_offset)
             weekend = current_day.weekday() >= 5
             primary, secondary = select_episode(episode_rng, latent_user, current_day, weekend)
-            episode_number += 1
-            episode_id = f"episode_{episode_number:09d}"
-            session_id = f"session_{user_index:06d}_{day_offset:03d}"
+            episode_id = stable_identifier("episode", latent_user["user_id"], current_day.isoformat())
+            session_id = stable_identifier("session", latent_user["user_id"], current_day.isoformat())
             active_region = home
             active_lat, active_lon = home_lat, home_lon
             if primary == "travel":
@@ -686,8 +704,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                 origin, origin_lat, origin_lon = home, home_lat, home_lon
             candidates = nearby_candidates(pois, category, origin_lat, origin_lon, args.scenario)
             if candidates:
-                decision_number += 1
-                decision_id = f"decision_{decision_number:09d}"
+                decision_id = stable_identifier("decision", episode_id, "primary_poi_choice")
                 chosen, scored = choose_poi(choice_rng, latent_user, candidates, primary, args.scenario, decision_id)
                 candidate_sets.extend(scored)
                 choice_hour = (
@@ -737,7 +754,9 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
             stops.append((float(schedule["evening_home"]), "home", home, home_lat, home_lon))
             stops.sort(key=lambda item: item[0])
             location_obs = obs_by_service["location"]
+            activity_occurrences: Counter[str] = Counter()
             for stop_index, (hour, activity, region, lat, lon) in enumerate(stops):
+                activity_occurrences[activity] += 1
                 true_lat, true_lon = jitter_point(
                     episode_rng,
                     lat,
@@ -748,7 +767,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                 )
                 trajectories.append(
                     {
-                        "trajectory_id": f"traj_{user_index:06d}_{day_offset:03d}_{stop_index:02d}",
+                        "trajectory_id": stable_identifier("trajectory", episode_id, activity, activity_occurrences[activity], iso_at(current_day, hour)),
                         "user_id": latent_user["user_id"],
                         "timestamp": iso_at(current_day, hour),
                         "episode_id": episode_id,
@@ -844,6 +863,24 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
     resolved_yaml = yaml.safe_dump(CONFIG, sort_keys=False, allow_unicode=True)
     config_hash = hashlib.sha256(resolved_yaml.encode("utf-8")).hexdigest()
     (output / "config.resolved.yaml").write_text(resolved_yaml, encoding="utf-8")
+    identity_entities = {
+        "users": [row["user_id"] for row in users_observed],
+        "regions": [region.region_id for region in REGIONS],
+        "pois": [row["poi_id"] for row in pois],
+        "episodes": [row["episode_id"] for row in episodes],
+        "choices": [row["decision_id"] for row in choices],
+        "trajectories": [row["trajectory_id"] for row in trajectories],
+    }
+    identity_manifest = {
+        "schema_version": SIMULATION_IDENTITY_MANIFEST_SCHEMA,
+        "identity_generation_version": IDENTITY_GENERATION_VERSION,
+        "hash_algorithm": SIMULATION_IDENTITY_HASH_ALGORITHM,
+        "random_streams": {"algorithm": RANDOM_STREAM_ALGORITHM, "root_seed": streams.root_seed, "seeds": streams.seeds},
+        "entities": {
+            name: {"count": len(values), "identity_sha256": identity_set_hash(values)}
+            for name, values in identity_entities.items()
+        },
+    }
     manifest = {
         "simulator_version": SIMULATOR_VERSION,
         "dataset_contract": {
@@ -859,6 +896,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
             "root_seed": streams.root_seed,
             "seeds": streams.seeds,
         },
+        "identity": identity_manifest,
         "start_date": args.start_date,
         "days": args.days,
         "users": args.users,
