@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .contract import DATASET_CONTRACT_NAME, DATASET_CONTRACT_VERSION, OBSERVED_FILES, TRUTH_FILES, validate_identity_manifest
+from .contract import (DATASET_CONTRACT_NAME, DATASET_CONTRACT_VERSION, LEGACY_DATASET_CONTRACT_VERSIONS,
+                       LEGACY_OBSERVED_FILES, OBSERVED_FILES, TRUTH_FILES, validate_identity_manifest)
 
 
 @dataclass(frozen=True)
@@ -44,24 +45,28 @@ class DatasetLayout:
         return self.root / "deep_validation_report.json"
 
     def validate(self, *, require_truth: bool = False) -> dict[str, Any]:
-        required = [self.observed / name for name in OBSERVED_FILES.values()]
+        if not self.manifest_path.is_file():
+            raise FileNotFoundError(f"Incomplete GeoEmbeddings run at {self.root}: missing manifest.json")
+        manifest = json.loads(self.manifest_path.read_text(encoding="utf-8"))
+        declared = manifest.get("dataset_contract", {})
+        version = str(declared.get("version", ""))
+        if declared.get("name") != DATASET_CONTRACT_NAME:
+            raise ValueError(f"Unsupported dataset contract: {declared}")
+        if version == DATASET_CONTRACT_VERSION:
+            observed_files = OBSERVED_FILES
+        elif version in LEGACY_DATASET_CONTRACT_VERSIONS:
+            # Explicit read-only migration behavior: v1 datasets remain usable by
+            # event models, but recommendation tables are neither invented nor consumed.
+            observed_files = LEGACY_OBSERVED_FILES
+        else:
+            raise ValueError(f"Dataset contract {version} is incompatible with supported {DATASET_CONTRACT_VERSION}")
+        required = [self.observed / name for name in observed_files.values()]
         if require_truth:
             required.extend(self.truth / name for name in TRUTH_FILES.values())
-        required.append(self.manifest_path)
         missing = [str(path) for path in required if not path.is_file()]
         if missing:
             raise FileNotFoundError(f"Incomplete GeoEmbeddings run at {self.root}: {missing}")
 
-        manifest = json.loads(self.manifest_path.read_text(encoding="utf-8"))
-        declared = manifest.get("dataset_contract")
-        if declared:
-            if declared.get("name") != DATASET_CONTRACT_NAME:
-                raise ValueError(f"Unsupported dataset contract: {declared}")
-            version = str(declared.get("version", ""))
-            if version.split(".", 1)[0] != DATASET_CONTRACT_VERSION.split(".", 1)[0]:
-                raise ValueError(
-                    f"Dataset contract {version} is incompatible with supported {DATASET_CONTRACT_VERSION}"
-                )
         # Identity metadata is run-level rather than part of the public table
         # contract. New simulator artifacts must nevertheless be complete.
         if "identity" in manifest:

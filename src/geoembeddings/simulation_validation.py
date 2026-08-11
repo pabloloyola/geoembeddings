@@ -32,6 +32,10 @@ from .simulator import RANDOM_STREAM_NAMES, identity_set_hash
 TABLES = {
     "events": f"observed/{OBSERVED_FILES['events']}",
     "users": f"observed/{OBSERVED_FILES['users']}",
+    "poi_catalog": f"observed/{OBSERVED_FILES['poi_catalog']}",
+    "recommendation_requests": f"observed/{OBSERVED_FILES['recommendation_requests']}",
+    "impressions": f"observed/{OBSERVED_FILES['impressions']}",
+    "interactions": f"observed/{OBSERVED_FILES['interactions']}",
     "latents": f"truth/{TRUTH_FILES['user_latents']}",
     "episodes": f"truth/{TRUTH_FILES['episodes']}",
     "candidates": f"truth/{TRUTH_FILES['candidate_sets']}",

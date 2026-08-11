@@ -532,7 +532,7 @@ gated by T1.6.
 
 ## P3 — Recommendation contract and ranking
 
-- [ ] **T3.1 — POI catalog schema and migration.**
+- [x] **T3.1 — POI catalog schema and migration.**
   - **Requirement IDs:** R9.
   - **Prerequisites:** approved observable/truth field review.
   - **Affected layer:** simulator, observed contract, documentation.
@@ -544,8 +544,10 @@ gated by T1.6.
   - **Completion evidence:** catalog exposes only request-time public metadata
     and old contract handling is explicit.
   - **Known limitation/blocker:** synthetic POI attributes are not real Kanto facts.
+  - **Completion note (2026-08-11):** contract 2.0 adds an ordered public catalog;
+    event-only 1.0 runs remain explicitly readable without fabricated tables.
 
-- [ ] **T3.2 — Request, availability, impression, interaction schemas.**
+- [x] **T3.2 — Request, availability, impression, interaction schemas.**
   - **Requirement IDs:** R9.
   - **Prerequisites:** T3.1.
   - **Affected layer:** simulator, observed contract.
@@ -559,8 +561,10 @@ gated by T1.6.
     metadata semantics are documented and validated.
   - **Known limitation/blocker:** utility, probabilities, latent intent, and
     counterfactual outcomes must remain under `truth/`.
+  - **Completion note (2026-08-11):** schemas validate keys, timestamps,
+    availability-before-display, field order, and protected-field exclusion.
 
-- [ ] **T3.3 — Hakone catalog and request-time attributes.**
+- [x] **T3.3 — Hakone catalog and request-time attributes.**
   - **Requirement IDs:** R9.
   - **Prerequisites:** T3.1–T3.2.
   - **Affected layer:** simulator, observed contract.
@@ -572,6 +576,8 @@ gated by T1.6.
   - **Completion evidence:** onsen/restaurant/cafe/shop/hotel/attraction
     requests have usable candidates and plausible documented diagnostics.
   - **Known limitation/blocker:** attributes are hypotheses, not calibrated reality.
+  - **Completion note (2026-08-11):** fixed-seed runs populate all six target
+    categories and record observed-only naive-ranker readiness diagnostics.
 
 - [ ] **T3.4 — Observable naive rankers.**
   - **Requirement IDs:** R9.

@@ -33,6 +33,10 @@ TABLES = (
     # no simulator event ID, and silently pairing equal-position rows would make
     # validation depend on CSV order.
     TableSpec("observed.events", "observed/observed_events.csv.gz", ()),
+    TableSpec("observed.poi_catalog", "observed/poi_catalog.csv.gz", ("poi_id",)),
+    TableSpec("observed.recommendation_requests", "observed/recommendation_requests.csv.gz", ("request_id",)),
+    TableSpec("observed.impressions", "observed/impressions.csv.gz", ("request_id", "poi_id")),
+    TableSpec("observed.interactions", "observed/interactions.csv.gz", ("interaction_id",)),
     TableSpec("truth.user_latents", "truth/user_latents.csv.gz", ("user_id",)),
     TableSpec("truth.episodes", "truth/episodes_truth.csv.gz", ("episode_id",)),
     TableSpec("truth.candidate_sets", "truth/candidate_sets.csv.gz", ("decision_id", "candidate_poi_id")),

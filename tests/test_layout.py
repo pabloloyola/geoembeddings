@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from geoembeddings.contract import DATASET_CONTRACT_NAME, DATASET_CONTRACT_VERSION
+from geoembeddings.contract import DATASET_CONTRACT_NAME, DATASET_CONTRACT_VERSION, OBSERVED_FILES
 from geoembeddings.layout import DatasetLayout, ExperimentLayout, PairLayout
 
 
@@ -31,7 +31,7 @@ def test_layout_resolves_all_paths(tmp_path) -> None:
 def test_layout_validates_contract(tmp_path) -> None:
     run = DatasetLayout.from_path(tmp_path / "run")
     run.observed.mkdir(parents=True)
-    for name in ("users_observed.csv.gz", "observed_events.csv.gz"):
+    for name in OBSERVED_FILES.values():
         (run.observed / name).write_bytes(b"placeholder")
     run.manifest_path.write_text(
         json.dumps(
@@ -45,6 +45,15 @@ def test_layout_validates_contract(tmp_path) -> None:
         encoding="utf-8",
     )
     run.validate()
+
+
+def test_layout_explicitly_supports_legacy_event_contract(tmp_path) -> None:
+    run = DatasetLayout.from_path(tmp_path / "legacy")
+    run.observed.mkdir(parents=True)
+    for name in ("users_observed.csv.gz", "observed_events.csv.gz"):
+        (run.observed / name).write_bytes(b"legacy")
+    run.manifest_path.write_text(json.dumps({"dataset_contract": {"name": DATASET_CONTRACT_NAME, "version": "1.0"}}))
+    assert run.validate()["dataset_contract"]["version"] == "1.0"
 
 
 def test_dataset_root_rejects_internal_directory(tmp_path) -> None:
