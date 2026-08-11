@@ -41,7 +41,39 @@ except ImportError as exc:  # pragma: no cover - exercised by the CLI error path
 JST = timezone(timedelta(hours=9))
 
 
-SIMULATOR_VERSION = "0.3.0"
+SIMULATOR_VERSION = "0.4.0"
+RANDOM_STREAM_ALGORITHM = "sha256-root-seed-and-stream-name/1.0"
+RANDOM_STREAM_NAMES = ("world", "user_latents", "episodes", "choices", "observation")
+
+
+@dataclass(frozen=True)
+class RandomStreams:
+    """Independent simulator RNGs and their reproducible seed provenance."""
+
+    root_seed: int
+    seeds: dict[str, int]
+    generators: dict[str, random.Random]
+
+
+def derive_stream_seed(root_seed: int, name: str) -> int:
+    """Derive a stable seed without Python's process-randomized ``hash``."""
+    if name not in RANDOM_STREAM_NAMES:
+        raise ValueError(f"Unknown simulator random stream: {name!r}")
+    material = f"{RANDOM_STREAM_ALGORITHM}\0{root_seed}\0{name}".encode("utf-8")
+    return int.from_bytes(hashlib.sha256(material).digest()[:8], "big")
+
+
+def make_random_streams(root_seed: int, overrides: dict[str, Any] | None = None) -> RandomStreams:
+    """Resolve configured overrides and construct all named generators."""
+    overrides = overrides or {}
+    unknown = sorted(set(overrides) - set(RANDOM_STREAM_NAMES))
+    if unknown:
+        raise ValueError(f"Unknown run.random_streams entries: {unknown}")
+    seeds = {
+        name: int(overrides[name]) if name in overrides else derive_stream_seed(root_seed, name)
+        for name in RANDOM_STREAM_NAMES
+    }
+    return RandomStreams(int(root_seed), seeds, {name: random.Random(seed) for name, seed in seeds.items()})
 
 
 @dataclass(frozen=True)
@@ -531,7 +563,16 @@ def write_csv_gz(path: Path, rows: list[dict[str, Any]], fieldnames: Sequence[st
 
 
 def simulate(args: argparse.Namespace) -> dict[str, Any]:
-    rng = random.Random(args.seed)
+    streams = make_random_streams(args.seed, CONFIG["run"].get("random_streams"))
+    world_rng = streams.generators["world"]
+    user_rng = streams.generators["user_latents"]
+    episode_rng = streams.generators["episodes"]
+    choice_rng = streams.generators["choices"]
+    observation_rng = streams.generators["observation"]
+    # Persist the fully resolved values, including derived defaults, so a run's
+    # stochastic lineage can be reconstructed from config.resolved.yaml alone.
+    CONFIG["run"]["seed"] = streams.root_seed
+    CONFIG["run"]["random_streams"] = dict(streams.seeds)
     output = Path(args.output).resolve()
     if output.exists():
         if not args.overwrite:
@@ -544,7 +585,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
     truth_dir.mkdir(parents=True)
 
     regions_by_id = {region.region_id: region for region in REGIONS}
-    pois = make_world(rng)
+    pois = make_world(world_rng)
     users_observed: list[dict[str, Any]] = []
     user_latents: list[dict[str, Any]] = []
     observation_process: list[dict[str, Any]] = []
@@ -560,10 +601,10 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
     decision_number = episode_number = 0
 
     for user_index in range(1, args.users + 1):
-        observed_user, latent_user = create_user(rng, user_index, args.full_kanto)
+        observed_user, latent_user = create_user(user_rng, user_index, args.full_kanto)
         users_observed.append(observed_user)
         user_latents.append(latent_user)
-        obs_records = make_observation_process(rng, latent_user, args.scenario)
+        obs_records = make_observation_process(observation_rng, latent_user, args.scenario)
         observation_process.extend(obs_records)
         obs_by_service = {row["source_service"]: row for row in obs_records}
         home = regions_by_id[str(latent_user["home_region_id"])]
@@ -574,7 +615,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
         for day_offset in range(args.days):
             current_day = start_day + timedelta(days=day_offset)
             weekend = current_day.weekday() >= 5
-            primary, secondary = select_episode(rng, latent_user, current_day, weekend)
+            primary, secondary = select_episode(episode_rng, latent_user, current_day, weekend)
             episode_number += 1
             episode_id = f"episode_{episode_number:09d}"
             session_id = f"session_{user_index:06d}_{day_offset:03d}"
@@ -583,7 +624,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
             if primary == "travel":
                 travel_regions = [region for region in REGIONS if region.region_id != home.region_id]
                 active_region = weighted_choice(
-                    rng,
+                    episode_rng,
                     travel_regions,
                     [
                         (float(CONFIG["episodes"]["travel_region_bonus"]) if region.region_id in set(CONFIG["episodes"]["travel_bonus_regions"]) else 1.0)
@@ -592,19 +633,19 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                     ],
                 )
                 active_lat, active_lon = gaussian_point(
-                    rng,
+                    episode_rng,
                     active_region.lat,
                     active_region.lon,
                     float(spatial["destination_spread_km"]),
                     float(spatial["east_west_anisotropy"]),
                 )
-            elif primary in {"leisure", "family_outing"} and rng.random() < float(CONFIG["episodes"]["nearby_region_switch_probability"]):
+            elif primary in {"leisure", "family_outing"} and episode_rng.random() < float(CONFIG["episodes"]["nearby_region_switch_probability"]):
                 near_regions = sorted(REGIONS, key=lambda region: haversine_km(home_lat, home_lon, region.lat, region.lon))[
                     : int(CONFIG["episodes"]["nearby_region_pool_size"])
                 ]
-                active_region = rng.choice(near_regions)
+                active_region = episode_rng.choice(near_regions)
                 active_lat, active_lon = gaussian_point(
-                    rng,
+                    episode_rng,
                     active_region.lat,
                     active_region.lon,
                     float(spatial["destination_spread_km"]),
@@ -636,7 +677,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
             elif primary == "travel":
                 stops += [(float(schedule["travel_arrival"]), "travel", active_region, active_lat, active_lon)]
 
-            category = category_for_episode(rng, primary)
+            category = category_for_episode(episode_rng, primary)
             if primary == "travel":
                 origin, origin_lat, origin_lon = active_region, active_lat, active_lon
             elif not weekend and primary == "routine":
@@ -647,12 +688,12 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
             if candidates:
                 decision_number += 1
                 decision_id = f"decision_{decision_number:09d}"
-                chosen, scored = choose_poi(rng, latent_user, candidates, primary, args.scenario, decision_id)
+                chosen, scored = choose_poi(choice_rng, latent_user, candidates, primary, args.scenario, decision_id)
                 candidate_sets.extend(scored)
                 choice_hour = (
                     float(schedule["routine_choice"])
                     if not weekend and primary == "routine"
-                    else float(schedule["other_choice_start"]) + rng.random() * float(schedule["other_choice_span"])
+                    else float(schedule["other_choice_start"]) + choice_rng.random() * float(schedule["other_choice_span"])
                 )
                 chosen_region = regions_by_id[chosen["region_id"]]
                 stops.append((choice_hour, "poi_visit", chosen_region, chosen["lat"], chosen["lon"]))
@@ -670,13 +711,13 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                     }
                 )
                 local_obs = obs_by_service["local_commerce"]
-                if local_obs["service_adopted"] and rng.random() < float(local_obs["record_probability"]):
+                if local_obs["service_adopted"] and observation_rng.random() < float(local_obs["record_probability"]):
                     local_actions = event_cfg["local_commerce"]["action_weights"]
                     action_names = list(local_actions)
-                    action = weighted_choice(rng, action_names, [local_actions[name] for name in action_names])
+                    action = weighted_choice(observation_rng, action_names, [local_actions[name] for name in action_names])
                     observed_events.append(
                         event_row(
-                            rng,
+                            observation_rng,
                             latent_user["user_id"],
                             iso_at(current_day, choice_hour + float(event_cfg["local_commerce"]["event_delay_hours"])),
                             "local_commerce",
@@ -698,7 +739,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
             location_obs = obs_by_service["location"]
             for stop_index, (hour, activity, region, lat, lon) in enumerate(stops):
                 true_lat, true_lon = jitter_point(
-                    rng,
+                    episode_rng,
                     lat,
                     lon,
                     float(spatial["routine_stop_jitter_km"])
@@ -717,16 +758,16 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                         "true_longitude": round(true_lon, 6),
                     }
                 )
-                if location_obs["service_adopted"] and rng.random() < float(location_obs["record_probability"]):
+                if location_obs["service_adopted"] and observation_rng.random() < float(location_obs["record_probability"]):
                     accuracy = float(location_obs["gps_sd_m"])
                     observed_events.append(
                         event_row(
-                            rng,
+                            observation_rng,
                             latent_user["user_id"],
                             iso_at(
                                 current_day,
                                 hour
-                                + rng.uniform(
+                                + observation_rng.uniform(
                                     -float(CONFIG["observation"]["passive_time_jitter_hours"]),
                                     float(CONFIG["observation"]["passive_time_jitter_hours"]),
                                 ),
@@ -751,32 +792,32 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                 + float(event_cfg["ecommerce"]["engagement_coefficient"]) * float(latent_user["digital_engagement"])
                 + (float(event_cfg["ecommerce"]["episode_bonus"]) if primary in set(event_cfg["ecommerce"]["bonus_episodes"]) else 0.0)
             )
-            if ecommerce_obs["service_adopted"] and rng.random() < ecommerce_probability * float(ecommerce_obs["record_probability"]):
+            if ecommerce_obs["service_adopted"] and observation_rng.random() < ecommerce_probability * float(ecommerce_obs["record_probability"]):
                 product_weights = dict(event_cfg["ecommerce"]["product_category_weights"])
                 if primary == "travel":
                     product_weights["travel_goods"] = float(event_cfg["ecommerce"]["travel_goods_weight_during_travel"])
                 product_names = list(product_weights)
-                product_category = weighted_choice(rng, product_names, [product_weights[name] for name in product_names])
+                product_category = weighted_choice(observation_rng, product_names, [product_weights[name] for name in product_names])
                 ecommerce_actions = event_cfg["ecommerce"]["action_weights"]
                 ecommerce_action_names = list(ecommerce_actions)
-                action = weighted_choice(rng, ecommerce_action_names, [ecommerce_actions[name] for name in ecommerce_action_names])
+                action = weighted_choice(observation_rng, ecommerce_action_names, [ecommerce_actions[name] for name in ecommerce_action_names])
                 observed_events.append(
                     event_row(
-                        rng, latent_user["user_id"], iso_at(current_day, float(schedule["ecommerce_start"]) + rng.random() * float(schedule["ecommerce_span"])), "ecommerce", action,
+                        observation_rng, latent_user["user_id"], iso_at(current_day, float(schedule["ecommerce_start"]) + observation_rng.random() * float(schedule["ecommerce_span"])), "ecommerce", action,
                         "transaction" if action == "purchase" else "user_triggered", product_category,
-                        f"product_{rng.randrange(1, int(event_cfg['ecommerce']['product_catalog_size']) + 1):04d}", home, home_lat, home_lon,
+                        f"product_{observation_rng.randrange(1, int(event_cfg['ecommerce']['product_catalog_size']) + 1):04d}", home, home_lat, home_lon,
                         float(event_cfg["ecommerce"]["location_accuracy_m"]), "ecommerce_event_log", session_id,
                     )
                 )
 
             travel_obs = obs_by_service["travel"]
-            if primary == "travel" and travel_obs["service_adopted"] and rng.random() < float(travel_obs["record_probability"]):
+            if primary == "travel" and travel_obs["service_adopted"] and observation_rng.random() < float(travel_obs["record_probability"]):
                 for action, hour in event_cfg["travel"]["action_hours"].items():
-                    if action == "reservation" and rng.random() > float(event_cfg["travel"]["reservation_probability"]):
+                    if action == "reservation" and observation_rng.random() > float(event_cfg["travel"]["reservation_probability"]):
                         continue
                     observed_events.append(
                         event_row(
-                            rng, latent_user["user_id"], iso_at(current_day, hour), "travel", action,
+                            observation_rng, latent_user["user_id"], iso_at(current_day, hour), "travel", action,
                             "transaction" if action == "reservation" else "user_triggered", "destination",
                             active_region.region_id, home, home_lat, home_lon,
                             float(event_cfg["travel"]["location_accuracy_m"]), "travel_event_log", session_id,
@@ -813,6 +854,11 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
         "config_source": str(Path(args.config).resolve()),
         "config_sha256": config_hash,
         "seed": args.seed,
+        "random_streams": {
+            "algorithm": RANDOM_STREAM_ALGORITHM,
+            "root_seed": streams.root_seed,
+            "seeds": streams.seeds,
+        },
         "start_date": args.start_date,
         "days": args.days,
         "users": args.users,

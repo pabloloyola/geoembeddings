@@ -5,6 +5,9 @@ run:
   days: 14
   start_date: "2026-04-01"
   seed: 20260803
+  # world, user_latents, episodes, choices, and observation streams are derived
+  # deterministically from seed. Individual integer overrides may be supplied
+  # under random_streams for controlled simulator interventions.
   scenario: mixed
   full_kanto: false
   # Retained for direct simulator API compatibility. The unified CLI always
