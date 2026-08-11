@@ -139,6 +139,11 @@ class ExperimentLayout:
     def baseline_evaluation(self) -> Path:
         return self.root / "baseline_evaluation.json"
 
+    def transfer_evaluation(self, kind: str) -> Path:
+        if kind not in {"baseline", "learned"}:
+            raise ValueError(f"Unsupported transfer artifact kind: {kind}")
+        return self.root / f"{kind}_transfer_evaluation.json"
+
     @property
     def comparison_dir(self) -> Path:
         return self.root / "comparison"

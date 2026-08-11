@@ -54,6 +54,14 @@ training:
 evaluation:
   probe_train_fraction: 0.80
   ridge_alpha: 10.0
+  transfer:
+    schema_version: spatial-transfer-slices/1.0
+    distance_metric: haversine_km
+    distance_relevance_quantile: 0.50
+    retrieval_k: [1, 5]
+    geohash_fields: [geohash_5, geohash_7]
+    held_out_regions: [hakone]
+    boundary_max_distance_km: 2.0
   event_removal:
     algorithm_version: sha256-event-removal/1.0
     seed: 20260811
