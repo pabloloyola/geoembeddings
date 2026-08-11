@@ -20,9 +20,11 @@ contracts, not scientific superiority or disentanglement.
 
 ## Now
 
-T0.2 is the immediate task. Its registered evidence index is machine-readable
-but records that the 500-user archive and every durable artifact identifier are
-absent. T0.2a therefore remains pending. Its decision record selects only
+T0.2 is **evidence lost/unverifiable**. Its registered evidence index preserves
+the original hashes and scientific identity, but the indexed local roots are
+absent, the recorded source commit is unavailable in this clone, and no durable
+artifact identifier was registered. T0.2a therefore remains pending. Its
+decision record selects only
 `finish the evaluator gate` and leaves every scientific axis pending; T1.4's
 implemented evaluator surfaces do not substitute for the missing reference.
 
@@ -60,7 +62,8 @@ implemented evaluator surfaces do not substitute for the missing reference.
   - **Known limitation/blocker:** generated binaries may live in external
     storage; the smoke cohort is not scientific evidence.
 
-- [x] **T0.2 — Archive the 500-user scientific reference.**
+- [ ] **T0.2 — Archive the 500-user scientific reference — evidence
+  lost/unverifiable.**
   - **Requirement IDs:** R1–R8 (reference coverage; absent axes remain pending).
   - **Prerequisites:** T0.1; clean immutable output roots and sufficient compute.
   - **Affected layer:** model, evaluator, documentation.
@@ -75,13 +78,14 @@ implemented evaluator surfaces do not substitute for the missing reference.
     explicitly confirms one shared preparation contract.
   - **Known limitation/blocker:** the run is semi-synthetic and compute-heavy;
     missing users or labels must be explained, never silently dropped.
-  - **Recorded evidence (2026-08-11):** the seed-`20260811` reference is
-    preserved under read-only local roots `runs/reference500` and
-    `experiments/reference500`. The complete hash manifest and comparability
-    audit are registered in `docs/artifacts/t0.2-reference500.json`. Sixteen
-    simulated users have no observed events, and four additional early-cutoff
-    rows are absent because no observable history existed at that cutoff; the
-    index and evaluator reports retain these and all label/view coverage notes.
+  - **Evidence-loss audit (2026-08-11):** an exhaustive search of the available
+    filesystem found neither indexed root nor an archive, no additional artifact
+    filesystem is mounted, no Git remote or tag identifies an archive, and the
+    recorded source commit is not present in this clone. The index retains the
+    original hashes, seeds, cutoffs, field order, and user-set identity, but the
+    bytes cannot be authenticated. T0.2 is therefore evidence lost/unverifiable,
+    not complete. Any replacement must use a new run/experiment identity and a
+    new evidence-index lineage.
 
 - [ ] **T0.2a — Reconcile status and record the post-reference decision.**
   - **Requirement IDs:** R1, R3, R4, R7.
