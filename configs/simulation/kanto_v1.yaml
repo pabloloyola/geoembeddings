@@ -1,4 +1,4 @@
-config_version: 2
+config_version: 3
 
 run:
   users: 500
@@ -61,6 +61,8 @@ world:
     park: {appeal: 0.20, base_price: 0.15}
     hotel: {appeal: 0.55, base_price: 0.88}
     onsen: {appeal: 0.72, base_price: 0.92}
+    shop: {appeal: 0.48, base_price: 0.55}
+    attraction: {appeal: 0.62, base_price: 0.60}
 
   poi_attributes:
     quality_sd: 0.17
@@ -92,6 +94,12 @@ population:
     time_flexibility: 0.45
   preference_categories: [grocery, restaurant, cafe, mall, park, onsen]
   preference_mean: 0.52
+
+# Synthetic request-time assumptions, not calibrated facts about Hakone.
+recommendation:
+  travel_speed_kmh: 24.0
+  temporary_unavailability_probability: 0.12
+  shown_candidates: 10
 
 episodes:
   routine_min_weight: 0.25

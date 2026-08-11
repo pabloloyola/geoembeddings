@@ -31,6 +31,8 @@ from .contract import (
     SIMULATION_IDENTITY_HASH_ALGORITHM,
     SIMULATION_IDENTITY_MANIFEST_SCHEMA,
 )
+from .recommendation import (IMPRESSION_FIELDS, INTERACTION_FIELDS, POI_FIELDS, REQUEST_FIELDS,
+                             naive_ranker_diagnostics, validate_recommendation_tables)
 
 try:
     import yaml
@@ -43,7 +45,7 @@ except ImportError as exc:  # pragma: no cover - exercised by the CLI error path
 JST = timezone(timedelta(hours=9))
 
 
-SIMULATOR_VERSION = "0.4.0"
+SIMULATOR_VERSION = "0.5.0"
 RANDOM_STREAM_ALGORITHM = "sha256-root-seed-and-stream-name/1.0"
 RANDOM_STREAM_NAMES = ("world", "user_latents", "episodes", "choices", "observation")
 IDENTITY_GENERATION_VERSION = "sha256-semantic-key/1.0"
@@ -124,7 +126,7 @@ def load_config(path: Path) -> dict[str, Any]:
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ValueError("The YAML root must be a mapping.")
-    required = {"run", "world", "population", "episodes", "choice", "observation", "events", "scenarios", "interventions"}
+    required = {"run", "world", "population", "episodes", "choice", "observation", "events", "recommendation", "scenarios", "interventions"}
     missing = sorted(required - set(raw))
     if missing:
         raise ValueError(f"Missing required configuration sections: {missing}")
@@ -889,9 +891,49 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                     )
 
     observed_events.sort(key=lambda row: (row["user_id"], row["timestamp"], row["service_id"]))
+    # Recommendation requests are an explicitly public platform surface.  They
+    # are generated independently of protected episode/utility rows.
+    catalog = []
+    for poi in pois:
+        category = str(poi["category"])
+        catalog.append(dict(zip(POI_FIELDS, (
+            poi["poi_id"], poi["region_id"], poi["prefecture"], category, round(poi["lat"], 6), round(poi["lon"], 6),
+            min(4, max(1, round(float(poi["price"]) * 4))), round(clamp(.35 + (.3 if category in {"park", "attraction", "restaurant"} else 0)), 3),
+            "indoor" if category in {"hotel", "restaurant", "cafe", "shop"} else "outdoor",
+            round(float(poi["popularity"]), 5), "08:00", "22:00", iso_at(start_day, 0.0),
+        ))))
+    requests: list[dict[str, Any]] = []
+    impressions: list[dict[str, Any]] = []
+    interactions: list[dict[str, Any]] = []
+    hakone = regions_by_id["hakone"]
+    hakone_pois = [p for p in pois if p["region_id"] == "hakone" and p["category"] in {"onsen", "restaurant", "cafe", "shop", "hotel", "attraction"}]
+    for user in users_observed:
+        timestamp = iso_at(start_day + timedelta(days=args.days - 1), 10.0)
+        request_id = stable_identifier("request", user["user_id"], timestamp, "hakone_arrival")
+        requests.append(dict(zip(REQUEST_FIELDS, (request_id, user["user_id"], timestamp, "hakone", hakone.lat, hakone.lon, "arrival_location"))))
+        available_rows = []
+        for position, poi in enumerate(sorted(hakone_pois, key=lambda p: p["poi_id"]), 1):
+            available = int(choice_rng.random() >= float(CONFIG["recommendation"]["temporary_unavailability_probability"]))
+            travel = max(1.0, haversine_km(hakone.lat, hakone.lon, poi["lat"], poi["lon"]) / float(CONFIG["recommendation"]["travel_speed_kmh"]) * 60)
+            row = dict(zip(IMPRESSION_FIELDS, (request_id, poi["poi_id"], position, available, 0, "", round(travel, 2), timestamp)))
+            impressions.append(row)
+            if available: available_rows.append(row)
+        shown = sorted(available_rows, key=lambda r: (-float(next(p["popularity"] for p in hakone_pois if p["poi_id"] == r["poi_id"])), r["poi_id"]))[:int(CONFIG["recommendation"]["shown_candidates"])]
+        for rank, row in enumerate(shown, 1): row["is_shown"], row["shown_rank"] = 1, rank
+        if shown:
+            selected = shown[0]
+            interactions.append(dict(zip(INTERACTION_FIELDS, (stable_identifier("interaction", request_id, "click"), request_id,
+                selected["poi_id"], iso_at(start_day + timedelta(days=args.days - 1), 10.05), "click"))))
+    recommendation_tables = {"poi_catalog": catalog, "recommendation_requests": requests, "impressions": impressions, "interactions": interactions}
+    recommendation_validation = validate_recommendation_tables(recommendation_tables)
+    recommendation_validation["naive_rankers"] = naive_ranker_diagnostics(recommendation_tables, observed_events)
     tables = {
         observed_dir / OBSERVED_FILES["events"]: observed_events,
         observed_dir / OBSERVED_FILES["users"]: users_observed,
+        observed_dir / OBSERVED_FILES["poi_catalog"]: catalog,
+        observed_dir / OBSERVED_FILES["recommendation_requests"]: requests,
+        observed_dir / OBSERVED_FILES["impressions"]: impressions,
+        observed_dir / OBSERVED_FILES["interactions"]: interactions,
         truth_dir / TRUTH_FILES["user_latents"]: user_latents,
         truth_dir / TRUTH_FILES["episodes"]: episodes,
         truth_dir / TRUTH_FILES["candidate_sets"]: candidate_sets,
@@ -954,6 +996,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
         "geographic_splits": {"development": "Tokyo, Kanagawa, Saitama, Chiba", "holdout": "Ibaraki, Tochigi, Gunma"},
         "table_rows": {str(path.relative_to(output)): len(rows) for path, rows in tables.items()},
         "validation": report,
+        "recommendation_contract": recommendation_validation,
         "training_boundary": "Training code may read observed/ only. truth/ is reserved for evaluation.",
     }
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")

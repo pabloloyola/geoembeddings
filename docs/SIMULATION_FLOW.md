@@ -15,7 +15,11 @@ runs/kanto_pilot/
 ├── deep_validation_report.json
 ├── observed/
 │   ├── users_observed.csv.gz
-│   └── observed_events.csv.gz
+│   ├── observed_events.csv.gz
+│   ├── poi_catalog.csv.gz
+│   ├── recommendation_requests.csv.gz
+│   ├── impressions.csv.gz
+│   └── interactions.csv.gz
 └── truth/
     ├── user_latents.csv.gz
     ├── episodes_truth.csv.gz

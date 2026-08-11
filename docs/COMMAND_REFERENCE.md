@@ -32,7 +32,11 @@ RUN_DIR/
 ├── deep_validation_report.json
 ├── observed/
 │   ├── users_observed.csv.gz
-│   └── observed_events.csv.gz
+│   ├── observed_events.csv.gz
+│   ├── poi_catalog.csv.gz
+│   ├── recommendation_requests.csv.gz
+│   ├── impressions.csv.gz
+│   └── interactions.csv.gz
 └── truth/
     ├── user_latents.csv.gz
     ├── episodes_truth.csv.gz
@@ -41,6 +45,15 @@ RUN_DIR/
     ├── trajectories_truth.csv.gz
     └── observation_process.csv.gz
 ```
+
+Dataset contract `geoembeddings-dataset/2.0` adds the four recommendation
+tables. Readers retain read-only compatibility with `1.0` for event-only model
+stages; they do not invent missing recommendation data. Recommendation
+consumers must require `2.0`, and CSV column order is normative. Hakone request
+generation uses documented synthetic YAML assumptions (24 km/h travel-speed
+conversion, 12% temporary unavailability, ten displayed candidates), not facts
+about real businesses or transport. Utility, probabilities, latent intent and
+episodes, inaccessible alternatives, and counterfactual outcomes are excluded.
 
 Canonical experiment tree after all stages:
 

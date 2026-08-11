@@ -9,7 +9,8 @@ from typing import Any
 
 
 DATASET_CONTRACT_NAME = "geoembeddings-dataset"
-DATASET_CONTRACT_VERSION = "1.0"
+DATASET_CONTRACT_VERSION = "2.0"
+LEGACY_DATASET_CONTRACT_VERSIONS = ("1.0",)
 SIMULATION_IDENTITY_MANIFEST_SCHEMA = "geoembeddings-simulation-identity/1.0"
 SIMULATION_IDENTITY_HASH_ALGORITHM = "sha256-canonical-sorted-identifiers/1.0"
 
@@ -139,7 +140,13 @@ OFFLINE_BENCHMARK_SCHEMA = "geoembeddings-offline-benchmark/1.0"
 OBSERVED_FILES = {
     "users": "users_observed.csv.gz",
     "events": "observed_events.csv.gz",
+    "poi_catalog": "poi_catalog.csv.gz",
+    "recommendation_requests": "recommendation_requests.csv.gz",
+    "impressions": "impressions.csv.gz",
+    "interactions": "interactions.csv.gz",
 }
+
+LEGACY_OBSERVED_FILES = {key: OBSERVED_FILES[key] for key in ("users", "events")}
 
 TRUTH_FILES = {
     "user_latents": "user_latents.csv.gz",

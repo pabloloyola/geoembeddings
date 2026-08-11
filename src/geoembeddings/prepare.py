@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -7,7 +8,6 @@ import numpy as np
 import pandas as pd
 
 from .config import dump_config
-from .contract import DATASET_CONTRACT_NAME, DATASET_CONTRACT_VERSION
 from .io import sha256_file, write_json
 from .schema import EVENT_FILE, USER_FILE, load_observed
 
@@ -25,6 +25,7 @@ def prepare_data(
     output_dir = Path(output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     users, events = load_observed(observed_dir)
+    source_contract = json.loads((observed_dir.parent / "manifest.json").read_text(encoding="utf-8"))["dataset_contract"]
 
     train_end, validation_end = _temporal_boundaries(events, config["data"])
     train_events = events.loc[events["timestamp"] <= train_end]
@@ -44,8 +45,8 @@ def prepare_data(
     per_split = _count_targets_by_split(events, train_end, validation_end)
     report = {
         "dataset_contract": {
-            "name": DATASET_CONTRACT_NAME,
-            "version": DATASET_CONTRACT_VERSION,
+            "name": source_contract["name"],
+            "version": source_contract["version"],
         },
         "run_dir": str(observed_dir.parent),
         "observed_dir": str(observed_dir),

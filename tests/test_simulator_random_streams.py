@@ -106,7 +106,8 @@ def test_fixed_seed_simulation_provenance_identity_and_observation_independence(
         changed / "truth" / "observation_process.csv.gz"
     )
     observed_names = {path.name for path in (reference / "observed").iterdir()}
-    assert observed_names == {"users_observed.csv.gz", "observed_events.csv.gz"}
+    assert observed_names == {"users_observed.csv.gz", "observed_events.csv.gz", "poi_catalog.csv.gz",
+                              "recommendation_requests.csv.gz", "impressions.csv.gz", "interactions.csv.gz"}
     assert "random_streams" not in json.loads((reference / "manifest.json").read_text())["validation"]
 
     reference_identity = manifest["identity"]["entities"]
