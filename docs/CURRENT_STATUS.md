@@ -40,3 +40,11 @@ a 50-user, 7-day learned pipeline plus baseline comparison completed end to end.
 Run the comparison on the same 500-user dataset already used for learned
 training. Preserve `embedding_comparison.json` and `.md` as the pre-factorization
 reference. Then begin Phase 1 of `docs/ROADMAP.md`.
+
+## T1.2 episode response (R1, R4)
+
+The protected evaluator joins observed-event dense embeddings to truth episodes in memory and writes `episode_response.json` or `baseline_episode_response.json`. Statistical and learned dense exports remain observed-only. Coverage, response curves, coherence, boundary change, drift/recovery, a held-out-user intent probe, different-user separation, and effective rank are reported. These are single-vector diagnostics, not evidence of disentanglement.
+
+### Matched smoke evidence (seed 20260811)
+
+A 20-user, 3-day matched smoke run (`/tmp/t12-run`, `/tmp/t12-exp`) produced 186 unique dense rows for each representation. Learned-minus-baseline deltas were -0.02373 within-episode consecutive cosine, +0.01754 boundary-change magnitude, and +0.07824 post-episode recovery cosine. Coverage was 18/20 users, 53/60 episodes, and 6/10 bins. This tiny run is executable evidence only: deep simulation validation failed at this scale, two users had no observed dense history, and no scientific model-improvement claim is warranted.

@@ -9,6 +9,7 @@ import pandas as pd
 from .io import read_json
 from .prepare import UNK_TOKEN, derive_continuous_features
 from .schema import load_observed
+from .data import _dense_cutoff_offsets
 
 
 def export_statistical_baseline(
@@ -73,6 +74,57 @@ def export_statistical_baseline(
     }
 
 
+def export_dense_statistical_baseline(
+    observed_dir: str | Path,
+    prepared_dir: str | Path,
+    output_path: str | Path,
+    config: dict[str, Any],
+    *,
+    event_stride: int = 1,
+) -> dict[str, Any]:
+    """Export the same observed-only statistical representation after events."""
+    _, events = load_observed(observed_dir)
+    metadata = read_json(Path(prepared_dir) / "prepared_metadata.json")
+    vocabularies = read_json(Path(prepared_dir) / "vocabularies.json")
+    categorical_fields = list(metadata["categorical_fields"])
+    continuous_fields = list(metadata["continuous_fields"])
+    categorical = _encode_categories(events, categorical_fields, vocabularies)
+    continuous = _encode_continuous(events, continuous_fields, metadata)
+    maximum = int(config["data"]["max_sequence_length"])
+    users, timestamps, counts, vectors = [], [], [], []
+    for user_id, indices in events.groupby("user_id", sort=False).indices.items():
+        ordered = np.asarray(indices, dtype=np.int64)
+        offsets = _dense_cutoff_offsets(len(ordered), event_stride)
+        by_timestamp = {pd.Timestamp(events.iloc[int(ordered[offset])]["timestamp"]): offset
+                        for offset in offsets}
+        for offset in sorted(by_timestamp.values()):
+            eligible = ordered[max(0, offset + 1 - maximum) : offset + 1]
+            components = []
+            for field_index, field in enumerate(categorical_fields):
+                size = len(vocabularies[field])
+                values = np.bincount(categorical[eligible, field_index], minlength=size).astype(np.float32)
+                values[0] = 0
+                components.append(values / max(values.sum(), 1.0))
+            components.extend((continuous[eligible].mean(0), continuous[eligible].std(0)))
+            vectors.append(np.concatenate(components).astype(np.float32))
+            users.append(str(user_id))
+            timestamps.append(pd.Timestamp(events.iloc[ordered[offset]]["timestamp"]).isoformat())
+            counts.append(offset + 1)
+    matrix = np.stack(vectors)
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        output_path, user_id=np.asarray(users, dtype=str), timestamp=np.asarray(timestamps, dtype=str),
+        cutoff_kind=np.asarray(["observed_event"] * len(users), dtype=str), embedding=matrix,
+        history_event_count=np.asarray(counts, dtype=np.int64),
+        categorical_fields=np.asarray(categorical_fields, dtype=str),
+        continuous_fields=np.asarray(continuous_fields, dtype=str),
+    )
+    return {"output": str(output_path.resolve()), "rows": len(users), "users": len(set(users)),
+            "embedding_dim": int(matrix.shape[1]), "event_stride": event_stride,
+            "information_boundary": "observed/ only; protected episode labels are not exported"}
+
+
 def _encode_categories(
     events: pd.DataFrame,
     fields: list[str],
@@ -100,4 +152,3 @@ def _encode_continuous(
         normalized = (values - float(statistics["mean"])) / float(statistics["std"])
         columns.append(normalized.to_numpy(dtype=np.float32))
     return np.stack(columns, axis=1)
-

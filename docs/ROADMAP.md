@@ -207,3 +207,7 @@ Goal: make the representation usable beyond the controlled prototype.
 
 Exit gate: tradeoffs are reported explicitly; no simulator-only result is
 presented as real-world validation.
+
+## T1.2 implementation note (R1, R4)
+
+The episode-response evaluator is executable through `evaluate --episodes`. Configured half-open response bins, coherence/boundary change, single-vector drift/recovery, held-out intent probes, separation, and effective rank are reported. It does not claim persistent/context disentanglement; matched dense baseline and learned reports are required for deltas.

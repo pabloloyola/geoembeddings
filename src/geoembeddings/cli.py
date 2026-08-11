@@ -52,10 +52,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=1,
         help="Export every Nth observed event per user, always including first and last",
     )
+    export_dense.add_argument("--kind", choices=("learned", "baseline"), default="learned")
 
     evaluate = commands.add_parser("evaluate", help="Evaluate learned or baseline embeddings")
     _add_embedding_arguments(evaluate)
     evaluate.add_argument("--kind", choices=("learned", "baseline"), default="learned")
+    evaluate.add_argument("--episodes", action="store_true", help="Evaluate dense embeddings at protected episode boundaries")
 
     compare = commands.add_parser(
         "compare", help="Compare baseline and learned embeddings with common frozen probes"
@@ -186,12 +188,16 @@ def _export_dense(
     experiment: ExperimentLayout,
     config_path: Path,
     event_stride: int,
+    kind: str = "learned",
 ) -> dict[str, Any]:
-    from .export import export_dense_embeddings
-
     run.validate(require_truth=False)
     if event_stride < 1:
         raise ValueError("--event-stride must be at least 1")
+    if kind == "baseline":
+        from .baseline import export_dense_statistical_baseline
+        return export_dense_statistical_baseline(run.observed, experiment.prepared,
+            experiment.dense_baseline_embeddings, load_config(config_path), event_stride=event_stride)
+    from .export import export_dense_embeddings
     if not experiment.checkpoint.is_file():
         raise FileNotFoundError(f"Missing trained checkpoint: {experiment.checkpoint}")
     return export_dense_embeddings(
@@ -209,11 +215,19 @@ def _evaluate(
     experiment: ExperimentLayout,
     config_path: Path,
     kind: str,
+    episodes: bool = False,
 ) -> dict[str, Any]:
-    from .evaluation import evaluate_embeddings
+    from .evaluation import evaluate_embeddings, evaluate_episode_response
 
     run.validate(require_truth=True)
     learned = kind == "learned"
+    if episodes:
+        dense = experiment.dense_embeddings if learned else experiment.dense_baseline_embeddings
+        output = experiment.episode_response if learned else experiment.baseline_episode_response
+        if not dense.is_file():
+            raise FileNotFoundError(f"Missing dense {kind} embeddings: {dense}")
+        return evaluate_episode_response(run.truth, experiment.prepared, dense, output,
+                                         load_config(config_path), kind=kind)
     checkpoint = experiment.checkpoint if learned else None
     embeddings = experiment.embeddings if learned else experiment.baseline_embeddings
     output = experiment.evaluation if learned else experiment.baseline_evaluation
@@ -315,9 +329,9 @@ def main() -> None:
         elif args.command == "export":
             result = _export(run, experiment, config_path)
         elif args.command == "export-dense":
-            result = _export_dense(run, experiment, config_path, args.event_stride)
+            result = _export_dense(run, experiment, config_path, args.event_stride, args.kind)
         else:
-            result = _evaluate(run, experiment, config_path, args.kind)
+            result = _evaluate(run, experiment, config_path, args.kind, args.episodes)
     elif args.command == "compare":
         result = _compare(args)
     elif args.command == "pipeline":

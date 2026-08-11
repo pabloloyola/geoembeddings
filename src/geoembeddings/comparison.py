@@ -150,6 +150,23 @@ def compare_embeddings(
         },
         "requirements": _requirement_status(),
     }
+    baseline_episode = Path(baseline_embeddings_path).parent / "baseline_episode_response.json"
+    learned_episode = Path(learned_embeddings_path).parent / "episode_response.json"
+    if baseline_episode.is_file() or learned_episode.is_file():
+        if not (baseline_episode.is_file() and learned_episode.is_file()):
+            raise ValueError("Episode comparison requires both baseline and learned episode reports")
+        left, right = read_json(baseline_episode), read_json(learned_episode)
+        contract_fields = ("source_hashes", "dense_users", "dense_timestamps_sha256", "boundary_bin_edges_hours")
+        mismatches = [key for key in contract_fields if left["metric_contract"].get(key) != right["metric_contract"].get(key)]
+        if mismatches:
+            raise ValueError(f"Episode reports are not matched; mismatched fields: {mismatches}")
+        metrics = {
+            "within_episode_cosine": (left["R4_episode_coherence"]["within_episode_consecutive_cosine"]["mean"], right["R4_episode_coherence"]["within_episode_consecutive_cosine"]["mean"]),
+            "boundary_change_magnitude": (left["R4_episode_coherence"]["boundary_change_magnitude"]["mean"], right["R4_episode_coherence"]["boundary_change_magnitude"]["mean"]),
+            "post_episode_recovery": (left["R1_single_vector_diagnostics"]["post_episode_recovery_cosine"]["mean"], right["R1_single_vector_diagnostics"]["post_episode_recovery_cosine"]["mean"]),
+        }
+        report["episode_response_comparison"] = {name: {"baseline": a, "learned": b,
+            "learned_minus_baseline": (b-a) if a is not None and b is not None else None} for name, (a,b) in metrics.items()}
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     report["outputs"] = {

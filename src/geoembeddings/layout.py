@@ -88,6 +88,18 @@ class ExperimentLayout:
         return self.root / "dense_embeddings.npz"
 
     @property
+    def dense_baseline_embeddings(self) -> Path:
+        return self.root / "dense_statistical_baseline.npz"
+
+    @property
+    def episode_response(self) -> Path:
+        return self.root / "episode_response.json"
+
+    @property
+    def baseline_episode_response(self) -> Path:
+        return self.root / "baseline_episode_response.json"
+
+    @property
     def baseline_embeddings(self) -> Path:
         return self.root / "statistical_baseline.npz"
 

@@ -282,7 +282,14 @@ class DenseUserCutoffDataset(Dataset[dict[str, Any]]):
         self.items: list[tuple[str, str, int, np.ndarray]] = []
         for user_id, indices in events.groupby("user_id", sort=False).indices.items():
             ordered = np.asarray(indices, dtype=np.int64)
-            for offset in _dense_cutoff_offsets(len(ordered), event_stride):
+            offsets = _dense_cutoff_offsets(len(ordered), event_stride)
+            # Several services can emit at one instant. Keep the latest history
+            # at that instant so the public dense key remains user/timestamp.
+            by_timestamp = {
+                pd.Timestamp(events.iloc[int(ordered[offset])]["timestamp"]): offset
+                for offset in offsets
+            }
+            for offset in sorted(by_timestamp.values()):
                 history_count = offset + 1
                 event_index = int(ordered[offset])
                 timestamp = pd.Timestamp(events.iloc[event_index]["timestamp"]).isoformat()
