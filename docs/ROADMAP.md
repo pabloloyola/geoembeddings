@@ -77,10 +77,11 @@ Implement deterministic evaluator-side observed-input views:
 Re-encode the same users and report representation drift and downstream
 degradation curves.
 
-Status: deterministic event thinning (T1.3) is implemented. Its SHA-256 mask is
-independent of row order and shared by learned and statistical encoders. GPS,
-service removal, truncation, and timestamp jitter remain pending; event-thinning
-results alone are therefore only partial R7 evidence.
+Status: versioned deterministic GPS, timestamp, leave-one-service-out, and
+recent-truncation views are implemented through `geoembed robustness`. View
+exports use `robustness/{kind}/{view_id}.npz`, and reports use
+`robustness/{kind}_robustness.json`. These deterministic simulator/evaluator
+views do not establish causal invariance or calibration to real-world noise.
 
 ### 1.3 Explicit transfer splits
 
