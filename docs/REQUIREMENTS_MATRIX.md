@@ -11,10 +11,10 @@ controlled evaluation and must be interpreted with adjacent failure checks.
 | R1 | Persistent/context separation | Temporary trips alter context without rewriting persistent preference | episode-aligned exports; matched temporary and sustained changes | persistent probe R2, context accuracy, persistent drift, adaptation delay | Partial |
 | R2 | Multi-scale spatial fidelity | Representations support region, city, and fine local distinctions without boundary brittleness | distance/boundary pair generator; held-out cells | region/geohash accuracy, distance retrieval, boundary-pair consistency | Partial |
 | R3 | Multi-scale temporal fidelity | Capture elapsed time, daily/weekly periodicity, and duration | periodic/routine labels and time perturbations | hour/day probes, duration error, periodic retrieval | Partial |
-| R4 | Episode coherence | Events within an episode share context; adjacent episodes separate | episode-boundary embeddings and protected episode labels | within/between retrieval, episode classification, boundary change | Pending |
+| R4 | Episode coherence | Events within an episode share context; adjacent episodes separate | episode-boundary embeddings and protected episode labels | within/between retrieval, episode classification, boundary change | Partial: episode coherence metrics executable; factorized persistent/context separation and matched change scenarios pending |
 | R5 | Preference/opportunity separation | Same latent preference remains identifiable when candidate availability or exposure changes | matched-seed counterfactual scenarios with shared users/world | trait/preference invariance, representation drift, utility recovery | Pending |
 | R6 | Cross-service alignment | One service history supports another without service identity dominating | leave-one-service-out views and targets | cross-service retrieval/prediction, missing-service degradation | Pending |
-| R7 | Noise/sparsity robustness | Moderate GPS noise, missing events, and dropout cause graceful degradation | deterministic corruption operators | performance/deviation curves, worst-group degradation | Pending |
+| R7 | Noise/sparsity robustness | Moderate GPS noise, missing events, and dropout cause graceful degradation | deterministic corruption operators | performance/deviation curves, worst-group degradation | Partial: deterministic event-removal curves executable; GPS, timestamp, and service-removal views pending |
 | R8 | Geographic/temporal transfer | Useful in later periods, unseen regions, and unseen POIs | explicit region/POI/time holdouts | frozen-probe/ranking deltas, cold-start coverage | Partial temporal only |
 | R9 | New-context recommendation | Tokyo history improves ranking after Hakone arrival and contextual actions | public requests, catalog, candidates, impressions, interactions; protected utility | Recall/NDCG/MRR, regret, calibration, adaptation delay | Blocked by data contract |
 
@@ -99,4 +99,3 @@ fails R1.
 - Simulator truth permits utility regret and probability recovery, which are
   more informative than reproducing one stochastic chosen item.
 - Never average R1--R13 into one score.
-

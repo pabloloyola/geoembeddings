@@ -254,6 +254,23 @@ def evaluate_embeddings(
 
     learned_model = checkpoint_path is not None
     report = {
+        "report_scope": {
+            "name": "base_three_cutoff_evaluation",
+            "description": "Persistent probes, cross-cutoff stability, and learned next-event metrics only.",
+            "supplemental_reports": {
+                "R4_episode_coherence": {
+                    "command": "evaluate --episodes",
+                    "artifacts": ["episode_response.json", "baseline_episode_response.json"],
+                },
+                "R7_noise_and_sparsity_robustness": {
+                    "command": "robustness",
+                    "artifacts": [
+                        "robustness/learned_event_removal.json",
+                        "robustness/baseline_event_removal.json",
+                    ],
+                },
+            },
+        },
         "information_boundary": {
             "train": "observed/ only",
             "evaluation": "truth/ opened only by this evaluator command",
@@ -281,10 +298,20 @@ def evaluate_embeddings(
                 "evidence": ["next_event"] if learned_model else [],
                 "missing": "routine and periodicity probes",
             },
-            "R4_episode_coherence": {"status": "pending"},
+            "R4_episode_coherence": {
+                "status": "not_evaluated_in_base_report",
+                "supplemental_status": "partial",
+                "evidence": "evaluate --episodes writes the episode-response supplemental report",
+                "missing": "factorized persistent/context separation and matched change scenarios",
+            },
             "R5_preference_opportunity_separation": {"status": "pending"},
             "R6_cross_service_alignment": {"status": "pending"},
-            "R7_noise_and_sparsity_robustness": {"status": "pending"},
+            "R7_noise_and_sparsity_robustness": {
+                "status": "not_evaluated_in_base_report",
+                "supplemental_status": "partial",
+                "evidence": "robustness writes deterministic event-removal curves",
+                "missing": "GPS, timestamp-jitter, and service-removal views",
+            },
             "R8_geographic_temporal_generalization": {"status": "pending"},
             "R9_new_context_recommendation": {
                 "status": "blocked_by_data_contract",
