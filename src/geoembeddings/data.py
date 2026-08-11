@@ -205,9 +205,14 @@ class UserCutoffDataset(Dataset[dict[str, Any]]):
         observed_dir: str | Path,
         prepared_dir: str | Path,
         config: dict[str, Any],
+        *,
+        events: pd.DataFrame | None = None,
+        min_history_events: int = 1,
     ) -> None:
         base = EventWindowDataset.__new__(EventWindowDataset)
-        _, events = load_observed(observed_dir)
+        if events is None:
+            _, events = load_observed(observed_dir)
+        events = events.copy()
         base.metadata = read_json(Path(prepared_dir) / "prepared_metadata.json")
         base.vocabularies = read_json(Path(prepared_dir) / "vocabularies.json")
         base.categorical_fields = list(base.metadata["categorical_fields"])
@@ -222,14 +227,14 @@ class UserCutoffDataset(Dataset[dict[str, Any]]):
         cutoffs = {
             "train": pd.Timestamp(base.metadata["train_end"]),
             "validation": pd.Timestamp(base.metadata["validation_end"]),
-            "test": events["timestamp"].max(),
+            "test": pd.Timestamp(base.metadata.get("timestamp_max", events["timestamp"].max())),
         }
         for user_id, indices in events.groupby("user_id", sort=False).indices.items():
             ordered = np.asarray(indices, dtype=np.int64)
             for cutoff_name, cutoff in cutoffs.items():
                 eligible_mask = (events.iloc[ordered]["timestamp"] <= cutoff).to_numpy()
                 eligible = ordered[eligible_mask]
-                if len(eligible):
+                if len(eligible) >= min_history_events:
                     self.items.append((str(user_id), cutoff_name, eligible[-self.maximum :]))
 
     def __len__(self) -> int:

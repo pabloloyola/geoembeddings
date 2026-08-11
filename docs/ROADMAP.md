@@ -54,6 +54,11 @@ Implement deterministic evaluator-side observed-input views:
 Re-encode the same users and report representation drift and downstream
 degradation curves.
 
+Status: deterministic event thinning (T1.3) is implemented. Its SHA-256 mask is
+independent of row order and shared by learned and statistical encoders. GPS,
+service removal, truncation, and timestamp jitter remain pending; event-thinning
+results alone are therefore only partial R7 evidence.
+
 ### 1.3 Explicit transfer splits
 
 Add held-out region, later-time, unseen geohash, and eventually unseen-POI

@@ -22,7 +22,7 @@ to establish what fails when these pressures share one capacity bottleneck.
 | R4 | Episode coherence | Later episode-aware contrastive/predictive tasks | Episode classification and within-episode retrieval | Pending |
 | R5 | Preference/opportunity separation | Later exposure-aware or inverse-propensity objective | Same preference under changed opportunity/exposure | Pending |
 | R6 | Cross-service alignment | Next-service transitions; later paired cross-service views | Hold out one service and predict it from the others | Pending |
-| R7 | Noise/sparsity robustness | Event dropout | Controlled event removal, GPS perturbation, missing-service tests | Partial training signal; tests pending |
+| R7 | Noise/sparsity robustness | Event dropout | Controlled event removal, GPS perturbation, missing-service tests | Event-removal executable; GPS/service views pending |
 | R8 | Geographic/temporal transfer | Compositional event fields and no default POI ID | Held-out regions and later periods | Temporal split partial; geography pending |
 | R9 | New-context recommendation | Candidate-aware ranking objective | Tokyo-history → Hakone-candidate ranking, regret, NDCG | Blocked by observable contract |
 

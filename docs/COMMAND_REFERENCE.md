@@ -522,6 +522,30 @@ Yes. It is a protected comparative evaluator.
 There is intentionally no aggregate winner. Read stability together with
 distinctiveness, effective rank, and retained information.
 
+## `robustness`
+
+Measure R7 event-sparsity sensitivity by deterministically removing observed
+events and re-encoding causal histories. Rates and seed come from the embedding
+YAML (defaults: seed `20260811`, rates `0`, `0.1`, `0.25`, `0.5`).
+
+```bash
+uv run geoembed robustness --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed robustness --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+```
+
+The SHA-256 selection key includes the observed-event source hash, seed, user
+ID, timestamp, and canonical row discriminator. It is independent of input
+order and global RNG state. Original cutoffs are preserved; histories below
+`min_history_events` are omitted and explicitly reported, never substituted.
+
+Canonical artifacts are `robustness/{kind}/removal_RATE.npz` and
+`robustness/{kind}_event_removal.json`. They record hashes, algorithm/version,
+seed, requested/realized rates and counts, model kind, field order, keys,
+coverage, cosine drift, and frozen-probe degradation. Encoding reads only
+`observed/`; truth opens afterward at evaluation. `compare` requires identical
+hashes, specifications, masks, cutoffs, and keys before producing separate
+learned-minus-baseline R7 axes. This test does not cover GPS or missing services.
+
 ## `pipeline`
 
 ### Purpose
