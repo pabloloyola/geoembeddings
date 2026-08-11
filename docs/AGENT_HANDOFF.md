@@ -109,9 +109,12 @@ The earlier statistical smoke baseline achieved train-to-test cosine stability
 near `0.986` but mean persistent-trait probe R2 near `-0.093`. This is the
 canonical warning that stability without retained information is not success.
 
-The `compare` command can now measure both representations fairly, but no real
-500-user comparison report is bundled. Generate it locally before interpreting
-which representation is stronger.
+The `compare` command can measure both representations fairly and merge matched
+episode, robustness, and spatial-transfer reports when those supplemental
+commands have been run. The historical 500-user reports are indexed, but their
+bytes are lost/unverifiable; do not interpret that reference as evidence that
+either representation is stronger. A replacement must use a new artifact
+identity and lineage.
 
 ## Known bug history to preserve in tests
 
@@ -137,20 +140,28 @@ It can compare:
 - activity-volume dependence;
 - common frozen future-event probes.
 
-It cannot yet directly test:
+It can also execute deterministic sensitivity and transfer diagnostics:
 
-- episode coherence or context adaptation delay;
+- dense, episode-aligned coherence, response, drift/recovery, and intent probes;
+- event removal, GPS perturbation, timestamp jitter, leave-one-service-out, and
+  recent-history truncation views;
+- distance retrieval, geohash-boundary pairs, held-out-region coverage, and
+  seen/unseen geohash slices.
+
+It cannot yet establish:
+
 - persistent/routine/context separation;
 - matched counterfactual exposure invariance;
-- GPS, event-removal, or missing-service robustness;
-- explicit held-out-region transfer;
+- causal invariance or calibration to real GPS/timestamp/missingness processes;
+- unseen-POI or candidate-aware geographic transfer;
 - uncertainty, sustained preference change, privacy, or efficiency;
 - candidate-aware new-context recommendation.
 
 ## Near-term research decision
 
-Do not choose the next model from next-event accuracy alone. First implement the
-missing evaluator surfaces and dense/episode-aligned exports. Then compare:
+Do not choose the next model from next-event accuracy alone. Run the implemented
+dense/episode, deterministic robustness, and spatial-transfer surfaces for both
+representations and inspect their matched `compare` axes. Then compare:
 
 1. statistical baseline;
 2. current single-vector GRU;
@@ -189,4 +200,3 @@ A remote agent should be able to:
 4. make a tested change without crossing the information boundary;
 5. produce a matched comparison and an evidence-based recommendation for the
    next iteration.
-

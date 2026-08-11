@@ -24,6 +24,8 @@
   intervals and reports within/adjacent-episode coherence, boundary change,
   response curves, drift/recovery, a held-out intent probe, and collapse checks
 - Versioned deterministic GPS, timestamp, leave-one-service-out, and recent-truncation robustness views with matched baseline/learned masks, coverage, cosine drift, realized corruption, and frozen-probe degradation
+- Train-fitted distance retrieval, geohash-boundary pairs, held-out-region
+  coverage, and seen/unseen geohash-5/geohash-7 transfer slices
 - Protected latent probes, next-event evaluation, and fair frozen
   baseline-versus-learned comparison
 
@@ -39,8 +41,8 @@ the **500-user scientific baseline as archived**.
 |---|---|---|
 | 50-user execution/contract smoke passed | verified | The learned and baseline paths completed under one preparation contract, as recorded in `docs/VERIFICATION.md`; the small cohort is not scientific evidence. |
 | Complete smoke artifact manifest registered | pending | Record immutable paths or external-storage identifiers, source commit, dataset manifest hash, and the shared-preparation-contract statement; large generated binaries need not be committed. |
-| 500-user scientific baseline archived | evidence lost/unverifiable | `docs/artifacts/t0.2-reference500.json` preserves the original hashes and identity, but neither indexed root nor an archive is available, the recorded source commit is absent from this clone, and no durable external identifier exists. The historical comparability result cannot authenticate unavailable bytes. |
-| T0.2a post-reference action | pending | The implemented reconciler refuses to derive conclusions without reopening and authenticating every indexed report. The existing absence decision remains in force and declares no aggregate winner. |
+| T0.2 reference evidence disposition | closed: evidence lost/unverifiable | `docs/artifacts/t0.2-reference500.json` preserves the original hashes and identity, but neither indexed root nor an archive is available, the recorded source commit is absent from this clone, and no durable external identifier exists. Closing the disposition does not authenticate the historical bytes or complete a scientific reference. |
+| T0.2a post-reference action | complete: finish evaluator gate | The absence decision records exactly one action, leaves every scientific axis without a conclusion, and declares no aggregate winner. It does not treat unavailable evidence as a tie or successful model result. |
 
 ## Requirement status
 
@@ -75,7 +77,7 @@ artifacts rather than incorrectly marking their implemented axes as pending.
 
 - Factorized persistent/context and routine/context representation and metrics
 - Matched temporary-versus-sustained change scenarios
-- Explicit geographic holdout experiments
+- Causal geographic invariance, real-geography calibration, and unseen-POI transfer
 - Matched counterfactual exposure/opportunity invariance
 - Recommendation request/impression/interaction data contract
 - Candidate-aware ranking and Tokyo-to-Hakone evaluation

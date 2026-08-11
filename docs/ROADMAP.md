@@ -16,8 +16,8 @@ Evidence milestones:
    identifiers, source commit, dataset manifest hash, and a statement that the
    baseline and learned reports share the same preparation contract. Large
    generated binaries are not required to be committed to Git.
-3. **500-user scientific baseline archived — evidence lost/unverifiable and
-   immediate next.** The registered `docs/artifacts/t0.2-reference500.json`
+3. **500-user reference evidence disposition recorded — closed as evidence
+   lost/unverifiable.** The registered `docs/artifacts/t0.2-reference500.json`
    preserves historical hashes, but the exact bytes and recorded source commit
    are unavailable and no durable archive was registered. Recover those exact
    bytes, or run the matched baseline-versus-learned reference using the known
@@ -29,9 +29,10 @@ Evidence milestones:
    identifiers, source commit, dataset manifest hash, and an explicit statement
    that baseline and learned reports share source hashes, cutoffs, categorical
    field order, users, and the same preparation contract.
-4. **T0.2a decision reconciled — pending.** The decision record selects only
-   `finish the evaluator gate`, with no aggregate winner, but all per-axis
-   conclusions remain pending until milestone 3 passes its comparability audit.
+4. **T0.2a absence decision reconciled — complete.** The decision record selects
+   only `finish the evaluator gate`, declares no aggregate winner, and leaves
+   every scientific axis without an authenticated conclusion. Completion closes
+   the evidence-disposition decision; it does not make T0.2 scientific evidence.
 5. **Runtime/device metadata recorded.** Attach the environment evidence needed
    to reproduce and interpret the scientific reference.
 
@@ -87,8 +88,12 @@ views do not establish causal invariance or calibration to real-world noise.
 
 ### 1.3 Explicit transfer splits
 
-Add held-out region, later-time, unseen geohash, and eventually unseen-POI
-slices. Report label coverage and separate memorization from generalization.
+Status: `evaluate --transfer` implements train-fitted distance retrieval,
+geohash-boundary pairs, held-out-region coverage, and seen/unseen
+geohash-5/geohash-7 slices with later-time and known-label coverage. Unseen-POI
+transfer remains gated by the observable recommendation contract. These
+synthetic observed-geography slices do not establish causal transfer or external
+geographic validity.
 
 ### 1.4 Counterfactual exposure/opportunity pairs
 
@@ -245,9 +250,9 @@ The episode-response evaluator is executable through `evaluate --episodes`. Conf
 
 ### T1.4 robustness gate (completed)
 
-The provisional T0.2a record selects the evaluator-gate path as its only action,
-but T0.2a remains pending because the reference evidence is absent. Independently,
-`robustness --views`
+The completed T0.2a absence decision selects the evaluator-gate path as its only
+action; it makes no scientific conclusion from the missing reference evidence.
+Independently, `robustness --views`
 now covers versioned GPS, timestamp, leave-one-service-out, and recent-history
 truncation views for R6/R7, with matched baseline/learned populations and strict
 comparison contracts. The sensitivity suite does not establish causal
