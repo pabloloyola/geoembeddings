@@ -60,14 +60,35 @@ definition of done in `AGENTS.md`.
 - [x] **T1.3 (R7)** Add deterministic event-removal robustness views. The
   configuration-driven `robustness` command uses matched learned/baseline masks,
   reports sparse coverage and frozen-probe degradation, and keeps GPS and
-  missing-service robustness explicitly pending under T1.4/T1.5.
-- [ ] **T1.4 (R7)** Add GPS-noise and timestamp-jitter robustness views.
-- [ ] **T1.5 (R6, R7)** Add leave-one-service-out encoding/evaluation.
-- [ ] **T1.6 (R8)** Add explicit held-out-region and unseen-cell slices.
-- [ ] **T1.7 (R2)** Add distance-aware retrieval and geohash-boundary pairs.
-- [ ] **T1.8 (R3)** Add hour/day, duration, routine, and periodicity probes.
-- [ ] **T1.9 (R10)** Add window-resampling stability and reliability diagnostics.
-- [ ] **T1.10 (R13)** Add runtime, throughput, memory, and artifact-size benchmarks.
+  missing-service robustness explicitly pending under P1A.
+
+### P1A — Complete the deterministic robustness framework (R6, R7)
+
+- [ ] Extend the existing `src/geoembeddings/robustness.py` implementation and
+  `geoembed robustness` command with GPS perturbation, timestamp jitter,
+  leave-one-service-out views, and recent-history truncation. Use shared,
+  deterministic view identifiers so learned and baseline reports have matched
+  coverage, and report representation-drift and frozen-downstream-degradation
+  curves.
+
+### P1B — Spatial and transfer evaluation (R2, R8)
+
+- [ ] Add held-out-region, unseen-geohash/cell, and later-time slices; add
+  distance-aware retrieval and geohash-boundary pair consistency; and report
+  explicit label and user coverage for every slice and metric.
+
+### P1C — Temporal and routine diagnostics (R3, R4)
+
+- [ ] Add hour/day probes, duration-related tasks, periodic retrieval, and
+  repeated-routine-versus-one-off-episode tests. If the current simulator cannot
+  support a valid schedule-shift test, declare that test blocked rather than
+  substituting an observational proxy.
+
+### P1D — Reliability and offline efficiency (R10, R13)
+
+- [ ] Add window/event resampling variance, reliability-error curves, and
+  coverage-risk curves; benchmark training throughput, batch latency, peak
+  memory, export throughput, and artifact size.
 
 ## P1 — Simulator counterfactual support
 
@@ -101,7 +122,7 @@ definition of done in `AGENTS.md`.
 - [ ] **T4.1 (R10)** Calibrate representation uncertainty.
 - [ ] **T4.2 (R11)** Quantify adaptation and forgetting under change points.
 - [ ] **T4.3 (R12)** Add membership and sensitive-attribute inference audits.
-- [ ] **T4.4 (R13)** Add online update/export latency benchmarks.
+- [ ] **T4.4 (R13)** Add online incremental update latency benchmarks.
 - [ ] **T4.5** Document simulator calibration and external-validity limits.
 
 ## Task template
