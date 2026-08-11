@@ -150,3 +150,51 @@ temporal definitions, split seed, and row-level coverage. Interpret R3 and R4
 axes independently alongside different-user cosine and effective-rank ratio.
 The schedule-shift field must remain `blocked` until a controlled matched
 simulator intervention exists.
+
+## T1.7 reliability and offline-efficiency smoke (2026-08-11)
+
+This evidence uses a new immutable replacement identity,
+`runs/t0.3-cpu-smoke-20260811` with
+`experiments/t0.3-cpu-smoke-20260811`. It is **not** a continuation or recovery
+of the lost T0.2 reference. Both exports have 47 users and 141 matched
+user/cutoff rows. They share preparation SHA-256
+`02c3452c8018ab6d45b591c400743c408f1ed48d7211b13aadded166e168dc10`,
+events SHA-256 `cc5c6a8352460ae4907d98b813b28d5a180b31d296895e10524214b0b7886eda`,
+and users SHA-256 `d4381e7c160b519bd9422662d89277b2ed9e807d707ea0cc151b3cfa0e36c82d`.
+The learned CPU smoke used one epoch, seed `20260806`; reliability used seed
+`20260811`, 200 resamples, five bins, and coverage 0.25/0.50/0.75/1.00.
+
+```bash
+uv run geoembed evaluate --reliability --kind baseline --run-dir runs/t0.3-cpu-smoke-20260811 --experiment-dir experiments/t0.3-cpu-smoke-20260811 --config /tmp/t0.3-cpu-smoke-20260811.yaml
+uv run geoembed evaluate --reliability --kind learned --run-dir runs/t0.3-cpu-smoke-20260811 --experiment-dir experiments/t0.3-cpu-smoke-20260811 --config /tmp/t0.3-cpu-smoke-20260811.yaml
+uv run geoembed benchmark --run-dir runs/t0.3-cpu-smoke-20260811 --experiment-dir experiments/t0.3-cpu-smoke-20260811 --config /tmp/t0.3-cpu-smoke-20260811.yaml --warmup 1 --iterations 5
+```
+
+Artifacts are `baseline_reliability.json`, `reliability.json`, and
+`benchmarks/offline.json` under that experiment. Runtime was Linux x86-64,
+Python 3.14.4, PyTorch 2.13.0+cu130, CPU. Reliability command durations were
+0.0771 s baseline and 0.0190 s learned; benchmark duration was 0.3447 s.
+
+Axes are deliberately separate:
+
+- **Reliability/coverage:** all 47 users were evaluated and all five bins met
+  minimum count. Baseline lowest/full coverage risk was 0.00406/0.00742;
+  learned was 0.00465/0.02766. Mean uncertainty/error increased across the five
+  ordered bins for both. These smoke values do not establish calibrated
+  uncertainty and cutoff bootstrap is not event/window resampling.
+- **Frozen-export read/validation:** baseline artifact was 22,016 bytes with
+  p50 0.001377 s and 103,785 rows/s; learned was 65,641 bytes with p50
+  0.000924 s and 150,876 rows/s.
+- **Offline export serialization:** baseline p50 was 0.006155 s and 22,886
+  rows/s; learned p50 was 0.013148 s and 10,677 rows/s. This serializes the
+  existing frozen arrays to an in-memory NPZ without replacing artifacts.
+- **Reliability evaluation:** baseline p50 was 0.018106 s and 2,440 users/s;
+  learned p50 was 0.012971 s and 3,607 users/s. Python peak allocation was
+  654,524/112,308 bytes and process peak RSS was 543,633,408 bytes for
+  baseline/learned respectively. Shared process peak RSS is not an isolated
+  per-representation allocation.
+
+No aggregate winner is derived: the learned artifact is larger and its
+coverage-risk behavior differs, while timing on this warm filesystem happened
+to be lower. These hardware-specific smoke measurements do not measure training
+or online incremental updates and are not calibrated real-world uncertainty.

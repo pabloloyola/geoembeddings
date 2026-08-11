@@ -17,6 +17,7 @@ contracts, not scientific superiority or disentanglement.
 | **T1.2 — Episode-boundary evaluation** | R1, R4 | `uv run pytest tests/test_episode_evaluation.py tests/test_dense_export.py tests/test_cli_paths.py`; `uv run geoembed evaluate --episodes --kind {baseline,learned} --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR`; `uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` | `baseline_episode_response.json`; `episode_response.json`; matched deltas in `comparison/embedding_comparison.{json,md}` |
 | **T1.4 — Complete deterministic robustness views** | R6, R7 | `uv run geoembed robustness --views gps,timestamp,leave-one-service-out,recent-truncation --kind {baseline,learned} --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR`; `uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` | `robustness/{kind}/{view_id}.npz`; `robustness/{kind}_robustness.json`; separate matched R6/R7 axes |
 | **T1.3 — Event-removal robustness** | R7 | `uv run geoembed robustness --kind {baseline,learned} --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR`; `uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` | `robustness/{kind}/removal_RATE.npz`; `robustness/{kind}_event_removal.json`; matched R7 axes in `comparison/embedding_comparison.{json,md}` |
+| **T1.7 — Reliability and offline efficiency** | R10, R13 | `uv run pytest tests/test_reliability.py tests/test_benchmark.py tests/test_cli_paths.py`; both `evaluate --reliability` kinds; `uv run geoembed benchmark --warmup 1 --iterations 5 ...` | `baseline_reliability.json`; `reliability.json`; `benchmarks/offline.json`; matched smoke evidence in `docs/VERIFICATION.md` |
 
 ## Now
 
@@ -205,19 +206,19 @@ evidence.
     coverage, separation, and collapse diagnostics. Simulator audit found no
     controlled schedule-shift scenario, so that evaluation remains blocked.
 
-- [ ] **T1.7 (P1D) — Add reliability and offline-efficiency evaluation.**
+- [x] **T1.7 (P1D) — Add reliability and offline-efficiency evaluation.**
   - **Requirement IDs:** R10, R13.
-  - **Prerequisites:** T0.3 runtime schema and T0.2 fixed reference.
+  - **Prerequisites:** T0.3 runtime schema and explicitly named replacement lineage `t0.3-cpu-smoke-20260811`; the lost T0.2 reference is not treated as continuous evidence.
   - **Affected layer:** evaluator.
-  - **Baseline artifact required:** T0.2 frozen exports/checkpoint and runtime metadata.
-  - **Command → expected artifact:** `uv run geoembed evaluate --reliability ...` → `{kind}_reliability.json`; `uv run geoembed benchmark --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` → `benchmarks/offline.json` (proposed).
+  - **Baseline artifact required:** matched frozen exports/checkpoint and runtime metadata from `t0.3-cpu-smoke-20260811`.
+  - **Command → expected artifact:** `uv run geoembed evaluate --reliability ...` → `{kind}_reliability.json`; `uv run geoembed benchmark --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` → `benchmarks/offline.json`.
   - **Minimum coverage:** seeded resampling and calibration-bin unit tests;
     integration tests for finite variance/coverage-risk plus benchmark schema and
     CPU execution.
   - **Completion evidence:** resampling variance, reliability-error and
     coverage-risk curves, throughput/latency/peak-memory/export/artifact-size results.
-  - **Known limitation/blocker:** offline timing is hardware-specific and does
-    not satisfy online incremental-update latency (T4.4).
+  - **Completion note (2026-08-11):** versioned reports validate observed-source/preparation/cutoff identity, finite metrics, seeded cutoff resampling, explicit sparse bins/users, and overwrite protection. The observed-only CPU harness records frozen-export read/validation and reliability-evaluator cost separately for both representations.
+  - **Known limitation/blocker:** cutoff bootstrap is a temporal-repeatability diagnostic, not calibrated uncertainty or event/window bootstrap. Offline timing is hardware-specific and does not measure training or online incremental-update latency (T4.4).
 
 ## P1 — Matched counterfactual and change support
 

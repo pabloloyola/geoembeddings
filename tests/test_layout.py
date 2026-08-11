@@ -20,6 +20,9 @@ def test_layout_resolves_all_paths(tmp_path) -> None:
     assert experiment.baseline_episode_response == experiment.root / "baseline_episode_response.json"
     assert experiment.temporal_routine_evaluation("baseline") == experiment.root / "baseline_temporal_routine.json"
     assert experiment.temporal_routine_evaluation("learned") == experiment.root / "learned_temporal_routine.json"
+    assert experiment.reliability_evaluation("baseline") == experiment.root / "baseline_reliability.json"
+    assert experiment.reliability_evaluation("learned") == experiment.root / "reliability.json"
+    assert experiment.offline_benchmark == experiment.root / "benchmarks" / "offline.json"
 
 
 def test_layout_validates_contract(tmp_path) -> None:

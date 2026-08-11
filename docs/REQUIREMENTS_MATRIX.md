@@ -22,10 +22,10 @@ controlled evaluation and must be interpreted with adjacent failure checks.
 
 | ID | Requirement | Desired behavior | Required support | Primary metrics | Current status |
 |---|---|---|---|---|---|
-| R10 | Representation uncertainty | Low-evidence or unstable users receive lower confidence | window/event bootstrap or stochastic views | embedding variance, reliability-error relation, coverage-risk | Pending |
+| R10 | Representation uncertainty | Low-evidence or unstable users receive lower confidence | window/event bootstrap or stochastic views | embedding variance, reliability-error relation, coverage-risk | Partial: T1.7 seeded cutoff-bootstrap variance, reliability-error bins, and coverage-risk are executable with explicit sparse coverage; calibrated uncertainty and event/window resampling remain pending |
 | R11 | Nonstationarity | Temporary change decays; sustained change updates persistent state | matched transient and sustained-change simulations | adaptation/forgetting time, permanent drift, regret over time | Pending |
 | R12 | Privacy | Embedding does not unnecessarily memorize identities or sensitive attributes | membership/attribute audit splits | attack AUC, sensitive probe performance, utility/privacy curve | Pending |
-| R13 | Computational efficiency | Feasible offline training and online update/export | benchmark harness | time, peak memory, examples/s, update latency, artifact size | Pending |
+| R13 | Computational efficiency | Feasible offline training and online update/export | benchmark harness | time, peak memory, examples/s, update latency, artifact size | Partial: T1.7 CPU offline frozen-export/evaluator latency, throughput, peak memory, workload, and artifact size are executable; training and online incremental-update benchmarks remain pending |
 
 ## Required controlled comparisons
 

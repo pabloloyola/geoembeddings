@@ -6,6 +6,9 @@ from __future__ import annotations
 DATASET_CONTRACT_NAME = "geoembeddings-dataset"
 DATASET_CONTRACT_VERSION = "1.0"
 
+RELIABILITY_REPORT_SCHEMA = "geoembeddings-reliability-report/1.0"
+OFFLINE_BENCHMARK_SCHEMA = "geoembeddings-offline-benchmark/1.0"
+
 OBSERVED_FILES = {
     "users": "users_observed.csv.gz",
     "events": "observed_events.csv.gz",
@@ -19,4 +22,3 @@ TRUTH_FILES = {
     "trajectories": "trajectories_truth.csv.gz",
     "observation_process": "observation_process.csv.gz",
 }
-
