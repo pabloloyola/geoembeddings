@@ -19,11 +19,11 @@ to establish what fails when these pressures share one capacity bottleneck.
 | R1 | Persistent/context separation | Cross-window agreement plus next-event prediction; later factorized objectives | Latent probes, cross-cutoff drift, episode responsiveness | Partial |
 | R2 | Multi-scale spatial fidelity | Geohash-5 and geohash-7 prediction; later coordinate/distance loss | Hierarchy accuracy, metric retrieval, geohash-boundary pairs | Partial |
 | R3 | Multi-scale temporal fidelity | Elapsed-time and cyclic calendar features; later duration/periodicity tasks | Next event, routine and periodicity probes | Partial |
-| R4 | Episode coherence | Later episode-aware contrastive/predictive tasks | Episode classification and within-episode retrieval | Pending |
+| R4 | Episode coherence | Later episode-aware contrastive/predictive tasks | Episode classification and within-episode retrieval | Partial: executable episode diagnostics; factorization pending |
 | R5 | Preference/opportunity separation | Later exposure-aware or inverse-propensity objective | Same preference under changed opportunity/exposure | Pending |
-| R6 | Cross-service alignment | Next-service transitions; later paired cross-service views | Hold out one service and predict it from the others | Pending |
-| R7 | Noise/sparsity robustness | Event dropout | Controlled event removal, GPS perturbation, missing-service tests | Event-removal executable; GPS/service views pending |
-| R8 | Geographic/temporal transfer | Compositional event fields and no default POI ID | Held-out regions and later periods | Temporal split partial; geography pending |
+| R6 | Cross-service alignment | Next-service transitions; later paired cross-service views | Hold out one service and predict it from the others | Partial: deterministic service-removal executable |
+| R7 | Noise/sparsity robustness | Event dropout | Controlled event removal, GPS perturbation, missing-service tests | Partial: deterministic corruption views executable |
+| R8 | Geographic/temporal transfer | Compositional event fields and no default POI ID | Held-out regions and later periods | Partial: held-out-region/geohash slices executable |
 | R9 | New-context recommendation | Candidate-aware ranking objective | Tokyo-history → Hakone-candidate ranking, regret, NDCG | Blocked by observable contract |
 
 ## Why the baseline objective is useful
@@ -117,10 +117,12 @@ Instead, it fits common frozen probes and reports separate axes:
 - Held-out-user future-event probes for service, action, category, region, and
   geohash levels.
 
-No aggregate winner is produced. Episode coherence, direct context adaptation,
-counterfactual exposure robustness, uncertainty, sustained-change adaptation,
-privacy, and efficiency remain explicit missing tests until their required
-exports or controlled scenarios are available.
+No aggregate winner is produced. Supplemental matched axes are added after
+`export-dense`/`evaluate --episodes`, `robustness`, and `evaluate --transfer`
+have produced both baseline and learned reports. Persistent/context
+disentanglement, counterfactual exposure invariance, real-noise calibration,
+unseen-POI transfer, uncertainty, sustained-change adaptation, privacy, and
+efficiency remain explicit missing tests.
 
 ## Executable R2/R8 spatial-transfer contract
 

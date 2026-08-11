@@ -100,7 +100,8 @@ Defaults are versioned in `configs/embedding/single_vector.yaml` (seed
 `robustness/*_event_removal.json` reports for realized thinning, unencodable
 keys, matched coverage, cosine drift, and persistent-probe degradation. Full
 removal is intentionally reported as unencodable rather than imputed. Event
-removal provides partial R7 evidence; GPS and missing-service tests remain open.
+removal provides partial R7 evidence; it is one of the implemented deterministic
+sensitivity views and does not establish real-noise robustness.
 
 Same-run smoke evidence used `smoke/run`, `smoke/experiment`, seed `20260811`,
 and 1,176 observed events. At requested rates 0/0.1/0.25/0.5, realized removals
@@ -113,3 +114,30 @@ episode comparison still ran; learned-minus-baseline within-episode cosine,
 boundary change, and post-episode recovery were -0.0627, +0.0505, and -0.0907.
 Persistent/preference probe mean-R2 deltas were -0.4870/-0.1655, so this trained
 smoke model does not outperform the baseline on representation-quality axes.
+
+## T1.4 deterministic robustness views
+
+```bash
+uv run geoembed robustness --views gps,timestamp,leave-one-service-out,recent-truncation --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed robustness --views gps,timestamp,leave-one-service-out,recent-truncation --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+```
+
+Inspect the matched view specifications and masks, realized perturbations,
+coverage, cosine drift, and frozen-probe degradation. These executable GPS,
+timestamp, service-removal, and truncation operators are deterministic
+sensitivity tests; they are not calibration to real noise or evidence of causal
+invariance.
+
+## T1.5 spatial-transfer evaluation
+
+```bash
+uv run geoembed evaluate --transfer --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed evaluate --transfer --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+```
+
+Inspect train-scaled distance retrieval, boundary-pair cosine, held-out-region
+coverage, and seen/unseen geohash slices separately. Empty or unknown-label
+slices remain explicit coverage results. These tests do not measure unseen-POI
+transfer and do not establish external geographic validity.

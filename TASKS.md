@@ -20,13 +20,14 @@ contracts, not scientific superiority or disentanglement.
 
 ## Now
 
-T0.2 is **evidence lost/unverifiable**. Its registered evidence index preserves
-the original hashes and scientific identity, but the indexed local roots are
-absent, the recorded source commit is unavailable in this clone, and no durable
-artifact identifier was registered. T0.2a therefore remains pending. Its
-decision record selects only
-`finish the evaluator gate` and leaves every scientific axis pending; T1.4's
-implemented evaluator surfaces do not substitute for the missing reference.
+T0.2 is **closed as evidence lost/unverifiable**. Its registered evidence index
+preserves the original hashes and scientific identity, but the indexed local
+roots are absent, the recorded source commit is unavailable in this clone, and no durable
+artifact identifier was registered. T0.2a is complete as an absence decision:
+it selects only `finish the evaluator gate`, leaves every scientific axis
+without an authenticated conclusion, and declares no aggregate winner. Closing
+these evidence-disposition tasks does not make the missing reference scientific
+evidence.
 
 ## Later/gated
 
@@ -62,7 +63,7 @@ implemented evaluator surfaces do not substitute for the missing reference.
   - **Known limitation/blocker:** generated binaries may live in external
     storage; the smoke cohort is not scientific evidence.
 
-- [ ] **T0.2 — Archive the 500-user scientific reference — evidence
+- [x] **T0.2 — Record the 500-user reference disposition — closed as evidence
   lost/unverifiable.**
   - **Requirement IDs:** R1–R8 (reference coverage; absent axes remain pending).
   - **Prerequisites:** T0.1; clean immutable output roots and sufficient compute.
@@ -83,11 +84,11 @@ implemented evaluator surfaces do not substitute for the missing reference.
     filesystem is mounted, no Git remote or tag identifies an archive, and the
     recorded source commit is not present in this clone. The index retains the
     original hashes, seeds, cutoffs, field order, and user-set identity, but the
-    bytes cannot be authenticated. T0.2 is therefore evidence lost/unverifiable,
-    not complete. Any replacement must use a new run/experiment identity and a
-    new evidence-index lineage.
+    bytes cannot be authenticated. T0.2 is therefore closed as evidence
+    lost/unverifiable, not completed as a scientific reference. Any replacement
+    must use a new run/experiment identity and a new evidence-index lineage.
 
-- [ ] **T0.2a — Reconcile status and record the post-reference decision.**
+- [x] **T0.2a — Reconcile status and record the post-reference decision.**
   - **Requirement IDs:** R1, R3, R4, R7.
   - **Prerequisites:** T0.2 and its complete artifact index.
   - **Affected layer:** evaluator, documentation.
@@ -102,14 +103,16 @@ implemented evaluator surfaces do not substitute for the missing reference.
     action is selected: repair/ablate, finish evaluator gate, or factorize.
   - **Known limitation/blocker:** no aggregate winner; observational and
     single-vector metrics cannot establish causal invariance or disentanglement.
-    The current decision record is an absence audit: all axes remain pending
-    until T0.2 supplies durable artifacts and passes the comparability audit.
+    The completed decision is an absence audit: all scientific axes remain
+    without conclusions until a recovered or replacement reference supplies
+    durable artifacts and passes the comparability audit.
   - **Current checkout blocker (2026-08-11):** the committed index says its
     audit passed, but its gitignored `runs/reference500` and
     `experiments/reference500` local roots are absent from this checkout and no
     durable external identifier is recorded. The reconciler correctly aborts
-    on the first unavailable indexed report, so the decision/status document
-    and T0.2a checkbox were not rewritten as complete.
+    on the first unavailable indexed report and therefore does not derive
+    report-based scientific conclusions. T0.2a is
+    complete only as the recorded evidence-disposition decision.
 
 - [ ] **T0.3 — Add runtime metadata to reports.**
   - **Requirement IDs:** R13.
