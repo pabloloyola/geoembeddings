@@ -408,7 +408,7 @@ selected for the model hypothesis, and collapse diagnostics (separation,
 retrieval, centered effective rank, task information). The routine branch stays
 gated by T1.6.
 
-- [ ] **T2.1 — Typed multi-component encoder output.**
+- [x] **T2.1 — Typed multi-component encoder output.**
   - **Requirement IDs:** R1, R4.
   - **Prerequisites:** P2 entry gate.
   - **Affected layer:** model.
@@ -420,8 +420,11 @@ gated by T1.6.
   - **Completion evidence:** public APIs use the typed boundary rather than new
     positional tuples, with no training behavior change yet.
   - **Known limitation/blocker:** an interface alone is not factorization evidence.
+  - **Completion note (2026-08-11):** a named, device-movable output boundary
+    exposes persistent, context, and combined tensors; the explicit legacy
+    adapter preserves the single vector as persistent/combined with zero context.
 
-- [ ] **T2.2 — Configuration-driven model registry.**
+- [x] **T2.2 — Configuration-driven model registry.**
   - **Requirement IDs:** R1, R4.
   - **Prerequisites:** T2.1.
   - **Affected layer:** model.
@@ -432,8 +435,10 @@ gated by T1.6.
   - **Completion evidence:** existing CLI selects variants without truth inputs
     and the legacy default remains compatible.
   - **Known limitation/blocker:** registry flexibility does not justify model complexity.
+  - **Completion note (2026-08-11):** YAML selects `single_vector` while omitted
+    variants retain that default. Unknown variants fail before data or output access.
 
-- [ ] **T2.3 — Multi-component export schema.**
+- [x] **T2.3 — Multi-component export schema.**
   - **Requirement IDs:** R1, R4.
   - **Prerequisites:** T2.1–T2.2.
   - **Affected layer:** model, observed contract, evaluator.
@@ -446,6 +451,9 @@ gated by T1.6.
   - **Completion evidence:** each component is independently addressable and
     legacy exports remain readable under an explicit compatibility rule.
   - **Known limitation/blocker:** exported branch names do not establish semantics.
+  - **Completion note (2026-08-11):** checkpoints and learned exports now carry
+    versioned components, ordered fields, hashes, cutoffs, variant, and compatibility
+    metadata. Readers explicitly migrate legacy vectors and reject malformed schemas.
 
 - [ ] **T2.4 — Capacity-matched persistent/context encoder.**
   - **Requirement IDs:** R1, R4.

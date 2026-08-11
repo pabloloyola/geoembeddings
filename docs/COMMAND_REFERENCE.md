@@ -479,6 +479,15 @@ one vector.
 `EXPERIMENT_DIR/embeddings.npz`, containing `user_id`, `cutoff`, and
 `embedding` arrays with the same structural convention as the baseline export.
 
+Learned exports use `geoembeddings-component-export/2.0`. `embedding` remains
+an alias for `component_combined`; independently addressable
+`component_persistent`, `component_context`, and `component_combined` arrays
+are accompanied by names/dimensions, model variant, ordered input fields,
+preparation/source hashes, boundaries, exported cutoffs, and compatibility
+metadata. Evaluator readers migrate an unversioned legacy vector by mapping it
+to `persistent` and `combined` with zero `context`; this preserves old artifacts
+without claiming learned factorization.
+
 ### Reads protected truth?
 
 No.

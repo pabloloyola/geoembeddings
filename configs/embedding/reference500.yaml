@@ -25,6 +25,7 @@ data:
     - log_location_accuracy_m
 
 model:
+  variant: single_vector
   categorical_embedding_dim: 24
   event_dim: 128
   hidden_dim: 128

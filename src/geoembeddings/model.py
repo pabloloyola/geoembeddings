@@ -1,11 +1,51 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from collections.abc import Callable
 from typing import Any
 
 import torch
 from torch import nn
 
 from .data import TARGET_FIELDS
+
+
+@dataclass(frozen=True)
+class EncoderOutput:
+    """Named representation boundary shared by legacy and component encoders."""
+
+    persistent: torch.Tensor
+    context: torch.Tensor
+    combined: torch.Tensor
+
+    def to(self, *args: Any, **kwargs: Any) -> EncoderOutput:
+        """Move every component with the same semantics as :meth:`Tensor.to`."""
+        return EncoderOutput(
+            persistent=self.persistent.to(*args, **kwargs),
+            context=self.context.to(*args, **kwargs),
+            combined=self.combined.to(*args, **kwargs),
+        )
+
+
+class SingleVectorOutputAdapter:
+    """Expose a legacy vector through the component API without changing it.
+
+    A single-vector model has no independently learned context branch.  Its
+    vector is therefore exposed as both ``persistent`` and ``combined`` while
+    ``context`` is an explicit, shape-compatible zero tensor.  This rule keeps
+    legacy artifacts numerically identical and makes their limitation visible.
+    """
+
+    component_names = ("persistent", "context", "combined")
+
+    def __call__(self, embedding: torch.Tensor) -> EncoderOutput:
+        if embedding.ndim != 2:
+            raise ValueError("legacy embedding must have shape [batch, features]")
+        return EncoderOutput(
+            persistent=embedding,
+            context=torch.zeros_like(embedding),
+            combined=embedding,
+        )
 
 
 class SingleVectorEncoder(nn.Module):
@@ -70,6 +110,7 @@ class SingleVectorEncoder(nn.Module):
             nn.LayerNorm(output_dim),
         )
         self.heads = nn.ModuleDict()
+        self.output_adapter = SingleVectorOutputAdapter()
         for objective, field in TARGET_FIELDS.items():
             if objective in config["objectives"] and field in vocabularies:
                 self.heads[objective] = nn.Linear(output_dim, len(vocabularies[field]))
@@ -145,8 +186,50 @@ class SingleVectorEncoder(nn.Module):
         logits = {name: head(embedding) for name, head in self.heads.items()}
         return embedding, logits
 
+    def encode_components(
+        self,
+        categorical: torch.Tensor,
+        continuous: torch.Tensor,
+        lengths: torch.Tensor,
+        augment: bool = False,
+    ) -> EncoderOutput:
+        """Return the legacy representation through the named output boundary."""
+        return self.output_adapter(
+            self.encode(categorical, continuous, lengths, augment=augment)
+        )
 
-def build_model(
+
+ModelFactory = Callable[
+    [dict[str, dict[str, int]], int, dict[str, Any], list[str] | None],
+    SingleVectorEncoder,
+]
+LEGACY_SINGLE_VECTOR_VARIANT = "single_vector"
+MODEL_REGISTRY: dict[str, ModelFactory] = {}
+
+
+def register_model(name: str) -> Callable[[ModelFactory], ModelFactory]:
+    """Register an observed-input-only model factory under a stable name."""
+    if not name or name in MODEL_REGISTRY:
+        raise ValueError(f"Invalid or duplicate model variant: {name!r}")
+
+    def decorator(factory: ModelFactory) -> ModelFactory:
+        MODEL_REGISTRY[name] = factory
+        return factory
+
+    return decorator
+
+
+def configured_model_variant(config: dict[str, Any]) -> str:
+    variant = str(config.get("model", {}).get("variant", LEGACY_SINGLE_VECTOR_VARIANT))
+    if variant not in MODEL_REGISTRY:
+        raise ValueError(
+            f"Unknown model variant {variant!r}; available variants: {sorted(MODEL_REGISTRY)}"
+        )
+    return variant
+
+
+@register_model(LEGACY_SINGLE_VECTOR_VARIANT)
+def _build_single_vector(
     vocabularies: dict[str, dict[str, int]],
     continuous_dim: int,
     config: dict[str, Any],
@@ -157,4 +240,17 @@ def build_model(
         continuous_dim,
         config,
         categorical_fields=categorical_fields,
+    )
+
+
+def build_model(
+    vocabularies: dict[str, dict[str, int]],
+    continuous_dim: int,
+    config: dict[str, Any],
+    categorical_fields: list[str] | None = None,
+) -> SingleVectorEncoder:
+    """Construct the configured model from public prepared-data contracts only."""
+    variant = configured_model_variant(config)
+    return MODEL_REGISTRY[variant](
+        vocabularies, continuous_dim, config, categorical_fields
     )

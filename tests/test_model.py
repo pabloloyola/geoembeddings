@@ -7,6 +7,26 @@ from geoembeddings.model import build_model
 from geoembeddings.training import _validate_batch_values
 
 
+def _model_fixture():
+    vocabularies = {
+        "service_id": {"<PAD>": 0, "<UNK>": 1, "location": 2},
+        "action_type": {"<PAD>": 0, "<UNK>": 1, "ping": 2},
+    }
+    config = {
+        "model": {
+            "categorical_embedding_dim": 4,
+            "event_dim": 8,
+            "hidden_dim": 6,
+            "user_embedding_dim": 5,
+            "gru_layers": 1,
+            "dropout": 0.0,
+            "event_dropout": 0.0,
+        },
+        "objectives": {"next_service": 1.0, "next_action": 1.0},
+    }
+    return config, vocabularies
+
+
 def test_single_vector_shapes() -> None:
     vocabularies = {
         "service_id": {"<PAD>": 0, "<UNK>": 1, "location": 2},
@@ -217,3 +237,62 @@ def test_model_rejects_incomplete_explicit_categorical_schema() -> None:
             config=config,
             categorical_fields=["observation_mode"],
         )
+
+
+def test_single_vector_component_adapter_shapes_finiteness_gradients_and_device():
+    from geoembeddings.model import EncoderOutput, SingleVectorOutputAdapter
+
+    vector = torch.randn(3, 7, requires_grad=True)
+    output = SingleVectorOutputAdapter()(vector)
+    assert isinstance(output, EncoderOutput)
+    assert output.persistent.shape == output.context.shape == output.combined.shape == (3, 7)
+    assert torch.isfinite(output.persistent).all()
+    assert torch.isfinite(output.context).all()
+    assert torch.isfinite(output.combined).all()
+    assert torch.equal(output.persistent, vector)
+    assert torch.equal(output.combined, vector)
+    assert torch.count_nonzero(output.context) == 0
+
+    (output.persistent.sum() + output.combined.sum()).backward()
+    assert torch.equal(vector.grad, torch.full_like(vector, 2.0))
+
+    moved = output.to(torch.device("cpu"), dtype=torch.float64)
+    assert moved.persistent.device.type == "cpu"
+    assert moved.context.dtype == moved.combined.dtype == torch.float64
+
+
+def test_single_vector_encoder_exposes_named_components_without_changing_legacy_vector():
+    config, vocabularies = _model_fixture()
+    model = build_model(vocabularies, continuous_dim=8, config=config).eval()
+    categorical = torch.randint(0, 3, (2, 5, len(vocabularies)))
+    continuous = torch.randn(2, 5, 8)
+    lengths = torch.tensor([5, 3])
+
+    legacy = model.encode(categorical, continuous, lengths)
+    components = model.encode_components(categorical, continuous, lengths)
+    assert torch.equal(components.persistent, legacy)
+    assert torch.equal(components.combined, legacy)
+    assert torch.count_nonzero(components.context) == 0
+
+
+def test_model_registry_defaults_to_legacy_and_validates_unknown_variant():
+    from geoembeddings.model import SingleVectorEncoder, configured_model_variant
+
+    config, vocabularies = _model_fixture()
+    assert configured_model_variant(config) == "single_vector"
+    assert isinstance(build_model(vocabularies, 8, config), SingleVectorEncoder)
+
+    config["model"]["variant"] = "not_registered"
+    with pytest.raises(ValueError, match="Unknown model variant.*available variants"):
+        build_model(vocabularies, 8, config)
+
+
+def test_training_rejects_unknown_model_before_creating_output(tmp_path):
+    from geoembeddings.training import train_model
+
+    config, _ = _model_fixture()
+    config["model"]["variant"] = "truth_aware_model"
+    output = tmp_path / "must-not-exist"
+    with pytest.raises(ValueError, match="Unknown model variant"):
+        train_model(tmp_path / "observed", tmp_path / "prepared", output, config)
+    assert not output.exists()

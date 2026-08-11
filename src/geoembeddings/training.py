@@ -13,10 +13,11 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 
 from .data import TARGET_FIELDS, EventWindowDataset, collate_windows
-from .io import read_json, write_json
-from .model import build_model
+from .io import read_json, sha256_file, write_json
+from .model import build_model, configured_model_variant
 from .prepare import UNK_TOKEN
 from .runtime_metadata import collect_runtime_metadata
+from .representation_schema import checkpoint_schema
 
 
 def resolve_device(requested: str) -> torch.device:
@@ -44,6 +45,8 @@ def train_model(
     config: dict[str, Any],
 ) -> dict[str, Any]:
     started = time.perf_counter()
+    # Fail before dataset reads, output writes, or accelerator initialization.
+    model_variant = configured_model_variant(config)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     seed = int(config.get("seed", 0))
@@ -62,6 +65,8 @@ def train_model(
     validation_loader = DataLoader(validation_dataset, shuffle=False, **loader_settings)
 
     vocabularies = read_json(Path(prepared_dir) / "vocabularies.json")
+    prepared_metadata_path = Path(prepared_dir) / "prepared_metadata.json"
+    prepared_metadata = read_json(prepared_metadata_path)
     categorical_fields = list(train_dataset.categorical_fields)
     model = build_model(
         vocabularies,
@@ -89,6 +94,18 @@ def train_model(
             torch.save(
                 {
                     "model_state": model.state_dict(),
+                    "model_variant": model_variant,
+                    "representation_schema": checkpoint_schema(
+                        model_variant=model_variant,
+                        component_dimensions={name: int(config["model"]["user_embedding_dim"])
+                                              for name in ("persistent", "context", "combined")},
+                        categorical_fields=categorical_fields,
+                        continuous_fields=list(train_dataset.continuous_fields),
+                        preparation_hash=sha256_file(prepared_metadata_path),
+                        source_files=dict(prepared_metadata["source_files"]),
+                        train_end=str(prepared_metadata["train_end"]),
+                        validation_end=str(prepared_metadata["validation_end"]),
+                    ),
                     "config": config,
                     "vocabularies": vocabularies,
                     "categorical_fields": categorical_fields,
@@ -108,6 +125,7 @@ def train_model(
             duration_seconds=time.perf_counter() - started, seed=seed, device=device
         ).to_dict(),
         "device": str(device),
+        "model_variant": model_variant,
         "categorical_fields": categorical_fields,
         "continuous_fields": list(train_dataset.continuous_fields),
         "train_windows": len(train_dataset),
@@ -155,19 +173,22 @@ def _run_epoch(
 
         consistency_weight = float(objective_weights.get("cross_window_consistency", 0.0))
         if consistency_weight > 0:
-            early = model.encode(
+            early = model.encode_components(
                 batch["early_categorical"],
                 batch["early_continuous"],
                 batch["early_lengths"],
                 augment=True,
             )
-            late = model.encode(
+            late = model.encode_components(
                 batch["late_categorical"],
                 batch["late_continuous"],
                 batch["late_lengths"],
                 augment=True,
             )
-            losses.append(consistency_weight * (1.0 - F.cosine_similarity(early, late).mean()))
+            losses.append(
+                consistency_weight
+                * (1.0 - F.cosine_similarity(early.combined, late.combined).mean())
+            )
 
         if not losses:
             raise ValueError("No active training objectives matched the model heads")
