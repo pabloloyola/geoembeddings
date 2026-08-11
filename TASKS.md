@@ -60,7 +60,7 @@ implemented evaluator surfaces do not substitute for the missing reference.
   - **Known limitation/blocker:** generated binaries may live in external
     storage; the smoke cohort is not scientific evidence.
 
-- [ ] **T0.2 — Archive the 500-user scientific reference.**
+- [x] **T0.2 — Archive the 500-user scientific reference.**
   - **Requirement IDs:** R1–R8 (reference coverage; absent axes remain pending).
   - **Prerequisites:** T0.1; clean immutable output roots and sufficient compute.
   - **Affected layer:** model, evaluator, documentation.
@@ -75,6 +75,13 @@ implemented evaluator surfaces do not substitute for the missing reference.
     explicitly confirms one shared preparation contract.
   - **Known limitation/blocker:** the run is semi-synthetic and compute-heavy;
     missing users or labels must be explained, never silently dropped.
+  - **Recorded evidence (2026-08-11):** the seed-`20260811` reference is
+    preserved under read-only local roots `runs/reference500` and
+    `experiments/reference500`. The complete hash manifest and comparability
+    audit are registered in `docs/artifacts/t0.2-reference500.json`. Sixteen
+    simulated users have no observed events, and four additional early-cutoff
+    rows are absent because no observable history existed at that cutoff; the
+    index and evaluator reports retain these and all label/view coverage notes.
 
 - [ ] **T0.2a — Reconcile status and record the post-reference decision.**
   - **Requirement IDs:** R1, R3, R4, R7.

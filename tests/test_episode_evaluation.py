@@ -67,3 +67,18 @@ def test_only_evaluator_names_protected_episode_file():
     assert "episodes_truth.csv.gz" in inspect.getsource(evaluation)
     assert "episodes_truth.csv.gz" not in inspect.getsource(export)
     assert "episodes_truth.csv.gz" not in inspect.getsource(baseline)
+
+
+def test_intent_probe_supports_more_features_than_labeled_rows():
+    users = [f"u{i}" for i in range(20)]
+    rows = pd.DataFrame({
+        "user_id": users,
+        "primary_intent": ["routine", "travel"] * 10,
+        "embedding_index": np.arange(20),
+    })
+    embeddings = np.random.default_rng(7).normal(size=(20, 200))
+
+    report = evaluation._intent_probe(rows, embeddings, fraction=0.8, alpha=10.0)
+
+    assert report["status"] == "ok"
+    assert np.isfinite(report["accuracy"])
