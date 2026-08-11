@@ -83,7 +83,7 @@ class PairLayout:
     def from_manifest_path(cls, value: str | Path) -> "PairLayout":
         path = Path(value).expanduser().resolve()
         if path.name != "pair_manifest.json":
-            raise ValueError("--output must name the canonical pair_manifest.json artifact")
+            raise ValueError("pair manifest path must name the canonical pair_manifest.json artifact")
         return cls(path.parent)
 
     @property

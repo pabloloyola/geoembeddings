@@ -220,6 +220,27 @@ overlapping declarations, and ambiguous matching keys. This task establishes a
 declaration only: field-level pair integrity and embedding counterfactual deltas
 remain T1.11d and T1.11f, so no causal-invariance claim or R5 metric is made.
 
+## T1.11d pair-integrity smoke (2026-08-11)
+
+Affected requirements are R5 and R7; affected layers are the protected
+simulator and evaluator contract. The baseline is the T1.11c declared
+observation-only pair. Validate it and run mismatch/gate coverage with:
+
+```bash
+uv run geoembed validate-pair --pair-manifest pairs/t1.11c-observation/pair_manifest.json
+uv run pytest tests/test_pair_integrity.py tests/test_pair_manifest.py tests/test_cli_paths.py tests/test_layout.py
+```
+
+The command produces `pairs/t1.11c-observation/pair_integrity.json` only after
+authenticating canonical run paths and current input lineage. Unit coverage
+exercises schema, missing-key, duplicate-key, disallowed-field, allowed-field,
+missing-report, failing-report, stale-report, and stale-source failures. The
+end-to-end observation pair checks persistent user truth, episodes, candidates,
+choices, trajectories, observation process, and both observed tables while
+requiring every realized difference to match its declaration. This artifact is
+a prerequisite rather than an R5/R7 representation result; T1.11e and T1.11f
+remain open, and no external causal-validity claim is made.
+
 ## T1.7 reliability and offline-efficiency smoke (2026-08-11)
 
 This evidence uses a new immutable replacement identity,
