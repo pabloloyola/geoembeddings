@@ -74,6 +74,24 @@ The canonical file is `configs/simulation/kanto_v1.yaml`.
 | `events` | service-specific actions, rates, times, and catalog sizes |
 | `scenarios` | controlled opportunity, exposure, noise, and dropout interventions |
 
+### Random-stream lineage
+
+The simulator resolves five independent named streams: `world`,
+`user_latents`, `episodes`, `choices`, and `observation`. Their integer seeds
+are derived from the root `run.seed`, stream name, and a versioned SHA-256
+derivation label; derivation never uses Python's randomized `hash()` or the
+order in which generators happen to be called. A stream can be overridden
+under `run.random_streams` for controlled interventions. The resolved root,
+algorithm, and stream seeds are recorded in `manifest.json`, while the resolved
+stream map is also saved in `config.resolved.yaml`. Neither provenance record
+is placed in `observed/`, and the public dataset tables and schema remain
+unchanged.
+
+This refactor intentionally defines a new simulator artifact lineage. A root
+seed remains repeatable within the named-stream algorithm, but its draws are
+not promised to be bitwise compatible with artifacts produced by the earlier
+single, call-order-dependent RNG.
+
 ### Interpreting normalized inputs
 
 Several variables use convenient synthetic scales; they are not real units or

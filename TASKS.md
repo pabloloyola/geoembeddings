@@ -225,7 +225,7 @@ evidence.
 T1.11 retains its historical program ID; suffixes separate auditable acceptance
 steps without losing PR traceability.
 
-- [ ] **T1.11a — Independent simulator random streams.**
+- [x] **T1.11a — Independent simulator random streams.**
   - **Requirement IDs:** R5, R7.
   - **Prerequisites:** T0.2a authorizes the counterfactual path.
   - **Affected layer:** simulator.
@@ -235,6 +235,11 @@ steps without losing PR traceability.
     fixed-seed simulation/`validate` integration regression.
   - **Completion evidence:** world, user, episode, choice, and observation streams
     can be varied independently and resolved seeds are recorded.
+  - **Completion note (2026-08-11):** versioned SHA-256 derivation now resolves
+    five named streams from the root seed with optional per-stream overrides.
+    Fixed-seed integration coverage verifies stable protected identities and
+    truth tables when only observation randomness changes, manifest/config seed
+    provenance, validation, and an unchanged observed information boundary.
   - **Known limitation/blocker:** RNG refactoring can change historical draws;
     document lineage rather than claiming bitwise compatibility.
 
