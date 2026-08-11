@@ -290,7 +290,7 @@ steps without losing PR traceability.
     identity classes. Pair field equality and representation metrics remain
     explicitly gated on T1.11d/T1.11f.
 
-- [ ] **T1.11d — Pair-integrity validator.**
+- [x] **T1.11d — Pair-integrity validator.**
   - **Requirement IDs:** R5, R7.
   - **Prerequisites:** T1.11c.
   - **Affected layer:** simulator, evaluator.
@@ -302,6 +302,15 @@ steps without losing PR traceability.
     episodes are identical under enumerated invariants with precise diagnostics.
   - **Known limitation/blocker:** R5 remains non-executable until this validator
     and T1.11f both pass.
+  - **Completion note (2026-08-11):** `validate-pair` now authenticates the
+    canonical pair/run layouts, schemas, source/config/manifest/entity hashes,
+    matching keys, and stream lineage before comparing all observed and truth
+    tables at field granularity. Its versioned report includes row/entity
+    coverage, missing/duplicate keys, invariant and allowed-change outcomes,
+    and bounded exact mismatch samples. A reusable hard gate rejects missing,
+    failing, stale, or input-stale reports before future representation metrics.
+    This proves controlled simulator artifact integrity, not external causal
+    validity; T1.11e/T1.11f remain required for executable R5/R7 deltas.
 
 - [ ] **T1.11e — Exposure, opportunity, and observation interventions.**
   - **Requirement IDs:** R5, R7.

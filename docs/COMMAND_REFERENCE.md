@@ -86,7 +86,28 @@ uv run geoembed pair-manifest \
   --reference-run-dir runs/reference \
   --intervention-run-dir runs/observation-intervention \
   --output pairs/observation/pair_manifest.json
+
+uv run geoembed validate-pair \
+  --pair-manifest pairs/observation/pair_manifest.json
 ```
+
+`validate-pair` resolves both declared run roots through `DatasetLayout` and
+writes the canonical sibling `pair_integrity.json`. It first authenticates the
+pair declaration, run manifests, resolved configurations, source tables,
+entity hashes, schemas, matching keys, and stream lineage. It then compares
+public and protected tables at key/field granularity, recording row/entity
+coverage, missing and duplicate keys, allowed changes, and bounded exact
+mismatch samples. Stale or structurally invalid inputs abort without creating a
+passing report; disallowed value differences create a failing report and make
+the command fail. Future paired representation evaluation must authenticate a
+current passing report before computing metrics.
+
+This is an integrity check for a controlled synthetic intervention. It does not
+show that simulator assumptions are calibrated to Tokyo/Kanto, and it does not
+establish external causal validity. Because no standalone POI truth table is
+currently emitted, the complete world is deterministically reconstructed from
+its authenticated configuration and named world-stream seed for field-level
+region and POI checks.
 
 Both arguments must be dataset roots; internal observed/truth filenames cannot
 be supplied. The command reads both complete run manifests and canonical tables,

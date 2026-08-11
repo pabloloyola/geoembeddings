@@ -77,3 +77,9 @@ def test_pair_manifest_uses_run_roots_and_canonical_output() -> None:
     assert str(args.reference_run_dir) == "runs/ref"
     assert str(args.intervention_run_dir) == "runs/int"
     assert not hasattr(args, "observed_dir") and not hasattr(args, "truth_dir")
+
+    validate = build_parser().parse_args(
+        ["validate-pair", "--pair-manifest", "pairs/pair_manifest.json"]
+    )
+    assert str(validate.pair_manifest) == "pairs/pair_manifest.json"
+    assert not hasattr(validate, "run_dir") and not hasattr(validate, "truth_dir")

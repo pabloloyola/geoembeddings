@@ -36,6 +36,9 @@ def build_parser() -> argparse.ArgumentParser:
     pair_manifest.add_argument("--output", required=True, type=Path)
     pair_manifest.add_argument("--overwrite", action="store_true")
 
+    validate_pair = commands.add_parser("validate-pair", help="Validate a declared simulator pair at field level")
+    validate_pair.add_argument("--pair-manifest", required=True, type=Path)
+
     prepare = commands.add_parser("prepare", help="Fit leakage-safe preprocessing")
     _add_embedding_arguments(prepare)
 
@@ -403,6 +406,9 @@ def main() -> None:
         from .pair_manifest import create_pair_manifest
         result = create_pair_manifest(args.reference_run_dir, args.intervention_run_dir,
                                       args.output, overwrite=args.overwrite)
+    elif args.command == "validate-pair":
+        from .pair_integrity import validate_pair
+        result = validate_pair(args.pair_manifest)
     elif args.command in {"prepare", "train", "baseline", "export", "export-dense", "evaluate", "robustness", "benchmark"}:
         run = DatasetLayout.from_path(args.run_dir)
         experiment = ExperimentLayout.from_path(args.experiment_dir)

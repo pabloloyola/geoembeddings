@@ -136,6 +136,22 @@ and continue to receive only a run root resolved to `observed/`. T1.11c validate
 the declaration and hashes but does not inspect field-level equality; that
 executable integrity check remains T1.11d.
 
+### Pair integrity validation (T1.11d; R5/R7)
+
+Run `geoembed validate-pair --pair-manifest PAIR_DIR/pair_manifest.json` before
+any paired representation evaluation. The validator re-authenticates both run
+roots and every declared input hash, compares schemas and unique semantic keys,
+checks entity identities and stream lineage, and compares every observed and
+truth field. Differences pass only when an intervention-specific wildcard or
+field declaration explicitly permits them. The versioned sibling
+`PAIR_DIR/pair_integrity.json` records coverage, missing/duplicate keys,
+per-invariant outcomes, allowed-change counts, and precise bounded mismatch
+samples. Missing, failing, or stale reports are a hard evaluation gate.
+
+Passing establishes internal simulator-pair integrity only. It is not evidence
+that the intervention corresponds to a real causal mechanism or that results
+generalize outside the simulator.
+
 The declarations remain in root `manifest.json` and refer to evaluator-only
 truth entities without copying protected episodes, utilities, chosen flags, or
 coordinates into `observed/`.
