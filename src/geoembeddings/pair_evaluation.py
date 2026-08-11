@@ -162,6 +162,12 @@ def evaluate_pair(pair_manifest_path: str | Path, baseline_experiment_dirs: list
     for kind in ("baseline","learned"):
         metrics[kind]=representation_metrics(ref["exports"][kind],inter["exports"][kind],left,
             train_fraction=float(settings["probe_train_fraction"]),alpha=float(settings["ridge_alpha"]))
+        if pair.intervention_type == "schedule-shift":
+            metrics[kind]["schedule_shift_response"] = {
+                "mean_matched_cosine_distance": metrics[kind]["embedding_drift"]["mean_cosine_distance"],
+                "cross_run_periodic_retrieval_top1": metrics[kind]["retrieval"]["cross_run_user_top1"],
+                "interpretation": "Response to recurring-clock displacement; persistent probes and geometry are mandatory controls.",
+            }
     report={"schema_version":COUNTERFACTUAL_COMPARISON_SCHEMA,
         "runtime_metadata":collect_runtime_metadata(duration_seconds=time.perf_counter()-started,
             seed=int(config.get("seed",0)),device=None).to_dict(),
@@ -176,7 +182,8 @@ def evaluate_pair(pair_manifest_path: str | Path, baseline_experiment_dirs: list
             "intervention":{k:sha256_file(v) for k,v in inter["metadata_paths"].items()}},
             "export_sha256":{"reference":{k:sha256_file(v) for k,v in ref["paths"].items()},
             "intervention":{k:sha256_file(v) for k,v in inter["paths"].items()}}},
-        "results":metrics,"requirements":{"R5":"executable","R7":"executable"},
+        "results":metrics,"requirements":{"R3":"executable" if pair.intervention_type == "schedule-shift" else "not_targeted",
+            "R4":"executable" if pair.intervention_type == "schedule-shift" else "not_targeted", "R5":"executable","R7":"executable"},
         "information_boundary":"Protected invariant and intervention labels are joined only inside this evaluator.",
         "interpretation":"Interventions and representations are reported independently; no aggregate winner is calculated.",
         "limitations":["Controlled evidence is valid only within the simulator, not externally causal.",

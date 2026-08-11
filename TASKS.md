@@ -234,6 +234,13 @@ evidence.
     coverage, separation, and collapse diagnostics. Simulator audit found no
     controlled schedule-shift scenario, so that evaluation remains blocked.
 
+- [x] **T1.6a — Controlled schedule-shift and protected routine labels.**
+  - **Requirement IDs:** R3, R4.
+  - **Affected layers:** simulator and protected evaluator; the observed contract is unchanged.
+  - **Baseline artifact:** the fixed-seed T1.11 paired-simulation smoke contract; no new model result is claimed.
+  - **Completion note (2026-08-11):** `schedule-shift` moves only recurring routine clocks while preserving user latents, episode selection, and one-off timing. Pair integrity authenticates the allowed timestamp/trajectory/event changes. Temporal reports expose protected weekday/weekend, periodic retrieval, and repeated-routine-versus-one-off labels; paired reports expose schedule response beside persistent probes, retrieval, separation, and effective rank.
+  - **Routine-model gate:** **not opened.** The required statistical, capacity-matched single-vector, and accepted persistent/context control artifacts do not yet coexist; T2.7 still records persistent/context as unmeasurable. Post-trip recovery remains available through T1.15 and must be run on all three controls before a `persistent`/`routine`/`context` implementation task can open.
+
 - [x] **T1.7 (P1D) — Add reliability and offline-efficiency evaluation.**
   - **Requirement IDs:** R10, R13.
   - **Prerequisites:** T0.3 runtime schema and explicitly named replacement lineage `t0.3-cpu-smoke-20260811`; the lost T0.2 reference is not treated as continuous evidence.

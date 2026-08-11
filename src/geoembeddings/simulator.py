@@ -651,6 +651,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
     interval = change_interval(start_day, args.days, change) if change else None
     change_points: list[dict[str, Any]] = []
     schedule = CONFIG["episodes"]["schedule_hours"]
+    schedule_shift = intervention.get("schedule_shift") if intervention.get("type") == "schedule-shift" else None
     event_cfg = CONFIG["events"]
     spatial = CONFIG["world"]["spatial"]
     for user_index in range(1, args.users + 1):
@@ -724,11 +725,15 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
             stops: list[tuple[float, str, Region, float, float]] = [
                 (float(schedule["morning_home"]), "home", home, home_lat, home_lon)
             ]
+            # Move only the recurring routine clock.  Episode selection, persistent
+            # latents, and one-off episode timing remain matched controls.
+            routine_shift = (float(schedule_shift["weekend_hours" if weekend else "weekday_hours"])
+                             if schedule_shift and primary == "routine" else 0.0)
             if not weekend and primary != "travel":
                 stops += [
-                    (float(schedule["work_arrival"]), "commute", work, work_lat, work_lon),
-                    (float(schedule["midday_work"]), "work", work, work_lat, work_lon),
-                    (float(schedule["home_commute"]), "commute", home, home_lat, home_lon),
+                    (float(schedule["work_arrival"]) + routine_shift, "commute", work, work_lat, work_lon),
+                    (float(schedule["midday_work"]) + routine_shift, "work", work, work_lat, work_lon),
+                    (float(schedule["home_commute"]) + routine_shift, "commute", home, home_lat, home_lon),
                 ]
             elif primary == "travel":
                 stops += [(float(schedule["travel_arrival"]), "travel", active_region, active_lat, active_lon)]
@@ -747,8 +752,8 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                 chosen, scored = choose_poi(choice_rng, choice_user, candidates, primary, args.scenario, decision_id)
                 candidate_sets.extend(scored)
                 choice_hour = (
-                    float(schedule["routine_choice"])
-                    if not weekend and primary == "routine"
+                    float(schedule["routine_choice"]) + routine_shift
+                    if primary == "routine"
                     else float(schedule["other_choice_start"]) + choice_rng.random() * float(schedule["other_choice_span"])
                 )
                 chosen_region = regions_by_id[chosen["region_id"]]
@@ -796,6 +801,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
             activity_occurrences: Counter[str] = Counter()
             for stop_index, (hour, activity, region, lat, lon) in enumerate(stops):
                 activity_occurrences[activity] += 1
+                identity_hour = hour - routine_shift if routine_shift and activity in {"commute", "work", "poi_visit"} else hour
                 true_lat, true_lon = jitter_point(
                     episode_rng,
                     lat,
@@ -806,7 +812,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                 )
                 trajectories.append(
                     {
-                        "trajectory_id": stable_identifier("trajectory", episode_id, activity, activity_occurrences[activity], iso_at(current_day, hour)),
+                        "trajectory_id": stable_identifier("trajectory", episode_id, activity, activity_occurrences[activity], iso_at(current_day, identity_hour)),
                         "user_id": latent_user["user_id"],
                         "timestamp": iso_at(current_day, hour),
                         "episode_id": episode_id,

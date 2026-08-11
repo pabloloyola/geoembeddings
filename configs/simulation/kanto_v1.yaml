@@ -196,6 +196,15 @@ scenarios:
 # Controlled counterfactuals are experimental assumptions, not calibrated
 # descriptions of Tokyo, Kanto, platform exposure, or real-world missingness.
 interventions:
+  schedule-shift:
+    declaration_version: geoembeddings-schedule-intervention/1.0
+    config_overrides: {}
+    affected_random_streams: []
+    reseed_streams: []
+    invariant_entities: [users, regions, pois, episodes, choices]
+    permitted_changes: [truth.choices.timestamp, truth.trajectories.*, observed.events.*]
+    schedule_shift: {weekday_hours: 2.0, weekend_hours: -1.0}
+    behavioral_diagnostics: {mean_routine_choice_hour: increase}
   temporary-trip:
     declaration_version: geoembeddings-change-intervention/1.0
     config_overrides: {}
