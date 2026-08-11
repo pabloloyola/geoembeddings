@@ -7,9 +7,25 @@ from geoembeddings.cli import build_parser
 import geoembeddings.temporal_routine_evaluation as temporal_evaluator
 
 from geoembeddings.temporal_routine_evaluation import (
-    cyclic_bin, deterministic_user_split, episode_duration_hours,
+    _bounded_rows, _geometry, cyclic_bin, deterministic_user_split, episode_duration_hours,
     periodic_retrieval, select_repeated_and_one_off,
 )
+
+
+def test_bounded_diagnostic_rows_are_order_independent_and_high_dim_geometry_is_finite():
+    rows = pd.DataFrame({
+        "embedding_index": range(12),
+        "user_id": [f"u{i % 4}" for i in range(12)],
+        "timestamp": pd.date_range("2025-01-01", periods=12, tz="UTC"),
+        "temporal_bin": [str(i % 3) for i in range(12)],
+    })
+    selected = _bounded_rows(rows, 6, 17)
+    shuffled = _bounded_rows(rows.sample(frac=1, random_state=3), 6, 17)
+    assert set(selected.embedding_index) == set(shuffled.embedding_index)
+    embeddings = np.arange(12 * 128, dtype=float).reshape(12, 128) + 1
+    geometry = _geometry(selected, embeddings)
+    assert geometry["different_user_cosine"]["count"] > 0
+    assert np.isfinite(geometry["effective_rank"])
 
 
 def test_cyclic_boundaries_wrap_exact_period():

@@ -103,3 +103,6 @@ evaluation:
     repeated_min_occurrences: 2
     split_seed: 20250301
     probe_train_fraction: 0.8
+    # Bound quadratic retrieval/geometry diagnostics for high-dimensional
+    # sparse baselines while retaining a deterministic matched subset.
+    diagnostic_max_rows: 1024

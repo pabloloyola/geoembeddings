@@ -54,6 +54,21 @@ def select_repeated_and_one_off(episodes: pd.DataFrame, repeated_min: int) -> pd
     return result[result["routine_class"].notna()].copy()
 
 
+def _bounded_rows(rows: pd.DataFrame, maximum: int, seed: int) -> pd.DataFrame:
+    """Select a deterministic, row-order-independent diagnostic subset."""
+    if maximum <= 0:
+        raise ValueError("diagnostic_max_rows must be positive")
+    if len(rows) <= maximum:
+        return rows
+    keys = rows.apply(
+        lambda row: hashlib.sha256(
+            f"{seed}\0{row['user_id']}\0{row['timestamp'].isoformat()}".encode()
+        ).digest(),
+        axis=1,
+    )
+    return rows.loc[keys.sort_values(kind="stable").index[:maximum]].copy()
+
+
 def periodic_retrieval(rows: pd.DataFrame, embeddings: np.ndarray) -> dict[str, Any]:
     """Nearest-neighbour user and periodic-state retrieval, excluding the query row."""
     if len(rows) < 2:
@@ -97,10 +112,14 @@ def _geometry(rows: pd.DataFrame, embeddings: np.ndarray) -> dict[str, Any]:
     matrix = embeddings[rows["embedding_index"].to_numpy(dtype=int)] if len(rows) else embeddings[:0]
     normalized = matrix / np.maximum(np.linalg.norm(matrix, axis=1, keepdims=True), 1e-12)
     users = rows["user_id"].astype(str).to_numpy()
-    pairs = [_cosine(normalized[i], normalized[j]) for i in range(len(rows)) for j in range(i + 1, len(rows)) if users[i] != users[j]]
+    similarity = normalized @ normalized.T
+    pair_mask = np.triu(users[:, None] != users[None, :], k=1)
+    pairs = similarity[pair_mask].tolist()
     centered = normalized - normalized.mean(0, keepdims=True) if len(normalized) else normalized
-    singular = np.linalg.svd(centered, compute_uv=False) if len(centered) else np.asarray([])
-    energy = singular ** 2
+    # The non-zero eigenvalues of X X.T equal squared singular values of X.
+    # Using the row Gram matrix prevents a sparse high-dimensional baseline
+    # from allocating the much larger SVD workspace at reference scale.
+    energy = np.maximum(np.linalg.eigvalsh(centered @ centered.T), 0) if len(centered) else np.asarray([])
     rank = float(np.exp(-np.sum((energy/energy.sum()) * np.log(np.maximum(energy/energy.sum(), 1e-15))))) if energy.sum() else 0.0
     return {"different_user_cosine": _summary(pairs), "effective_rank": rank,
             "effective_rank_ratio": rank / min(matrix.shape) if matrix.size else 0.0}
@@ -115,6 +134,7 @@ def evaluate_temporal_routine(truth_dir: str | Path, prepared_dir: str | Path,
     hour_edges = settings.get("hour_bin_edges", [])
     day_edges = settings.get("day_bin_edges", [])
     seed = int(settings.get("split_seed", 0)); fraction = float(settings.get("probe_train_fraction", config["evaluation"]["probe_train_fraction"]))
+    diagnostic_max_rows = int(settings.get("diagnostic_max_rows", 1024))
     assigned = assign_episode_intervals(dense, episodes)
     assigned["embedding_index"] = np.arange(len(assigned))
     assigned["hour_bin"] = [cyclic_bin(x.hour + x.minute / 60, hour_edges, 24) for x in assigned["timestamp"]]
@@ -131,7 +151,9 @@ def evaluate_temporal_routine(truth_dir: str | Path, prepared_dir: str | Path,
         labeled["remaining_episode_hours"] = (ends-pd.DatetimeIndex(labeled["timestamp"])).total_seconds()/3600
     selected_episodes = select_repeated_and_one_off(episodes, int(settings.get("repeated_min_occurrences", 2)))
     selected = labeled.merge(selected_episodes[["user_id", "episode_id", "routine_class"]], on=["user_id", "episode_id"], how="inner")
-    class_rows = selected.copy()
+    diagnostic_rows = _bounded_rows(assigned, diagnostic_max_rows, seed)
+    diagnostic_labeled = _bounded_rows(labeled, diagnostic_max_rows, seed)
+    class_rows = _bounded_rows(selected, diagnostic_max_rows, seed).copy()
     class_rows["primary_intent"] = class_rows["routine_class"]
     class_probe = _intent_probe(class_rows, embeddings, fraction, float(config["evaluation"]["ridge_alpha"])) if len(class_rows) else {"status": "empty_classes", "rows": 0}
     metadata_path = Path(prepared_dir) / "prepared_metadata.json"
@@ -145,16 +167,19 @@ def evaluate_temporal_routine(truth_dir: str | Path, prepared_dir: str | Path,
         "metric_contract": {"version": "temporal-routine/1.0", "kind": kind, "source_hashes": metadata["source_files"],
             "prepared_metadata_sha256": hashlib.sha256(metadata_path.read_bytes()).hexdigest(),
             "dense_users": sorted(dense.user_id.unique()), "dense_keys_sha256": hashlib.sha256("\n".join(f"{u}\0{t.isoformat()}" for u,t in zip(dense.user_id,dense.timestamp)).encode()).hexdigest(),
-            "hour_bin_edges": hour_edges, "day_bin_edges": day_edges, "split_seed": seed, "probe_train_fraction": fraction},
+            "hour_bin_edges": hour_edges, "day_bin_edges": day_edges, "split_seed": seed, "probe_train_fraction": fraction,
+            "diagnostic_max_rows": diagnostic_max_rows},
         "coverage": {"dense_rows": len(dense), "dense_users": int(dense.user_id.nunique()), "labeled_rows": len(labeled),
             "label_coverage": len(labeled)/len(dense) if len(dense) else 0.0, "zero_history_rows": int((dense.history_event_count <= 0).sum()),
             "class_counts": selected["routine_class"].value_counts().sort_index().to_dict() if len(selected) else {}, "rows": coverage_rows},
-        "cyclic_probes": {"hour": _intent_probe(assigned.assign(primary_intent=assigned.hour_bin.astype(str)), embeddings, fraction, float(config["evaluation"]["ridge_alpha"])),
-            "day": _intent_probe(assigned.assign(primary_intent=assigned.day_bin.astype(str)), embeddings, fraction, float(config["evaluation"]["ridge_alpha"]))},
-        "duration_tasks": {name: _ridge_regression(labeled, embeddings, name, fraction, float(config["evaluation"]["ridge_alpha"]), seed) for name in ("episode_duration_hours", "elapsed_episode_hours", "remaining_episode_hours")},
-        "periodic_retrieval": periodic_retrieval(assigned, embeddings),
+        "cyclic_probes": {"hour": _intent_probe(diagnostic_rows.assign(primary_intent=diagnostic_rows.hour_bin.astype(str)), embeddings, fraction, float(config["evaluation"]["ridge_alpha"])),
+            "day": _intent_probe(diagnostic_rows.assign(primary_intent=diagnostic_rows.day_bin.astype(str)), embeddings, fraction, float(config["evaluation"]["ridge_alpha"]))},
+        "duration_tasks": {name: _ridge_regression(diagnostic_labeled, embeddings, name, fraction, float(config["evaluation"]["ridge_alpha"]), seed) for name in ("episode_duration_hours", "elapsed_episode_hours", "remaining_episode_hours")},
+        "periodic_retrieval": {**periodic_retrieval(diagnostic_rows, embeddings),
+            "eligible_rows": len(assigned), "sampled_rows": len(diagnostic_rows)},
         "repeated_routine_vs_one_off": {"selection": "routine intent repeated per user versus singleton non-routine intent", "probe": class_probe},
-        "collapse_diagnostics": _geometry(assigned, embeddings),
+        "collapse_diagnostics": {**_geometry(diagnostic_rows, embeddings),
+            "eligible_rows": len(assigned), "sampled_rows": len(diagnostic_rows)},
         "schedule_shift": {"status": "blocked", "reason": "Simulator audit found no controlled matched schedule-shift intervention; observational calendar labels are not a substitute."},
         "information_boundary": "Truth episode, intent, schedule, and duration labels are joined only inside evaluator-only code.",
     }
