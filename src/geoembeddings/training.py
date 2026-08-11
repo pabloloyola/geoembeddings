@@ -12,9 +12,10 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 
-from .data import EventWindowDataset, collate_windows
+from .data import TARGET_FIELDS, EventWindowDataset, collate_windows
 from .io import read_json, write_json
 from .model import build_model
+from .prepare import UNK_TOKEN
 from .runtime_metadata import collect_runtime_metadata
 
 
@@ -264,8 +265,9 @@ def evaluate_next_event(
     prepared_dir: str | Path,
     checkpoint_path: str | Path,
     config: dict[str, Any],
-) -> dict[str, float]:
+) -> dict[str, Any]:
     device = resolve_device(str(config["training"].get("device", "auto")))
+    train_dataset = EventWindowDataset(observed_dir, prepared_dir, "train", config)
     dataset = EventWindowDataset(observed_dir, prepared_dir, "test", config)
     loader = DataLoader(
         dataset,
@@ -284,7 +286,133 @@ def evaluate_next_event(
     model.load_state_dict(checkpoint["model_state"])
     with torch.no_grad():
         metrics = _run_epoch(model, loader, checkpoint["config"], device, None)
-    return {"test_windows": len(dataset), **metrics}
+        predictions: dict[str, list[int]] = {}
+        truths: dict[str, list[int]] = {}
+        for batch_number, batch in enumerate(loader, start=1):
+            _validate_batch_values(batch, model, batch_number)
+            moved = _move_batch(batch, device)
+            _, logits = model(moved["categorical"], moved["continuous"], moved["lengths"])
+            for objective, values in logits.items():
+                if objective not in moved["targets"]:
+                    continue
+                predictions.setdefault(objective, []).extend(values.argmax(dim=1).cpu().tolist())
+                truths.setdefault(objective, []).extend(moved["targets"][objective].cpu().tolist())
+
+    diagnostics: dict[str, Any] = {}
+    for objective, field in TARGET_FIELDS.items():
+        if objective not in predictions or field not in train_dataset.vocabularies:
+            continue
+        train_targets = [
+            train_dataset._token_id(field, train_dataset.events.iloc[reference.target_index][field])
+            for reference in train_dataset.references
+        ]
+        vocabulary = train_dataset.vocabularies[field]
+        diagnostics[objective] = next_event_classification_diagnostics(
+            train_targets=np.asarray(train_targets, dtype=np.int64),
+            truths=np.asarray(truths[objective], dtype=np.int64),
+            predictions=np.asarray(predictions[objective], dtype=np.int64),
+            class_count=len(vocabulary),
+            unknown_label_id=int(vocabulary[UNK_TOKEN]),
+        )
+    return {
+        "schema_version": "geoembeddings-next-event-evaluation/2.0",
+        "test_windows": len(dataset),
+        **metrics,
+        "predictive_diagnostics": diagnostics,
+        "interpretation": (
+            "Predictive diagnostics only; improvement over a train-fitted majority baseline "
+            "is not evidence of embedding quality or disentanglement."
+        ),
+    }
+
+
+def next_event_classification_diagnostics(
+    *,
+    train_targets: np.ndarray,
+    truths: np.ndarray,
+    predictions: np.ndarray,
+    class_count: int,
+    unknown_label_id: int,
+) -> dict[str, Any]:
+    """Compare predictions with a majority control fitted only on train targets."""
+    train_targets = np.asarray(train_targets, dtype=np.int64)
+    truths = np.asarray(truths, dtype=np.int64)
+    predictions = np.asarray(predictions, dtype=np.int64)
+    if truths.shape != predictions.shape:
+        raise ValueError("truths and predictions must have identical shapes")
+    if class_count <= 0 or not 0 <= unknown_label_id < class_count:
+        raise ValueError("class_count and unknown_label_id do not define a valid vocabulary")
+
+    known_train = train_targets[train_targets != unknown_label_id]
+    train_counts = np.bincount(known_train, minlength=class_count)
+    train_counts[unknown_label_id] = 0
+    majority_id = (
+        int(np.flatnonzero(train_counts == train_counts.max())[0])
+        if train_counts.sum()
+        else None
+    )
+    known = truths != unknown_label_id
+    known_count = int(known.sum())
+    total = int(truths.size)
+    unknown_count = total - known_count
+    evaluation_counts = np.bincount(truths[known], minlength=class_count)
+
+    def scores(values: np.ndarray) -> dict[str, Any]:
+        correct_known = int(np.sum(values[known] == truths[known])) if known_count else 0
+        recalls: list[float] = []
+        f1s: list[float] = []
+        per_class: dict[str, Any] = {}
+        for label in range(class_count):
+            if label == unknown_label_id:
+                continue
+            support = int(evaluation_counts[label])
+            tp = int(np.sum((values[known] == label) & (truths[known] == label)))
+            fp = int(np.sum((values[known] == label) & (truths[known] != label)))
+            fn = support - tp
+            recall = tp / support if support else None
+            f1 = 2 * tp / (2 * tp + fp + fn) if 2 * tp + fp + fn else None
+            per_class[str(label)] = {"support": support, "recall": recall, "f1": f1}
+            if support:
+                recalls.append(float(recall))
+                f1s.append(float(f1 if f1 is not None else 0.0))
+        return {
+            "known_label_accuracy": correct_known / known_count if known_count else 0.0,
+            "coverage_aware_accuracy": correct_known / total if total else 0.0,
+            "macro_f1": float(np.mean(f1s)) if f1s else 0.0,
+            "balanced_accuracy": float(np.mean(recalls)) if recalls else 0.0,
+            "per_class": per_class,
+        }
+
+    learned = scores(predictions)
+    naive_predictions = np.full(
+        truths.shape, majority_id if majority_id is not None else unknown_label_id
+    )
+    naive = scores(naive_predictions)
+    return {
+        "status": "ok" if known_count else "zero_known_label_coverage",
+        "fit_split": "train",
+        "majority_label_id": majority_id,
+        "train_class_counts": {str(i): int(train_counts[i]) for i in range(class_count)},
+        "evaluation_known_class_counts": {
+            str(i): int(evaluation_counts[i]) for i in range(class_count)
+        },
+        "empty_evaluation_class_count": int(
+            np.sum(evaluation_counts[np.arange(class_count) != unknown_label_id] == 0)
+        ),
+        "known_label_count": known_count,
+        "unknown_label_count": unknown_count,
+        "known_label_coverage": known_count / total if total else 0.0,
+        "learned": learned,
+        "naive": naive,
+        "deltas": {
+            "known_label_accuracy": learned["known_label_accuracy"] - naive["known_label_accuracy"],
+            "coverage_aware_accuracy": (
+                learned["coverage_aware_accuracy"] - naive["coverage_aware_accuracy"]
+            ),
+            "macro_f1": learned["macro_f1"] - naive["macro_f1"],
+            "balanced_accuracy": learned["balanced_accuracy"] - naive["balanced_accuracy"],
+        },
+    }
 
 
 def _checkpoint_categorical_fields(
