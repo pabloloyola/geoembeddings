@@ -141,13 +141,17 @@ evidence.
   - **Requirement IDs:** R2, R3.
   - **Prerequisites:** prepared train-only vocabularies and current evaluation.
   - **Affected layer:** evaluator.
-  - **Baseline artifact required:** T0.2 learned next-event report and training
-    label counts.
+  - **Baseline artifact required:** newly generated replacement reference
+    `t0.4-r2-r3-reference-20260811`, with its learned next-event report, training
+    label counts, and durable evidence index at
+    `docs/artifacts/t0.4-r2-r3-reference-20260811.json`. This is a new lineage,
+    not a recovery or continuation of the unavailable T0.2 bytes.
   - **Command → expected artifact:** `uv run geoembed evaluate --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` → `evaluation.json` with train-fitted majority/popularity accuracy, macro-F1 or balanced accuracy, class counts, and known-label coverage.
   - **Minimum coverage:** unit tests for imbalance, unknown labels, and zero
     coverage; integration test proving all baseline statistics fit train only.
-  - **Completion evidence:** T0.2 rerun reports learned-versus-naive deltas per
-    target without changing frozen embeddings.
+  - **Completion evidence:** the durably indexed replacement reference reports
+    learned-versus-naive, coverage-aware deltas per target without changing
+    frozen embeddings.
   - **Known limitation/blocker:** next-event prediction does not prove embedding
     quality, spatial transfer, or disentanglement.
 

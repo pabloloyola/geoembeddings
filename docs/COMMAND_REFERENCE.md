@@ -572,6 +572,17 @@ uv run geoembed evaluate \
 - learned: `EXPERIMENT_DIR/evaluation.json`;
 - baseline: `EXPERIMENT_DIR/baseline_evaluation.json`.
 
+For learned reports, `next_event` is a backward-compatible extension under
+schema `geoembeddings-next-event-evaluation/2.0`: the existing loss, accuracy,
+and top-5 keys remain, while `predictive_diagnostics` reports each target's
+train-only class counts and majority label, known/unknown-label coverage,
+learned and naive known-label accuracy, coverage-aware accuracy, macro-F1,
+balanced accuracy, per-class support, and deltas. Unknown test labels are never
+counted as correct merely because they map to the train-fitted unknown token;
+zero known-label coverage is explicit and all aggregate metrics remain finite.
+These are predictive diagnostics only. Beating the majority control is not
+evidence of embedding quality, spatial transfer, or disentanglement.
+
 ### Reads protected truth?
 
 Yes. This is the protected evaluator.
