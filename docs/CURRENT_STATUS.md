@@ -1,109 +1,108 @@
 # Current status
 
-## Release
+## Release and contracts
 
 - Package/repository version: `0.5.0`
-- Behavioral lineage: tested v0.4.x simulator and modeling code
-- v0.5.0 changes: agent handoff, research protocol, roadmap, command reference,
-  task backlog, literature guide, and locked dependencies
-- Dataset contract: `geoembeddings-dataset/1.0`
+- Current dataset contract: `geoembeddings-dataset/2.0`
+- Explicit compatibility: event-only `geoembeddings-dataset/1.0` runs remain
+  readable by modeling commands. Readers do not invent the recommendation
+  tables that only exist in 2.0.
+- Current learned surfaces: the legacy single-vector GRU, a typed component
+  export contract, and the implemented `factorized_pc` plus capacity/branch
+  ablation variants. Implementation is not a scientific factorization result.
+
+Contract 2.0 adds the observed POI catalog, recommendation requests,
+impressions, and interactions. Protected utilities, probabilities, episode
+state, and counterfactual outcomes remain under `truth/`. The compatibility
+rule is intentionally one-way: new code can consume an event-only 1.0 run for
+the old modeling path, but recommendation consumers must require 2.0 tables.
 
 ## Working capabilities
 
-- Semi-synthetic Kanto simulation across five controlled scenarios
-- Structural and deep simulator validation
-- Observed/truth information boundary
-- Leakage-safe global temporal preparation
-- Statistical history-vector baseline
-- MPS-safe single-vector GRU training
-- Learned embedding export at three cutoffs
-- Observed-only dense timestamped export for both the statistical baseline and
-  learned encoder, with configurable event stride, history counts, explicit
-  field-order metadata, and no protected truth labels
-- Protected episode evaluation that joins dense timestamps to half-open truth
-  intervals and reports within/adjacent-episode coherence, boundary change,
-  response curves, drift/recovery, a held-out intent probe, and collapse checks
-- Versioned deterministic GPS, timestamp, leave-one-service-out, and recent-truncation robustness views with matched baseline/learned masks, coverage, cosine drift, realized corruption, and frozen-probe degradation
-- Train-fitted distance retrieval, geohash-boundary pairs, held-out-region
-  coverage, and seen/unseen geohash-5/geohash-7 transfer slices
-- Protected latent probes, next-event evaluation, and fair frozen
-  baseline-versus-learned comparison
-- Train-only next-event predictive diagnostics with a majority/popularity
-  control, macro-F1, balanced accuracy, class counts, and known-label coverage
+- Semi-synthetic Kanto simulation, structural/deep validation, and a strict
+  observed/truth boundary.
+- Leakage-safe preparation, a statistical baseline, the MPS-safe single-vector
+  GRU, and configuration-selected persistent/context model variants.
+- Versioned cutoff and dense component exports with named `persistent`,
+  `context`, and `combined` branches; legacy single-vector exports have an
+  explicit reader compatibility path.
+- Protected episode, temporal/routine, spatial-transfer, robustness, and
+  train-only next-event diagnostics, with matched baseline/learned comparison.
+- Immutable matched simulation for exposure, opportunity, observation,
+  temporary-trip, sustained-preference, and schedule-shift interventions;
+  pair manifests, field-level pair integrity, paired representation evaluation,
+  and protected change evaluation are executable.
+- A 2.0 observed recommendation contract populated with a synthetic Hakone POI
+  catalog, requests, availability/impressions, interactions, and request-time
+  attributes. Candidate rankers are not yet implemented.
+- Seeded three-cutoff reliability/repeatability evaluation and an observed-only
+  frozen-export/offline-evaluation benchmark. These are not calibrated
+  uncertainty or hardware-normalized online/training benchmarks.
 
-The historical release verification recorded in `docs/VERIFICATION.md` reports
-13 passing tests and a 50-user, 7-day learned pipeline plus baseline comparison
-completed end to end. That is a dated verification record, not the current test
-inventory. It marks the **execution/contract smoke as passed**; it does not mark
-the **500-user scientific baseline as archived**.
+The historical 50-user, 7-day verification in `docs/VERIFICATION.md` remains a
+dated execution smoke, not scientific evidence. Current authoritative
+completion and gate records live in `TASKS.md`.
 
 ## Phase 0 evidence milestones
 
 | Evidence state | Status | Meaning |
 |---|---|---|
-| 50-user execution/contract smoke passed | verified | The learned and baseline paths completed under one preparation contract, as recorded in `docs/VERIFICATION.md`; the small cohort is not scientific evidence. |
-| Complete smoke artifact manifest registered | pending | Record immutable paths or external-storage identifiers, source commit, dataset manifest hash, and the shared-preparation-contract statement; large generated binaries need not be committed. |
-| T0.2 reference evidence disposition | closed: evidence lost/unverifiable | `docs/artifacts/t0.2-reference500.json` preserves the original hashes and identity, but neither indexed root nor an archive is available, the recorded source commit is absent from this clone, and no durable external identifier exists. Closing the disposition does not authenticate the historical bytes or complete a scientific reference. |
-| T0.2a post-reference action | complete: finish evaluator gate | The absence decision records exactly one action, leaves every scientific axis without a conclusion, and declares no aggregate winner. It does not treat unavailable evidence as a tie or successful model result. |
-| T0.4 next-event diagnostics | implementation complete; scientific acceptance pending | Training/evaluation code, focused tests, and the command reference cover train-fitted majority/popularity controls, macro-F1, balanced accuracy, class counts, and known-label coverage. No new immutable reference-scale run/experiment lineage is indexed at `docs/artifacts/t0.4-r2-r3-reference-20260811.json` (or a successor), so T0.4 remains incomplete. |
+| 50-user execution/contract smoke | verified | The original learned and baseline paths completed under one preparation contract; the small cohort supports no scientific claim. |
+| Artifact-index workflow | complete | The indexer authenticates current base and supplemental reports, exports, robustness views, benchmark, lineage, and comparability fields. |
+| Historical T0.2 reference | closed: evidence lost/unverifiable | `docs/artifacts/t0.2-reference500.json` preserves identity and hashes, but the indexed bytes/source commit are unavailable; it is not recovered evidence. |
+| T0.2a absence decision | complete | The record selected `finish the evaluator gate`, made no aggregate decision, and drew no scientific conclusion from missing bytes. |
+| T0.4 replacement reference | complete and accepted for its stated diagnostic scope | `docs/artifacts/t0.4-r2-r3-reference-20260811.json` authenticates the immutable 500-user, 14-day, seed-20260811 replacement lineage and passes its comparability audit. `docs/decisions/t0.4-r2-r3-reference-20260811.md` records coverage, per-axis deltas, unsupported claims, and no aggregate winner. It accepts the R2/R3 next-event diagnostic surface, not factorization, causal invariance, or external validity. |
 
 ## Requirement status
 
-Status describes evaluation coverage, not whether a model has satisfied the
-scientific requirement. `partial` means at least one required axis is
-executable while other named axes remain absent. Artifacts are relative to
-`EXPERIMENT_DIR` unless stated otherwise.
+Statuses describe executable coverage, not scientific success. `partial` means
+that at least one named axis or contract is implemented while important axes,
+accepted matched evidence, or external validity remain absent.
 
-| ID | Status | Responsible command | Artifact or present limitation |
+| ID | Status | Responsible command/surface | Executable coverage and limitation |
 |---|---|---|---|
-| R1 | partial | `evaluate`; `evaluate --episodes`; `compare` | `evaluation.json`, `episode_response.json`, and `comparison/embedding_comparison.json`; factorized persistent/context outputs and matched change scenarios pending |
-| R2 | partial | `train`; `evaluate`; `evaluate --transfer`; `compare` | train-only next-event balance/popularity diagnostics and transfer slices are executable; immutable reference-scale T0.4 acceptance evidence and real geographic calibration remain pending |
-| R3 | partial | `train`; `evaluate`; `evaluate --temporal-routine`; `compare` | train-only next-event balance/popularity diagnostics and temporal-routine axes are executable; immutable reference-scale T0.4 acceptance evidence is missing and controlled schedule shift is blocked |
-| R4 | partial | `export-dense`; `evaluate --episodes`; `evaluate --temporal-routine`; `compare` | episode response plus repeated-routine-versus-one-off axes are executable; factorized separation and matched change scenarios remain pending |
-| R5 | pending | — | Matched counterfactual exposure/opportunity evaluator and artifacts pending |
-| R6 | partial | `robustness`; `compare` | Leave-one-service-out drift, coverage, and frozen-probe degradation are executable; candidate-aware cross-service transfer remains pending |
-| R7 | partial | `robustness`; `compare` | `robustness/{kind}_robustness.json` covers deterministic GPS, timestamp, and recent-truncation views; real-noise calibration and causal invariance remain unmeasurable |
-| R8 | partial | `prepare`; `evaluate --transfer`; `compare` | held-out-region and seen/unseen-geohash slices report coverage separately; unseen-POI transfer remains blocked by the observable recommendation contract |
-| R9 | blocked | — | Observable recommendation request, candidate, impression, and interaction contract is absent |
-| R10 | pending | — | Uncertainty evaluator and artifact pending |
-| R11 | pending | — | Matched transient/sustained change scenarios and adaptation evaluator pending |
-| R12 | pending | — | Privacy audit harness and artifact pending |
-| R13 | pending | — | Efficiency benchmark harness and artifact pending |
+| R1 | partial | `export-dense`; `evaluate --episodes`; `evaluate-change`; component exports | Episode and matched temporary/sustained-change curves plus persistent/context branches are executable. T2.7 has no matched factorized/control artifacts, so persistent/context recovery or disentanglement is unmeasurable. |
+| R2 | partial | `train`; `evaluate`; `evaluate --transfer`; `compare` | T0.4 durably authenticates coverage-aware learned-versus-naive diagnostics and synthetic transfer slices. Fine-local coverage is weak and real geographic calibration/external validity are absent. |
+| R3 | partial | `evaluate --temporal-routine`; `simulate-pair --intervention schedule-shift`; `evaluate-pair` | Observational temporal/routine axes and controlled simulator schedule response are executable. There is no accepted routine component or real-world schedule-shift evidence. |
+| R4 | partial | `evaluate --episodes`; `evaluate --temporal-routine`; `evaluate-change`; component reports | Episode response, repeated-versus-one-off behavior, change curves, and branch outputs are measurable. Branch semantics and routine/context separation have not passed T2.7. |
+| R5 | partial | `simulate-pair`; `validate-pair`; `evaluate-pair` | Exposure/opportunity pairs have strict identity/integrity gates and separate representation metrics. No complete reference-scale paired artifact is archived, and simulator control does not establish external causal invariance. |
+| R6 | partial | `robustness`; component evaluation; `compare` | Leave-one-service-out drift/degradation and per-component diagnostics are executable. Semantic cross-service recommendation transfer remains pending. |
+| R7 | partial | `robustness`; `simulate-pair --intervention observation`; `evaluate-pair` | Deterministic corruptions and controlled observation pairs are executable. They are not calibration to real GPS, timestamp, or missingness processes. |
+| R8 | partial | `evaluate --transfer`; recommendation contract | Held-out-region and seen/unseen-geohash slices report coverage; the POI contract now removes the schema blocker. Unseen-POI ranking evaluation (T3.7) is still unimplemented and synthetic geography is not external validity. |
+| R9 | partial | dataset 2.0 simulation/validation | Public POI/request/impression/interaction tables and Hakone request-time attributes are implemented and leakage-tested. Naive and embedding-aware ranking commands/metrics (T3.4+) are pending. |
+| R10 | partial | `evaluate --reliability` | Seeded cutoff-bootstrap variance, reliability-error bins, and coverage-risk diagnostics are executable. This is repeatability over three cutoffs, not calibrated uncertainty; T4.1 remains pending. |
+| R11 | partial | `simulate-pair --intervention {temporary-trip,sustained-preference}`; `evaluate-change` | Matched-control adaptation, recovery, forgetting, permanent drift, coverage, and censoring are executable in the simulator. No external nonstationarity claim follows. |
+| R12 | pending | — | Membership and sensitive-attribute/privacy audit harnesses remain unimplemented. |
+| R13 | partial | `benchmark` | Frozen artifact load/export serialization and reliability-evaluation latency, throughput, allocation, and RSS are executable. Training, online update, and hardware-normalized benchmarks remain pending. |
 
-The base `evaluate` command writes the backward-compatible three-cutoff report
-and does not run the R4 or R7 supplemental evaluators. Run `export-dense`
-followed by `evaluate --episodes` for episode evidence, and run `robustness` for
-event-removal evidence. The base report names these supplemental commands and
-artifacts rather than incorrectly marking their implemented axes as pending.
+No row above is an aggregate model verdict. In particular, a simulator metric
+becoming executable does not show that a representation satisfies the
+requirement, and no simulator-only result establishes real-world validity.
 
-## Pending scientific capabilities
+## Current gate and next implementation option
 
-- Factorized persistent/context and routine/context representation and metrics
-- Matched temporary-versus-sustained change scenarios
-- Causal geographic invariance, real-geography calibration, and unseen-POI transfer
-- Matched counterfactual exposure/opportunity invariance
-- Recommendation request/impression/interaction data contract
-- Candidate-aware ranking and Tokyo-to-Hakone evaluation
-- Representation uncertainty, nonstationarity, privacy, and efficiency audits
+The immediate scientific instruction is the **T2.7 matched-factorization
+gate**. Generate immutable, identical-data/cutoff artifacts for the statistical
+baseline, `capacity_matched_single`, `factorized_pc`, and required branch/loss
+ablations; run the selected R1/R4/R5/R6/R7 surfaces; then produce the separate
+per-axis factorization comparison and decision defined in
+`docs/FACTORIZATION_DECISION.md`. Until those artifacts exist, the decision is
+**unmeasurable — do not advance to a routine branch**. Component names,
+next-event accuracy, and covariance diagnostics are not evidence of semantics.
+
+If the matched factorization run is not the next work item, the next independent
+implementation option is **T3.4 observable naive rankers** over the completed
+2.0 recommendation contract. Popularity, nearest, and category-preference
+controls must consume only observed request/candidate data and share immutable
+candidate sets before an embedding-aware ranker is attempted.
 
 ## Evidence limitations
 
-Episode response, drift, recovery, intent prediction, or coherence from a
-single vector is **not evidence of persistent/context disentanglement**. R4 is
-partial because its episode metrics are executable, not because the current GRU
-has separated persistent preference from episode state. Matched baseline and
-learned reports, collapse diagnostics, and future factorized outputs are still
-required for that claim.
-
-The historical 50-user, 7-day smoke comparison remains an execution and
-contract check only. Its small held-out sample and incomplete fine-geohash
-coverage support no scientific model-quality, episode-coherence, robustness,
-or disentanglement claim.
-
-## Immediate instruction
-
-The exact T0.2 `runs/reference500` and `experiments/reference500` bytes are
-lost/unverifiable and are not recovered evidence. T0.4 acceptance requires a
-new immutable run and experiment identity with a durable evidence index at
-`docs/artifacts/t0.4-r2-r3-reference-20260811.json` or a newly named successor.
-Never present regenerated bytes under the historical T0.2 identity or hashes.
+- The accepted T0.4 reference supports only its explicitly reported synthetic,
+  coverage-qualified axes; it selects no aggregate winner.
+- Paired interventions establish internal simulator control after integrity
+  validation, not that the intervention is a faithful real-world causal model.
+- Reliability is repeatability, and the benchmark is host-specific offline
+  instrumentation; neither completes its deployment requirement.
+- Synthetic Hakone catalog attributes are hypotheses, not facts about Hakone or
+  Kanto, and a data contract is not recommendation quality.

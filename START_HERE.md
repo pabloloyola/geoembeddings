@@ -54,15 +54,17 @@ For the 500-user reference scale, omit `--users 50 --days 7`.
 Never point `--run-dir` at `observed/` or `truth/`. Training-related commands
 may read only `observed/`; protected simulator truth is evaluator-only.
 
-## First recommended development task
+## Current contract and recommended task
 
-Implement the evaluator foundations in roadmap Phase 1 before introducing the
-factorized model:
+New simulations write `geoembeddings-dataset/2.0`, including the public POI,
+recommendation-request, impression, and interaction tables. Event-only 1.0 runs
+remain explicitly readable by the legacy modeling path; readers never fabricate
+missing 2.0 recommendation tables.
 
-- episode-boundary and dense temporal embedding exports;
-- controlled GPS, event-removal, and missing-service robustness tests;
-- explicit held-out-region evaluation;
-- matched-seed counterfactual exposure/opportunity comparisons.
-
-These tests are necessary to determine whether a later factorized model truly
-separates persistent preference, routine, and current context.
+Evaluator foundations, paired interventions/change evaluation, component
+exports, and the persistent/context implementation now exist. The immediate
+scientific task is the T2.7 matched-factorization gate in `TASKS.md`: generate
+immutable statistical, capacity-matched single-vector, factorized, and ablation
+artifacts on identical data/cutoffs and evaluate the required axes separately.
+Do not open a routine branch until that gate passes. If that matched run is not
+next, T3.4 observable naive rankers are the independent implementation option.

@@ -1,9 +1,11 @@
 # GeoEmbeddings unified codebase v0.5.0
 
-This release adds an agent-ready research handoff around the tested v0.4.x
-implementation. Model and simulator behavior are unchanged; the new materials
-make the research contract, current evidence, roadmap, and safe development
-workflow explicit for a remote Codex agent.
+The current code writes `geoembeddings-dataset/2.0` and explicitly retains
+event-only 1.0 compatibility. It includes paired simulator interventions and
+evaluation, protected change evaluation, component exports, a factorized
+persistent/context model family, an observable recommendation contract,
+reliability evaluation, and an offline benchmark. These executable surfaces do
+not by themselves establish factorization, causal invariance, or external validity.
 
 Start with [`START_HERE.md`](START_HERE.md). A Codex agent must also read the
 repository-root [`AGENTS.md`](AGENTS.md) before changing code.
@@ -75,7 +77,11 @@ runs/kanto_pilot/
 ├── deep_validation_report.json
 ├── observed/
 │   ├── users_observed.csv.gz
-│   └── observed_events.csv.gz
+│   ├── observed_events.csv.gz
+│   ├── poi_catalog.csv.gz
+│   ├── recommendation_requests.csv.gz
+│   ├── impressions.csv.gz
+│   └── interactions.csv.gz
 └── truth/
     ├── user_latents.csv.gz
     ├── episodes_truth.csv.gz
@@ -91,8 +97,16 @@ experiments/kanto_single_vector/
 └── evaluation.json
 ```
 
-Training-related commands resolve only `observed/`. Only `evaluate` is allowed
-to resolve and open `truth/`.
+Training-related commands resolve only `observed/`. Protected evaluator
+commands alone resolve and open `truth/`. Legacy event-only dataset/1.0 runs
+remain readable for their supported modeling path; recommendation consumers
+require the dataset/2.0 tables.
+
+The CLI additionally provides `simulate-pair`, `pair-manifest`,
+`validate-pair`, `evaluate-pair`, `evaluate-change`, `export-dense`,
+supplemental `evaluate` modes (`--episodes`, `--transfer`,
+`--temporal-routine`, `--reliability`), `robustness`, and `benchmark`. See
+`docs/COMMAND_REFERENCE.md` for their immutable inputs and artifacts.
 
 ## Stage-by-stage commands
 
