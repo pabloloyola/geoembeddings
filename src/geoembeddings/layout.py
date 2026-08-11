@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .contract import DATASET_CONTRACT_NAME, DATASET_CONTRACT_VERSION, OBSERVED_FILES, TRUTH_FILES
+from .contract import DATASET_CONTRACT_NAME, DATASET_CONTRACT_VERSION, OBSERVED_FILES, TRUTH_FILES, validate_identity_manifest
 
 
 @dataclass(frozen=True)
@@ -62,6 +62,10 @@ class DatasetLayout:
                 raise ValueError(
                     f"Dataset contract {version} is incompatible with supported {DATASET_CONTRACT_VERSION}"
                 )
+        # Identity metadata is run-level rather than part of the public table
+        # contract. New simulator artifacts must nevertheless be complete.
+        if "identity" in manifest:
+            validate_identity_manifest(manifest["identity"], stream_names=("world", "user_latents", "episodes", "choices", "observation"))
         return manifest
 
 

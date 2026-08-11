@@ -243,7 +243,7 @@ steps without losing PR traceability.
   - **Known limitation/blocker:** RNG refactoring can change historical draws;
     document lineage rather than claiming bitwise compatibility.
 
-- [ ] **T1.11b — Stable identities and stream manifest.**
+- [x] **T1.11b — Stable identities and stream manifest.**
   - **Requirement IDs:** R5, R7.
   - **Prerequisites:** T1.11a.
   - **Affected layer:** simulator, observed contract.
@@ -253,6 +253,16 @@ steps without losing PR traceability.
     integration and migration/contract tests for any version bump.
   - **Completion evidence:** all required identities and seeds validate and
     modeling commands still receive only `observed/`.
+  - **Completion note (2026-08-11):** root `manifest.json` now carries
+    `geoembeddings-simulation-identity/1.0` with the derivation/identity/hash
+    algorithms, all resolved seeds, six entity counts, and canonical set
+    hashes. Semantic SHA-256 IDs make users, POIs, episodes, decisions, and
+    trajectories independent of CSV row order and unrelated RNG consumption;
+    fixed-seed observation-stream integration retains all identity hashes.
+    Deep validation rejects missing, malformed, duplicate, incomplete, or
+    table-inconsistent declarations. The additions are run-level/truth-side
+    metadata, so `geoembeddings-dataset/1.0` and its two observed tables remain
+    unchanged; legacy dataset/1.0 modeling remains readable.
   - **Known limitation/blocker:** contract changes require explicit versioning;
     truth declarations must not enter observed tables.
 

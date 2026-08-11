@@ -106,6 +106,8 @@ Valid scenario names are `clean`, `mixed`, `opportunity_confounded`,
 5. Apply service adoption, recording/dropout, GPS noise, and event processes.
 6. Split public observed data from protected truth.
 7. Run fast integrity checks and write all tables.
+8. Derive semantic-key identities and serialize the versioned run-level
+   identity/stream manifest. CSV row order is not an identity input.
 
 ### Outputs
 
@@ -113,7 +115,9 @@ Valid scenario names are `clean`, `mixed`, `opportunity_confounded`,
 - `observed/observed_events.csv.gz`: chronological observed cross-service events.
 - six protected `truth/*.csv.gz` tables.
 - `config.resolved.yaml`: exact data-generating settings.
-- `manifest.json`: version, contract, seed, row counts, splits, and validation.
+- `manifest.json`: version, contract, seed, row counts, splits, validation, and
+  `identity` (`geoembeddings-simulation-identity/1.0`) with resolved streams,
+  identity algorithm, entity counts, and deterministic identity-set hashes.
 - `validation_report.json`: fast in-process integrity diagnostics.
 
 ### Reads protected truth?
@@ -159,6 +163,10 @@ Checks keys and references, truth/observed separation, passive trajectory
 matching, GPS plausibility, candidate/choice consistency, distance/exposure and
 utility relationships, service overlap, event density, and related behavioral
 diagnostics. The exact current checks live in `simulation_validation.py`.
+It also rejects a missing/unsupported identity schema, missing or non-integer
+stream seeds, missing entity declarations, malformed hashes/semantic IDs,
+duplicate primary identities, table/hash count disagreement, and disagreement
+between top-level and identity-section stream provenance.
 
 ### Output
 

@@ -87,6 +87,41 @@ stream map is also saved in `config.resolved.yaml`. Neither provenance record
 is placed in `observed/`, and the public dataset tables and schema remain
 unchanged.
 
+### Stable identity and matchability contract (T1.11b; R5/R7)
+
+`manifest.json.identity` uses schema
+`geoembeddings-simulation-identity/1.0`. It records the
+`sha256-root-seed-and-stream-name/1.0` derivation algorithm, root seed, all five
+resolved stream seeds, identity-generation version `sha256-semantic-key/1.0`,
+entity counts, and order-independent identity-set hashes under
+`sha256-canonical-sorted-identifiers/1.0`. This is run-level metadata, so the
+public `geoembeddings-dataset/1.0` tables did **not** change and need no
+migration or contract-version bump.
+
+The paired-run matching keys are: cohort-slot-derived user IDs; configured
+region IDs; POI IDs derived from `(region_id, category, object_slot)`; episode
+IDs derived from `(user_id, calendar_date)`; choice/decision IDs derived from
+`(episode_id, primary_poi_choice)`; and trajectory keys derived from episode,
+activity occurrence, and scheduled true time. Session IDs use user and date but
+are not promoted to a manifest entity because sessions are observation-facing
+grouping values rather than protected world objects. The cohort/object slots
+are generation-domain keys, not output row numbers: sorting or rewriting CSV
+rows cannot change an ID or identity-set hash. IDs use canonical UTF-8 JSON and
+SHA-256, never Python `hash()`.
+
+Across an observation-only pair, users, regions, POIs, episodes, choices, and
+trajectories must all retain count and identity hash even though recorded event
+rows, GPS/timestamps, adoption, and observation-process values may change.
+Across later exposure/opportunity pairs, users, regions, POIs, episodes, and
+decision keys are the matching backbone; chosen POI, exposure, utilities,
+candidate membership under opportunity changes, and resulting true/observed
+values are allowed to change. T1.11c/d will encode and enforce those
+intervention-specific rules; T1.11b does not itself establish pair validity.
+
+The declarations remain in root `manifest.json` and refer to evaluator-only
+truth entities without copying protected episodes, utilities, chosen flags, or
+coordinates into `observed/`.
+
 This refactor intentionally defines a new simulator artifact lineage. A root
 seed remains repeatable within the named-stream algorithm, but its draws are
 not promised to be bitwise compatible with artifacts produced by the earlier
