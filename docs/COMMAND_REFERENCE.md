@@ -644,6 +644,27 @@ embedding is non-finite, observed files no longer match preparation hashes, or
 baseline and learned users/cutoffs/report provenance differ. This is an
 identity and completeness audit, not an aggregate scientific winner.
 
+### `scripts/reconcile_status.py`
+
+After a T0.2 index passes its comparability audit, authenticate and reconcile
+the indexed reports without calculating an aggregate winner:
+
+```bash
+uv run python scripts/reconcile_status.py \
+  --artifact-index docs/artifacts/t0.2-reference500.json \
+  --output docs/decisions/t0.2a-reference-decision.md
+```
+
+The command verifies the T0.2 index schema and passing audit, baseline/learned
+source hashes, preparation identity, cutoffs, ordered categorical and
+continuous fields, user identity, robustness specifications and masks, and the
+SHA-256 digest of every consumed report. Missing or remote-only report files
+abort reconciliation rather than allowing the index to stand in for the
+scientific evidence. The output keeps persistent probes, incremental
+information, collapse/geometry, episode response, robustness, and next-event
+performance/coverage separate; every axis includes coverage and missingness
+qualifications and exactly one permitted next action.
+
 Readable JSON/YAML:
 
 ```bash

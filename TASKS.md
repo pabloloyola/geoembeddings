@@ -89,7 +89,7 @@ implemented evaluator surfaces do not substitute for the missing reference.
   - **Affected layer:** evaluator, documentation.
   - **Baseline artifact required:** `docs/artifacts/t0.2-reference500.json` and
     its indexed baseline/learned reports.
-  - **Command → expected artifact:** `uv run python scripts/reconcile_status.py --artifact-index docs/artifacts/t0.2-reference500.json --output docs/decisions/t0.2a-reference-decision.md` → per-axis decision record and reconciled `docs/CURRENT_STATUS.md`/`TASKS.md` statuses (command is proposed).
+  - **Command → expected artifact:** `uv run python scripts/reconcile_status.py --artifact-index docs/artifacts/t0.2-reference500.json --output docs/decisions/t0.2a-reference-decision.md` → per-axis decision record and reconciled `docs/CURRENT_STATUS.md`/`TASKS.md` statuses (implemented; reconciliation aborts if indexed evidence is unavailable or no longer authentic).
   - **Minimum coverage:** unit tests for status derivation and missing-axis
     handling; integration test that mismatched hashes/cutoffs abort reconciliation.
   - **Completion evidence:** separate conclusions for persistent/preference
@@ -100,6 +100,12 @@ implemented evaluator surfaces do not substitute for the missing reference.
     single-vector metrics cannot establish causal invariance or disentanglement.
     The current decision record is an absence audit: all axes remain pending
     until T0.2 supplies durable artifacts and passes the comparability audit.
+  - **Current checkout blocker (2026-08-11):** the committed index says its
+    audit passed, but its gitignored `runs/reference500` and
+    `experiments/reference500` local roots are absent from this checkout and no
+    durable external identifier is recorded. The reconciler correctly aborts
+    on the first unavailable indexed report, so the decision/status document
+    and T0.2a checkbox were not rewritten as complete.
 
 - [ ] **T0.3 — Add runtime metadata to reports.**
   - **Requirement IDs:** R13.
