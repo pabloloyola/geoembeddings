@@ -143,3 +143,14 @@ causal geographic invariance, and cannot measure unseen-POI transfer.
 ## Executable R1/R4 episode metric contract
 
 `evaluate --episodes` assigns dense timestamps to half-open truth intervals (`start_time <= timestamp < end_time`). Boundary-relative hour-bin edges come from `evaluation.episode_response.boundary_bin_edges_hours` in versioned YAML. Within/adjacent-episode cosine and response curves are paired with different-user cosine and effective rank. Intent probes use deterministic held-out users and report class counts, majority accuracy, accuracy, macro-F1, and balanced accuracy. Temporary drift and recovery are single-vector R1 diagnostics and do not establish persistent/context disentanglement.
+
+## T1.6 temporal and routine diagnostics
+
+`evaluate --temporal-routine` joins dense public timestamps to protected labels
+only in evaluator code. It reports cyclic hour/day probes, episode duration,
+elapsed and remaining-duration tasks, periodic identity/state retrieval, and
+recurrent routine versus singleton non-routine episodes. User, label, class,
+temporal-bin, and history coverage accompany different-user separation and
+effective-rank checks. These observational diagnostics do not establish causal
+schedule invariance. The simulator audit found no matched schedule intervention,
+so schedule-shift evaluation is explicitly blocked.

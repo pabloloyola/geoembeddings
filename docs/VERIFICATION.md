@@ -141,3 +141,12 @@ Inspect train-scaled distance retrieval, boundary-pair cosine, held-out-region
 coverage, and seen/unseen geohash slices separately. Empty or unknown-label
 slices remain explicit coverage results. These tests do not measure unseen-POI
 transfer and do not establish external geographic validity.
+
+## T1.6 temporal/routine evaluator
+
+Run baseline and learned dense exports, both `evaluate --temporal-routine`
+commands, and `compare`. Verify identical source hashes, dense users/keys,
+temporal definitions, split seed, and row-level coverage. Interpret R3 and R4
+axes independently alongside different-user cosine and effective-rank ratio.
+The schedule-shift field must remain `blocked` until a controlled matched
+simulator intervention exists.

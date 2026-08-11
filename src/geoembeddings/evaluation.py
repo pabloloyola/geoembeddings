@@ -309,7 +309,8 @@ def evaluate_embeddings(
             "R3_multiscale_temporal_fidelity": {
                 "status": "partial" if learned_model else "pending",
                 "evidence": ["next_event"] if learned_model else [],
-                "missing": "routine and periodicity probes",
+                "supplemental": "evaluate --temporal-routine provides observational cyclic, duration, routine, and periodicity probes",
+                "missing": "controlled matched schedule-shift intervention",
             },
             "R4_episode_coherence": {
                 "status": "not_evaluated_in_base_report",

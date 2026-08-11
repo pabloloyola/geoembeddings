@@ -167,6 +167,33 @@ def compare_embeddings(
         }
         report["episode_response_comparison"] = {name: {"baseline": a, "learned": b,
             "learned_minus_baseline": (b-a) if a is not None and b is not None else None} for name, (a,b) in metrics.items()}
+    baseline_temporal = Path(baseline_embeddings_path).parent / "baseline_temporal_routine.json"
+    learned_temporal = Path(learned_embeddings_path).parent / "learned_temporal_routine.json"
+    if baseline_temporal.is_file() or learned_temporal.is_file():
+        if not (baseline_temporal.is_file() and learned_temporal.is_file()):
+            raise ValueError("Temporal/routine comparison requires both baseline and learned reports")
+        left, right = read_json(baseline_temporal), read_json(learned_temporal)
+        fields = ("source_hashes", "dense_users", "dense_keys_sha256", "hour_bin_edges", "day_bin_edges", "split_seed", "probe_train_fraction")
+        mismatches = [field for field in fields if left["metric_contract"].get(field) != right["metric_contract"].get(field)]
+        if mismatches or left["coverage"]["rows"] != right["coverage"]["rows"]:
+            raise ValueError(f"Temporal/routine reports are not matched; mismatched fields: {mismatches or ['coverage.rows']}")
+        def axis(path: tuple[str, ...]) -> dict[str, Any]:
+            a: Any = left; b: Any = right
+            for key in path: a, b = a.get(key, {}), b.get(key, {})
+            av = a if isinstance(a, (int, float)) else None; bv = b if isinstance(b, (int, float)) else None
+            return {"baseline": av, "learned": bv, "learned_minus_baseline": bv-av if av is not None and bv is not None else None}
+        report["temporal_routine_comparison"] = {
+            "R3_temporal_axes": {"hour_probe_accuracy": axis(("cyclic_probes", "hour", "accuracy")),
+                "day_probe_accuracy": axis(("cyclic_probes", "day", "accuracy")),
+                "duration_r2": axis(("duration_tasks", "episode_duration_hours", "r2")),
+                "periodic_state_top1": axis(("periodic_retrieval", "state_top1"))},
+            "R4_routine_axes": {"repeated_vs_one_off_accuracy": axis(("repeated_routine_vs_one_off", "probe", "accuracy")),
+                "periodic_user_top1": axis(("periodic_retrieval", "user_top1"))},
+            "collapse_checks": {"different_user_cosine": axis(("collapse_diagnostics", "different_user_cosine", "mean")),
+                "effective_rank_ratio": axis(("collapse_diagnostics", "effective_rank_ratio"))},
+            "schedule_shift": left["schedule_shift"],
+            "interpretation": "R3 and R4 axes remain separate; no aggregate winner is computed.",
+        }
     baseline_robust = Path(baseline_embeddings_path).parent / "robustness" / "baseline_robustness.json"
     learned_robust = Path(learned_embeddings_path).parent / "robustness" / "learned_robustness.json"
     if baseline_robust.is_file() or learned_robust.is_file():
@@ -621,11 +648,13 @@ def _requirement_status() -> dict[str, Any]:
         "R3_multiscale_temporal_fidelity": {
             "status": "partial",
             "evidence": ["common_future_event_probes", "stability_and_distinctiveness"],
-            "missing": "hour, duration, routine, and periodicity probes",
+            "supplemental": "evaluate --temporal-routine provides hour/day, duration, routine, and periodicity probes",
+            "missing": "controlled matched schedule-shift intervention",
         },
         "R4_episode_coherence": {
             "status": "not_measurable_from_three_global_cutoffs",
-            "missing": "protected episode-boundary joins and response metrics over dense exports",
+            "supplemental": "evaluate --episodes and --temporal-routine provide protected dense diagnostics",
+            "missing": "factorized routine/context separation and matched change scenarios",
         },
         "R5_preference_opportunity_separation": {
             "status": "partial",

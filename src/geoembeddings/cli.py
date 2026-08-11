@@ -59,6 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--kind", choices=("learned", "baseline"), default="learned")
     evaluate.add_argument("--episodes", action="store_true", help="Evaluate dense embeddings at protected episode boundaries")
     evaluate.add_argument("--transfer", action="store_true", help="Evaluate versioned R2/R8 spatial transfer slices")
+    evaluate.add_argument("--temporal-routine", action="store_true", help="Evaluate protected R3/R4 temporal and routine diagnostics")
 
     robustness = commands.add_parser("robustness", help="Re-encode deterministic observed-data robustness views for R6/R7")
     _add_embedding_arguments(robustness)
@@ -224,12 +225,23 @@ def _evaluate(
     kind: str,
     episodes: bool = False,
     transfer: bool = False,
+    temporal_routine: bool = False,
 ) -> dict[str, Any]:
     from .evaluation import evaluate_embeddings, evaluate_episode_response
 
     learned = kind == "learned"
-    if episodes and transfer:
-        raise ValueError("--episodes and --transfer select separate supplemental reports")
+    if sum((episodes, transfer, temporal_routine)) > 1:
+        raise ValueError("--episodes, --transfer, and --temporal-routine select separate supplemental reports")
+    if temporal_routine:
+        run.validate(require_truth=True)
+        from .temporal_routine_evaluation import evaluate_temporal_routine
+        dense = experiment.dense_embeddings if learned else experiment.dense_baseline_embeddings
+        if not dense.is_file():
+            raise FileNotFoundError(f"Missing dense {kind} embeddings: {dense}")
+        return evaluate_temporal_routine(
+            run.truth, experiment.prepared, dense,
+            experiment.temporal_routine_evaluation(kind), load_config(config_path), kind=kind,
+        )
     if transfer:
         run.validate(require_truth=False)
         from .spatial_evaluation import evaluate_spatial_transfer
@@ -367,7 +379,7 @@ def main() -> None:
         elif args.command == "export-dense":
             result = _export_dense(run, experiment, config_path, args.event_stride, args.kind)
         elif args.command == "evaluate":
-            result = _evaluate(run, experiment, config_path, args.kind, args.episodes, args.transfer)
+            result = _evaluate(run, experiment, config_path, args.kind, args.episodes, args.transfer, args.temporal_routine)
         else:
             result = _robustness(run, experiment, config_path, args.kind, args.views)
     elif args.command == "compare":

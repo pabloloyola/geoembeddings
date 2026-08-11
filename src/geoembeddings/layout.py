@@ -127,6 +127,11 @@ class ExperimentLayout:
     def baseline_episode_response(self) -> Path:
         return self.root / "baseline_episode_response.json"
 
+    def temporal_routine_evaluation(self, kind: str) -> Path:
+        if kind not in {"baseline", "learned"}:
+            raise ValueError(f"Unsupported temporal/routine artifact kind: {kind}")
+        return self.root / f"{kind}_temporal_routine.json"
+
     @property
     def baseline_embeddings(self) -> Path:
         return self.root / "statistical_baseline.npz"
