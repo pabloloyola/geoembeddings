@@ -73,3 +73,16 @@ episode type and had insufficient cross-region overlap. This is expected from
 stochastic small cohorts. Use at least the documented 50-user, 7-day smoke size
 for the full `pipeline`; use unit tests for smaller plumbing cases.
 
+
+## T1.2 episode evaluator
+
+```bash
+uv run pytest tests/test_episode_evaluation.py tests/test_dense_export.py tests/test_cli_paths.py
+uv run geoembed export-dense --kind baseline --event-stride 1 --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed export-dense --kind learned --event-stride 1 --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed evaluate --episodes --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed evaluate --episodes --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+```
+
+Inspect coverage and matched deltas. Tests cover exact boundaries, malformed/overlapping intervals, sparse exports, missing users, duplicate/non-monotonic timestamps, non-finite values, dimensions, and the direct `truth/` boundary. The observed-only dense exporter test runs without any `truth/` directory.

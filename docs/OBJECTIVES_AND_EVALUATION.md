@@ -121,3 +121,7 @@ No aggregate winner is produced. Episode coherence, direct context adaptation,
 counterfactual exposure robustness, uncertainty, sustained-change adaptation,
 privacy, and efficiency remain explicit missing tests until their required
 exports or controlled scenarios are available.
+
+## Executable R1/R4 episode metric contract
+
+`evaluate --episodes` assigns dense timestamps to half-open truth intervals (`start_time <= timestamp < end_time`). Boundary-relative hour-bin edges come from `evaluation.episode_response.boundary_bin_edges_hours` in versioned YAML. Within/adjacent-episode cosine and response curves are paired with different-user cosine and effective rank. Intent probes use deterministic held-out users and report class counts, majority accuracy, accuracy, macro-F1, and balanced accuracy. Temporary drift and recovery are single-vector R1 diagnostics and do not establish persistent/context disentanglement.

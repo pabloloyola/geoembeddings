@@ -616,3 +616,15 @@ PY
 Use individual commands during development. Reserve `pipeline` for clean smoke
 or reference runs. Individual commands make stage boundaries, inputs, outputs,
 and rerun decisions visible and reduce accidental regeneration.
+
+## Dense episode response (`evaluate --episodes`)
+
+```bash
+uv run geoembed export-dense --kind baseline --event-stride 1 --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed export-dense --kind learned --event-stride 1 --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed evaluate --episodes --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed evaluate --episodes --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+```
+
+Artifacts are `dense_statistical_baseline.npz`, `dense_embeddings.npz`, `baseline_episode_response.json`, and `episode_response.json`. `compare` rejects differing source hashes, users, timestamps/cutoffs, or bin edges and adds learned-minus-baseline episode deltas. Sparse exports remain valid; coverage reports missing users and bins.
