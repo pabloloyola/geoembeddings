@@ -521,6 +521,32 @@ def choose_poi(
     return chosen_poi, scored
 
 
+def change_interval(start_day: date, days: int, declaration: dict[str, Any]) -> tuple[date, date | None]:
+    """Resolve the protected half-open interval, retaining pre/post evidence."""
+    offset = int(declaration["start_day_offset"])
+    if offset < 1 or offset >= days:
+        raise ValueError("change start_day_offset must leave pre-change observations")
+    start = start_day + timedelta(days=offset)
+    duration = declaration.get("duration_days")
+    if duration is None:
+        return start, None
+    duration = int(duration)
+    if duration < 1 or offset + duration >= days:
+        raise ValueError("temporary change duration must leave post-change recovery observations")
+    return start, start + timedelta(days=duration)
+
+
+def changed_user(user: dict[str, Any], current_day: date, interval: tuple[date, date | None], declaration: dict[str, Any]) -> dict[str, Any]:
+    """Construct a choice-only latent view without rewriting persistent truth."""
+    start, end = interval
+    if current_day < start or (end is not None and current_day >= end):
+        return user
+    result = dict(user)
+    field = f"pref_{declaration['target_category']}"
+    result[field] = clamp(float(result.get(field, .5)) + float(declaration["preference_delta"]))
+    return result
+
+
 def observed_location(rng: random.Random, lat: float, lon: float, accuracy_m: float) -> tuple[float, float]:
     return jitter_point(rng, lat, lon, abs(rng.gauss(0.0, accuracy_m / 1000.0)))
 
@@ -620,6 +646,10 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
     candidate_sets: list[dict[str, Any]] = []
     choices: list[dict[str, Any]] = []
     start_day = date.fromisoformat(args.start_date)
+    intervention = CONFIG["run"].get("intervention") or {}
+    change = intervention.get("change") if intervention.get("type") in {"temporary-trip", "sustained-preference"} else None
+    interval = change_interval(start_day, args.days, change) if change else None
+    change_points: list[dict[str, Any]] = []
     schedule = CONFIG["episodes"]["schedule_hours"]
     event_cfg = CONFIG["events"]
     spatial = CONFIG["world"]["spatial"]
@@ -627,6 +657,10 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
         observed_user, latent_user = create_user(user_rng, user_index, args.full_kanto)
         users_observed.append(observed_user)
         user_latents.append(latent_user)
+        if change:
+            change_points.append({"user_id": latent_user["user_id"], "change_type": intervention["type"],
+                "change_start_time": iso_at(interval[0], 0.0), "change_end_time": "" if interval[1] is None else iso_at(interval[1], 0.0),
+                "target_category": change["target_category"], "preference_delta": change["preference_delta"]})
         obs_records = make_observation_process(observation_rng, latent_user, args.scenario)
         observation_process.extend(obs_records)
         obs_by_service = {row["source_service"]: row for row in obs_records}
@@ -709,7 +743,8 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
             candidates = nearby_candidates(pois, category, origin_lat, origin_lon, args.scenario)
             if candidates:
                 decision_id = stable_identifier("decision", episode_id, "primary_poi_choice")
-                chosen, scored = choose_poi(choice_rng, latent_user, candidates, primary, args.scenario, decision_id)
+                choice_user = changed_user(latent_user, current_day, interval, change) if change else latent_user
+                chosen, scored = choose_poi(choice_rng, choice_user, candidates, primary, args.scenario, decision_id)
                 candidate_sets.extend(scored)
                 choice_hour = (
                     float(schedule["routine_choice"])
@@ -860,6 +895,8 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
     }
     for path, rows in tables.items():
         write_csv_gz(path, rows)
+    if change:
+        write_csv_gz(truth_dir / "change_points_truth.csv.gz", change_points)
 
     report = validate_dataset(
         users_observed, user_latents, observed_events, episodes, candidate_sets, choices, trajectories, observation_process

@@ -196,6 +196,26 @@ scenarios:
 # Controlled counterfactuals are experimental assumptions, not calibrated
 # descriptions of Tokyo, Kanto, platform exposure, or real-world missingness.
 interventions:
+  temporary-trip:
+    declaration_version: geoembeddings-change-intervention/1.0
+    config_overrides: {}
+    affected_random_streams: [choices]
+    reseed_streams: []
+    stream_seed_offset: 0
+    invariant_entities: [users, regions, pois, episodes, choices]
+    permitted_changes: [truth.candidate_sets.utility_preference, truth.candidate_sets.utility_total, truth.candidate_sets.is_chosen, truth.choices.chosen_poi_id, truth.trajectories.*, truth.change_points.*, observed.events.*]
+    change: {start_day_offset: 4, duration_days: 3, target_category: onsen, preference_delta: 0.45}
+    behavioral_diagnostics: {changed_category_preference_utility: increase}
+  sustained-preference:
+    declaration_version: geoembeddings-change-intervention/1.0
+    config_overrides: {}
+    affected_random_streams: [choices]
+    reseed_streams: []
+    stream_seed_offset: 0
+    invariant_entities: [users, regions, pois, episodes, choices]
+    permitted_changes: [truth.candidate_sets.utility_preference, truth.candidate_sets.utility_total, truth.candidate_sets.is_chosen, truth.choices.chosen_poi_id, truth.trajectories.*, truth.change_points.*, observed.events.*]
+    change: {start_day_offset: 4, duration_days: null, target_category: onsen, preference_delta: 0.45}
+    behavioral_diagnostics: {changed_category_preference_utility: increase}
   exposure:
     config_overrides: {scenarios.mixed.exposure_scale: 2.30}
     affected_random_streams: [choices]

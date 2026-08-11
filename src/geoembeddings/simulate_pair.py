@@ -30,12 +30,19 @@ def _diagnostics(layout: DatasetLayout) -> dict[str, float]:
     observation = _rows(layout.truth / "observation_process.csv.gz")
     chosen = [row for row in candidates if row["is_chosen"] == "1"]
     location = [row for row in observation if row["source_service"] == "location"]
-    return {
+    result = {
         "exposed_chosen_rate": sum(float(row["exposed"]) for row in chosen) / max(1, len(chosen)),
         "mean_candidate_count": sum(float(row["candidate_count"]) for row in choices) / max(1, len(choices)),
         "observed_event_count": float(len(events)),
         "mean_location_gps_sd_m": sum(float(row["gps_sd_m"]) for row in location) / max(1, len(location)),
     }
+    change_path = layout.truth / "change_points_truth.csv.gz"
+    if change_path.is_file():
+        point = _rows(change_path)[0]
+        after_ids = {row["decision_id"] for row in choices if row["timestamp"] >= point["change_start_time"] and row["chosen_category"] == point["target_category"]}
+        values = [float(row["utility_preference"]) for row in candidates if row["decision_id"] in after_ids]
+        result["changed_category_preference_utility"] = sum(values) / max(1, len(values))
+    return result
 
 
 def _set_path(config: dict[str, Any], dotted: str, value: Any) -> None:
@@ -92,7 +99,12 @@ def simulate_pair(config_path: str | Path, reference_run_dir: str | Path,
         "invariant_entities": definition["invariant_entities"],
         "permitted_changes": definition["permitted_changes"],
         "behavioral_diagnostics": definition["behavioral_diagnostics"],
+        "declaration_version": definition.get("declaration_version"),
+        "change": definition.get("change"),
     }
+    if intervention in {"temporary-trip", "sustained-preference"}:
+        reference_config["run"]["intervention"] = copy.deepcopy(intervention_config["run"]["intervention"])
+        reference_config["run"]["intervention"]["change"] = dict(definition["change"], preference_delta=0.0)
 
     pair.root.mkdir(parents=True)
     for label, config, layout in (("reference", reference_config, reference),

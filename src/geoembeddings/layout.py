@@ -102,6 +102,14 @@ class PairLayout:
     def counterfactual_comparison_markdown(self) -> Path:
         return self.root / "counterfactual_comparison.md"
 
+    @property
+    def change_evaluation_json(self) -> Path:
+        return self.root / "change_evaluation.json"
+
+    @property
+    def change_evaluation_markdown(self) -> Path:
+        return self.root / "change_evaluation.md"
+
 
 @dataclass(frozen=True)
 class ExperimentLayout:

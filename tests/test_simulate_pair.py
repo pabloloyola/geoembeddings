@@ -7,6 +7,8 @@ import pytest
 import yaml
 
 from geoembeddings.simulate_pair import simulate_pair
+from geoembeddings.simulator import change_interval
+from datetime import date
 
 
 CONFIG = Path("configs/simulation/kanto_v1.yaml")
@@ -42,3 +44,21 @@ def test_simulate_pair_is_immutable(tmp_path: Path) -> None:
     with pytest.raises(FileExistsError, match="overwrite"):
         simulate_pair(CONFIG, reference, changed, pair, intervention="observation",
                       users=10, days=2, seed=17)
+
+
+def test_change_interval_duration_and_censoring() -> None:
+    assert change_interval(date(2026, 1, 1), 10, {"start_day_offset": 3, "duration_days": 2}) == (date(2026, 1, 4), date(2026, 1, 6))
+    assert change_interval(date(2026, 1, 1), 10, {"start_day_offset": 3, "duration_days": None}) == (date(2026, 1, 4), None)
+    with pytest.raises(ValueError, match="post-change"):
+        change_interval(date(2026, 1, 1), 5, {"start_day_offset": 3, "duration_days": 2})
+
+
+@pytest.mark.parametrize("kind", ["temporary-trip", "sustained-preference"])
+def test_change_pairs_preserve_identities_and_protect_change_truth(tmp_path: Path, kind: str) -> None:
+    result = simulate_pair(CONFIG, tmp_path / "reference", tmp_path / "intervention", tmp_path / "pair",
+                           intervention=kind, users=10, days=9, seed=20260811)
+    manifest = json.loads(Path(result["pair_manifest"]).read_text())
+    assert result["status"] == "passed"
+    assert set(manifest["invariant_entity_classes"]) >= {"users", "episodes", "choices"}
+    assert not (tmp_path / "intervention" / "observed" / "change_points_truth.csv.gz").exists()
+    assert (tmp_path / "intervention" / "truth" / "change_points_truth.csv.gz").is_file()

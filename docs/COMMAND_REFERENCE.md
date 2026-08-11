@@ -956,3 +956,27 @@ RSS, warmup/iteration counts, CPU/software metadata, and explicit missing
 artifact status. It rejects source/preparation mismatch and existing output
 unless `--overwrite` is passed. It never accepts a truth path and does not
 measure training, online update latency, or hardware-normalized performance.
+
+## `evaluate-change` (T1.15)
+
+Generate either versioned intervention with at least one pre-change day and, for
+a temporary trip, at least one post-change day:
+
+```bash
+uv run geoembed simulate-pair --intervention temporary-trip \
+  --reference-run-dir runs/change-control --intervention-run-dir runs/change-trip \
+  --pair-dir pairs/change-trip --users 50 --days 14 --seed 20260811
+uv run geoembed evaluate-change --pair-manifest pairs/change-trip/pair_manifest.json \
+  --baseline-experiment-dir experiments/control-baseline experiments/trip-baseline \
+  --learned-experiment-dir experiments/control-learned experiments/trip-learned
+```
+
+Both experiment roots must already contain observed-only dense exports. The
+protected evaluator authenticates the passing, current pair-integrity report,
+then reads `truth/change_points_truth.csv.gz`; preparation, training, baseline,
+and export never receive that path. The immutable outputs are
+`change_evaluation.json` and `.md` beside the pair manifest. They report
+relative-day matched-control drift curves, adaptation, recovery, forgetting,
+permanent drift, coverage, exclusions, and right-censoring separately for the
+statistical and learned representations. `--overwrite` is required to replace
+both existing regular outputs.

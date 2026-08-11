@@ -387,7 +387,7 @@ steps without losing PR traceability.
     limitations without an aggregate winner. No complete reference-scale paired
     artifact is archived; external causal validity and real-noise calibration remain blocked.
 
-- [ ] **T1.15 — Temporary-trip and sustained-preference-change scenarios.**
+- [x] **T1.15 — Temporary-trip and sustained-preference-change scenarios.**
   - **Requirement IDs:** R1, R11.
   - **Prerequisites:** T1.11a–T1.11f.
   - **Affected layer:** simulator, evaluator.
@@ -399,6 +399,7 @@ steps without losing PR traceability.
     forgetting, permanent drift, coverage, and baseline/learned deltas.
   - **Known limitation/blocker:** validity depends on distinguishable simulator
     interventions; one trip cannot be treated as long-term preference evidence.
+  - **Completion note (2026-08-11):** versioned choice-stream interventions preserve stable identities and persistent latent truth, expose protected half-open change points, and pass fixed-seed utility diagnostics. `evaluate-change` hard-gates on current pair integrity and emits matched-control baseline/learned adaptation, recovery, forgetting, and permanent-drift curves with explicit coverage and censoring. These synthetic single-vector diagnostics do not establish real-world causality or disentanglement.
 
 ## P2 — Two-way factorized model
 
