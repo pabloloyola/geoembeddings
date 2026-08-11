@@ -11,6 +11,7 @@ import pandas as pd
 from .io import read_json, write_json
 from .schema import load_observed
 from .runtime_metadata import collect_runtime_metadata
+from .representation_schema import load_embedding_export
 
 
 PERSISTENT_TRAITS = [
@@ -297,13 +298,14 @@ def _load_embeddings(path: str | Path, label: str) -> dict[tuple[str, str], np.n
     path = Path(path)
     if not path.is_file():
         raise FileNotFoundError(f"Missing {label} embeddings: {path}")
-    payload = np.load(path, allow_pickle=False)
+    loaded = load_embedding_export(path)
+    payload = loaded.arrays
     required = {"user_id", "cutoff", "embedding"}
-    if not required.issubset(payload.files):
-        raise ValueError(f"{label} export is missing arrays: {sorted(required - set(payload.files))}")
+    if not required.issubset(payload):
+        raise ValueError(f"{label} export is missing arrays: {sorted(required - set(payload))}")
     user_ids = payload["user_id"].astype(str)
     cutoffs = payload["cutoff"].astype(str)
-    embeddings = payload["embedding"].astype(np.float64)
+    embeddings = loaded.embedding.astype(np.float64)
     if embeddings.ndim != 2 or len(embeddings) != len(user_ids) or len(user_ids) != len(cutoffs):
         raise ValueError(f"Malformed {label} embedding export at {path}")
     if not np.isfinite(embeddings).all():

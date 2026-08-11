@@ -11,6 +11,7 @@ import pandas as pd
 
 from .io import write_json
 from .runtime_metadata import collect_runtime_metadata
+from .representation_schema import load_embedding_export
 
 
 LATENT_TRAITS = [
@@ -35,16 +36,18 @@ def load_episode_evaluation_inputs(
     episode_path = truth_dir / "episodes_truth.csv.gz"
     if not episode_path.is_file():
         raise FileNotFoundError(f"Missing evaluator-only file: {episode_path}")
-    with np.load(dense_path, allow_pickle=False) as payload:
+    loaded = load_embedding_export(dense_path, dense=True)
+    payload = loaded.arrays
+    if payload:
         required = {"user_id", "timestamp", "cutoff_kind", "embedding", "history_event_count"}
-        missing = required.difference(payload.files)
+        missing = required.difference(payload)
         if missing:
             raise ValueError(f"Dense export is missing required arrays: {sorted(missing)}")
         n = len(payload["user_id"])
         for key in required - {"embedding"}:
             if len(payload[key]) != n:
                 raise ValueError(f"Dense array {key!r} is not row-aligned")
-        embeddings = np.asarray(payload["embedding"], dtype=np.float64)
+        embeddings = np.asarray(loaded.embedding, dtype=np.float64)
         if embeddings.ndim != 2 or embeddings.shape[0] != n or embeddings.shape[1] < 1:
             raise ValueError("Dense embedding must be a row-aligned, non-empty 2-D array")
         if not np.isfinite(embeddings).all():
@@ -340,10 +343,11 @@ def evaluate_embeddings(
         next_event = evaluate_next_event(
             observed_dir, prepared_dir, checkpoint_path, config
         )
-    payload = np.load(embeddings_path, allow_pickle=False)
+    loaded = load_embedding_export(embeddings_path)
+    payload = loaded.arrays
     user_ids = payload["user_id"].astype(str)
     cutoffs = payload["cutoff"].astype(str)
-    embeddings = payload["embedding"].astype(np.float64)
+    embeddings = loaded.embedding.astype(np.float64)
     latent = pd.read_csv(latent_path)
 
     final_mask = cutoffs == "test"

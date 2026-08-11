@@ -9,7 +9,9 @@ import pandas as pd
 from torch.utils.data import DataLoader
 
 from .data import DenseUserCutoffDataset, UserCutoffDataset, collate_user_cutoffs
+from .io import read_json, sha256_file
 from .model import build_model
+from .representation_schema import COMPONENT_NAMES, EXPORT_SCHEMA_VERSION
 from .training import _checkpoint_categorical_fields, resolve_device
 
 
@@ -47,10 +49,10 @@ def export_embeddings(
     )
     user_ids: list[str] = []
     cutoffs: list[str] = []
-    embeddings: list[np.ndarray] = []
+    components: dict[str, list[np.ndarray]] = {name: [] for name in COMPONENT_NAMES}
     with torch.no_grad():
         for batch in loader:
-            encoded = model.encode(
+            encoded = model.encode_components(
                 batch["categorical"].to(device),
                 batch["continuous"].to(device),
                 batch["lengths"],
@@ -58,16 +60,21 @@ def export_embeddings(
             )
             user_ids.extend(batch["user_id"])
             cutoffs.extend(batch["cutoff"])
-            embeddings.append(encoded.cpu().numpy())
+            for name in COMPONENT_NAMES:
+                components[name].append(getattr(encoded, name).cpu().numpy())
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    matrix = np.concatenate(embeddings, axis=0)
+    matrices = {name: np.concatenate(values, axis=0) for name, values in components.items()}
+    matrix = matrices["combined"]
+    metadata = _export_metadata(prepared_dir, checkpoint, sorted(set(cutoffs)), matrices)
     np.savez_compressed(
         output_path,
         user_id=np.asarray(user_ids, dtype=str),
         cutoff=np.asarray(cutoffs, dtype=str),
         embedding=matrix,
+        **metadata,
+        **{f"component_{name}": value for name, value in matrices.items()},
     )
     return {
         "output": str(output_path.resolve()),
@@ -115,10 +122,10 @@ def export_dense_embeddings(
     timestamps: list[str] = []
     cutoff_kinds: list[str] = []
     history_event_counts: list[int] = []
-    embeddings: list[np.ndarray] = []
+    components: dict[str, list[np.ndarray]] = {name: [] for name in COMPONENT_NAMES}
     with torch.no_grad():
         for batch in loader:
-            encoded = model.encode(
+            encoded = model.encode_components(
                 batch["categorical"].to(device),
                 batch["continuous"].to(device),
                 batch["lengths"],
@@ -128,9 +135,11 @@ def export_dense_embeddings(
             timestamps.extend(batch["timestamp"])
             cutoff_kinds.extend(batch["cutoff_kind"])
             history_event_counts.extend(batch["history_event_count"])
-            embeddings.append(encoded.cpu().numpy())
+            for name in COMPONENT_NAMES:
+                components[name].append(getattr(encoded, name).cpu().numpy())
 
-    matrix = np.concatenate(embeddings, axis=0)
+    matrices = {name: np.concatenate(values, axis=0) for name, values in components.items()}
+    matrix = matrices["combined"]
     if not np.isfinite(matrix).all():
         raise ValueError("Dense embedding export contains non-finite values")
     output_path = Path(output_path)
@@ -142,8 +151,8 @@ def export_dense_embeddings(
         cutoff_kind=np.asarray(cutoff_kinds, dtype=str),
         embedding=matrix,
         history_event_count=np.asarray(history_event_counts, dtype=np.int64),
-        categorical_fields=np.asarray(checkpoint["categorical_fields"], dtype=str),
-        continuous_fields=np.asarray(checkpoint["continuous_fields"], dtype=str),
+        **_export_metadata(prepared_dir, checkpoint, sorted(set(timestamps)), matrices),
+        **{f"component_{name}": value for name, value in matrices.items()},
     )
     return {
         "output": str(output_path.resolve()),
@@ -153,4 +162,44 @@ def export_dense_embeddings(
         "event_stride": event_stride,
         "cutoff_kinds": sorted(set(cutoff_kinds)),
         "information_boundary": "observed/ only; protected episode labels are not exported",
+    }
+
+
+def _export_metadata(
+    prepared_dir: str | Path,
+    checkpoint: dict[str, Any],
+    cutoffs: list[str],
+    matrices: dict[str, np.ndarray],
+) -> dict[str, np.ndarray]:
+    prepared_path = Path(prepared_dir) / "prepared_metadata.json"
+    prepared = read_json(prepared_path)
+    preparation_hash = sha256_file(prepared_path)
+    schema = checkpoint.get("representation_schema")
+    if schema is not None:
+        mismatches = []
+        if schema.get("preparation_hash") != preparation_hash:
+            mismatches.append("preparation_hash")
+        if schema.get("source_files") != prepared.get("source_files"):
+            mismatches.append("source_files")
+        if schema.get("categorical_fields") != prepared.get("categorical_fields"):
+            mismatches.append("categorical_fields")
+        if schema.get("continuous_fields") != prepared.get("continuous_fields"):
+            mismatches.append("continuous_fields")
+        if mismatches:
+            raise ValueError(f"Checkpoint/preparation representation schema mismatch: {mismatches}")
+    source_files = dict(prepared["source_files"])
+    return {
+        "schema_version": np.asarray(EXPORT_SCHEMA_VERSION),
+        "component_names": np.asarray(COMPONENT_NAMES, dtype=str),
+        "component_dimensions": np.asarray([matrices[name].shape[1] for name in COMPONENT_NAMES], dtype=np.int64),
+        "model_variant": np.asarray(checkpoint.get("model_variant", "single_vector")),
+        "categorical_fields": np.asarray(checkpoint["categorical_fields"], dtype=str),
+        "continuous_fields": np.asarray(checkpoint["continuous_fields"], dtype=str),
+        "preparation_hash": np.asarray(preparation_hash),
+        "source_file_names": np.asarray(list(source_files), dtype=str),
+        "source_hashes": np.asarray(list(source_files.values()), dtype=str),
+        "train_end": np.asarray(str(prepared["train_end"])),
+        "validation_end": np.asarray(str(prepared["validation_end"])),
+        "export_cutoffs": np.asarray(cutoffs, dtype=str),
+        "compatibility": np.asarray("embedding aliases component_combined"),
     }
