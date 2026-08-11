@@ -337,3 +337,21 @@ All public commands use the same two roots:
 Users never pass `observed/`, `truth/`, `prepared/`, checkpoint, or embedding
 filenames manually. See `docs/MIGRATION.md` for the exact mapping from the two
 earlier projects.
+
+### Temporary and sustained preference interventions (T1.15; R1/R11)
+
+Simulation config v2 declares `temporary-trip` and `sustained-preference` under
+`interventions`, using schema `geoembeddings-change-intervention/1.0`. Both keep
+user, world, episode, and decision identities fixed and consume only the
+existing independent `choices` stream (without reseeding it). A temporary trip
+applies a category-preference delta over a half-open finite interval; sustained
+preference applies it from the protected change point through the run. Original
+persistent user latents are never rewritten. Only choice utilities/outcomes,
+downstream trajectories/observations, and protected change declarations may
+differ. Change points, duration, target, and magnitude exist only in
+`truth/change_points_truth.csv.gz`.
+
+Fixed-seed generation rejects intervals without pre-change evidence and finite
+intervals without post-change recovery evidence. Its behavioral diagnostic
+requires target-category preference utility to increase. These are synthetic
+mechanisms, not evidence that a trip changes a person's real preference.

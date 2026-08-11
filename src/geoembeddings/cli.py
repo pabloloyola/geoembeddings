@@ -28,7 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     simulate_pair = commands.add_parser("simulate-pair", help="Generate and validate a configured matched intervention")
     simulate_pair.add_argument("--config", type=Path, default=DEFAULT_SIMULATION_CONFIG)
-    simulate_pair.add_argument("--intervention", required=True, choices=("exposure", "opportunity", "observation"))
+    simulate_pair.add_argument("--intervention", required=True, choices=("exposure", "opportunity", "observation", "temporary-trip", "sustained-preference"))
     simulate_pair.add_argument("--reference-run-dir", required=True, type=Path)
     simulate_pair.add_argument("--intervention-run-dir", required=True, type=Path)
     simulate_pair.add_argument("--pair-dir", required=True, type=Path)
@@ -57,6 +57,12 @@ def build_parser() -> argparse.ArgumentParser:
         metavar=("REFERENCE", "INTERVENTION"))
     evaluate_pair.add_argument("--config", type=Path, default=DEFAULT_EMBEDDING_CONFIG)
     evaluate_pair.add_argument("--overwrite", action="store_true")
+
+    evaluate_change = commands.add_parser("evaluate-change", help="Evaluate R1/R11 adaptation on a protected change pair")
+    evaluate_change.add_argument("--pair-manifest", required=True, type=Path)
+    evaluate_change.add_argument("--baseline-experiment-dir", required=True, type=Path, nargs=2, metavar=("REFERENCE", "INTERVENTION"))
+    evaluate_change.add_argument("--learned-experiment-dir", required=True, type=Path, nargs=2, metavar=("REFERENCE", "INTERVENTION"))
+    evaluate_change.add_argument("--overwrite", action="store_true")
 
     prepare = commands.add_parser("prepare", help="Fit leakage-safe preprocessing")
     _add_embedding_arguments(prepare)
@@ -438,6 +444,10 @@ def main() -> None:
         result = evaluate_pair(args.pair_manifest, args.baseline_experiment_dir,
             args.learned_experiment_dir, load_config(Path(args.config).expanduser().resolve()),
             overwrite=args.overwrite)
+    elif args.command == "evaluate-change":
+        from .evaluation import evaluate_change
+        result = evaluate_change(args.pair_manifest, args.baseline_experiment_dir,
+                                 args.learned_experiment_dir, overwrite=args.overwrite)
     elif args.command in {"prepare", "train", "baseline", "export", "export-dense", "evaluate", "robustness", "benchmark"}:
         run = DatasetLayout.from_path(args.run_dir)
         experiment = ExperimentLayout.from_path(args.experiment_dir)

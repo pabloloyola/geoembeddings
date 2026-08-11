@@ -334,3 +334,26 @@ exclusions, drift, retrieval, effective rank, frozen probes, and the modeling
 information boundary. A reference-scale paired result is not claimed or
 archived; simulator-only validity and uncalibrated observation mechanisms remain
 explicit limitations.
+
+## T1.15 change-support verification (2026-08-11)
+
+Requirements R1 and R11 are affected across simulator and protected evaluator;
+the public observed contract and all model APIs are unchanged. No complete
+reference-scale T0.2 change artifact existed, so acceptance uses matched
+fixed-seed statistical/learned dense exports rather than claiming a scientific
+model improvement. Unit coverage checks half-open duration and invalid censored
+change points. Integration coverage creates both interventions, checks stable
+identity hashes and permitted fields, proves change truth is absent from
+`observed/`, exercises temporary recovery and sustained right-censoring,
+rejects stale pair-integrity inputs, and protects immutable output roots.
+
+```bash
+uv run geoembed simulate-pair --intervention temporary-trip --users 10 --days 9 --seed 20260811 \
+  --reference-run-dir /tmp/t1.15-control --intervention-run-dir /tmp/t1.15-trip --pair-dir /tmp/t1.15-pair
+uv run geoembed validate-pair --pair-manifest /tmp/t1.15-pair/pair_manifest.json
+```
+
+Reported curves are matched-control representation drift, not causal evidence
+outside the simulator and not proof of factorized disentanglement. Sparse event
+histories cause explicit missing-bin exclusions; sustained runs are explicitly
+right-censored and therefore cannot report recovery.

@@ -40,6 +40,7 @@ TABLES = (
     TableSpec("truth.trajectories", "truth/trajectories_truth.csv.gz", ("trajectory_id",)),
     TableSpec("truth.observation_process", "truth/observation_process.csv.gz", ("user_id", "source_service")),
 )
+CHANGE_TABLE = TableSpec("truth.change_points", "truth/change_points_truth.csv.gz", ("user_id",))
 SAMPLE_LIMIT = 10
 
 
@@ -168,8 +169,9 @@ def validate_pair(pair_manifest_path: str | Path) -> dict[str, Any]:
                                "intervention": int_manifest["identity"]["random_streams"]}:
         raise ValueError("pair stream lineage is stale")
     allowed = pair.allowed_to_change_fields
+    table_specs = TABLES + ((CHANGE_TABLE,) if pair.intervention_type in {"temporary-trip", "sustained-preference"} else ())
     results: dict[str, Any] = {}
-    for spec in TABLES:
+    for spec in table_specs:
         ref_schema, ref_rows = _read_table(reference.root / spec.relative_path)
         int_schema, int_rows = _read_table(intervention.root / spec.relative_path)
         results[spec.name] = compare_rows(spec.name, ref_schema, ref_rows, int_schema, int_rows,
@@ -235,7 +237,9 @@ def require_passing_pair_integrity(pair_manifest_path: str | Path) -> dict[str, 
                             if all(isinstance(value, dict) for value in
                                    (entity_results, table_results, allowed_results)) else [])
     if (not isinstance(entity_results, dict) or not entity_results
-            or not isinstance(table_results, dict) or set(table_results) != {spec.name for spec in TABLES} | {"truth.world_regions", "truth.world_pois"}
+            or not isinstance(table_results, dict) or set(table_results) not in (
+                {spec.name for spec in TABLES} | {"truth.world_regions", "truth.world_pois"},
+                {spec.name for spec in TABLES + (CHANGE_TABLE,)} | {"truth.world_regions", "truth.world_pois"})
             or not isinstance(allowed_results, dict)
             or not prerequisite_results or not all(isinstance(item, dict) and item.get("passed") is True
                                                    for item in prerequisite_results)):

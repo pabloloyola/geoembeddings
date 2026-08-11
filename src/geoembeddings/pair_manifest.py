@@ -29,12 +29,16 @@ ALLOWED_FIELDS = {
     "observation": ("observed.*", "truth.observation_process.*"),
     "exposure": ("truth.candidate_sets.utility_exposure", "truth.candidate_sets.utility_total", "truth.candidate_sets.is_chosen", "truth.choices.chosen_poi_id", "truth.trajectories.true_region_id", "truth.trajectories.true_latitude", "truth.trajectories.true_longitude", "observed.events.*"),
     "opportunity": ("truth.candidate_sets.*", "truth.choices.*", "truth.trajectories.*", "observed.*"),
+    "temporary-trip": ("truth.candidate_sets.utility_preference", "truth.candidate_sets.utility_total", "truth.candidate_sets.is_chosen", "truth.choices.chosen_poi_id", "truth.trajectories.*", "truth.change_points.*", "observed.events.*"),
+    "sustained-preference": ("truth.candidate_sets.utility_preference", "truth.candidate_sets.utility_total", "truth.candidate_sets.is_chosen", "truth.choices.chosen_poi_id", "truth.trajectories.*", "truth.change_points.*", "observed.events.*"),
 }
 INVARIANTS = {
     "identity": IDENTITY_ENTITY_NAMES,
     "observation": IDENTITY_ENTITY_NAMES,
     "exposure": ("users", "regions", "pois", "episodes"),
     "opportunity": ("users", "regions", "pois", "episodes"),
+    "temporary-trip": ("users", "regions", "pois", "episodes", "choices"),
+    "sustained-preference": ("users", "regions", "pois", "episodes", "choices"),
 }
 
 
@@ -66,7 +70,7 @@ def _identity(layout: DatasetLayout, manifest: dict[str, Any]) -> PairRunIdentit
 
 def _intervention_type(reference: dict[str, Any], intervention: dict[str, Any]) -> str:
     declaration = intervention.get("intervention")
-    if isinstance(declaration, dict) and declaration.get("type") in {"exposure", "opportunity", "observation"}:
+    if isinstance(declaration, dict) and declaration.get("type") in {"exposure", "opportunity", "observation", "temporary-trip", "sustained-preference"}:
         return str(declaration["type"])
     changed_streams = [name for name, seed in reference["identity"]["random_streams"]["seeds"].items()
                        if intervention["identity"]["random_streams"]["seeds"].get(name) != seed]
@@ -113,6 +117,8 @@ def create_pair_manifest(reference_run_dir: str | Path, intervention_run_dir: st
                                  "changed_streams": changed_streams,
                                  "config_overrides": definition.get("config_overrides", {}),
                                  "affected_random_streams": definition.get("affected_random_streams", []),
+                                 "declaration_version": definition.get("declaration_version"),
+                                 "change": definition.get("change"),
                                  "expected_behavioral_diagnostics": definition.get("behavioral_diagnostics", [])},
         invariant_entity_classes=configured_invariants,
         allowed_to_change_fields=configured_fields, matching_keys=MATCHING_KEYS,

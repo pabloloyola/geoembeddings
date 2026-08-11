@@ -95,6 +95,93 @@ def _cosine(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / max(float(np.linalg.norm(a) * np.linalg.norm(b)), 1e-12))
 
 
+def _change_dense(path: Path) -> tuple[pd.DataFrame, np.ndarray]:
+    with np.load(path, allow_pickle=False) as payload:
+        required = {"user_id", "timestamp", "embedding"}
+        if not required.issubset(payload.files):
+            raise ValueError(f"Dense change export is incomplete: {path}")
+        vectors = np.asarray(payload["embedding"], dtype=float)
+        frame = pd.DataFrame({"user_id": payload["user_id"].astype(str),
+                              "timestamp": pd.to_datetime(payload["timestamp"].astype(str), utc=True)})
+    if vectors.ndim != 2 or len(frame) != len(vectors) or not np.isfinite(vectors).all():
+        raise ValueError(f"Dense change export has invalid vectors: {path}")
+    frame["row"] = np.arange(len(frame))
+    if frame[["user_id", "timestamp"]].duplicated().any():
+        raise ValueError("Dense change keys must be unique")
+    return frame, vectors
+
+
+def evaluate_change(pair_manifest_path: str | Path, baseline_experiment_dirs: list[Path],
+                    learned_experiment_dirs: list[Path], *, overwrite: bool = False) -> dict[str, Any]:
+    """Evaluate time-aligned representation response; this is the truth boundary."""
+    from .contract import PairManifest
+    from .io import sha256_file
+    from .layout import DatasetLayout, ExperimentLayout, PairLayout
+    from .pair_integrity import require_passing_pair_integrity
+    pair_layout = PairLayout.from_manifest_path(pair_manifest_path)
+    destination = pair_layout.change_evaluation_json
+    markdown = pair_layout.change_evaluation_markdown
+    if destination.exists() or markdown.exists():
+        if not overwrite:
+            raise FileExistsError("Refusing to overwrite immutable change-evaluation outputs")
+        for path in (destination, markdown):
+            if path.exists() and (path.is_symlink() or not path.is_file()):
+                raise ValueError("--overwrite targets must be regular change-evaluation files")
+    require_passing_pair_integrity(pair_manifest_path)
+    raw = json.loads(pair_layout.manifest.read_text())
+    pair = PairManifest.from_dict(raw)
+    if pair.intervention_type not in {"temporary-trip", "sustained-preference"}:
+        raise ValueError("evaluate-change requires a temporary-trip or sustained-preference pair")
+    changed_run = DatasetLayout.from_path(pair.intervention.run_dir)
+    truth_path = changed_run.truth / "change_points_truth.csv.gz"
+    points = pd.read_csv(truth_path, dtype={"user_id": str})
+    required = {"user_id", "change_start_time", "change_end_time", "change_type"}
+    if not required.issubset(points.columns):
+        raise ValueError("Protected change-point truth is incomplete")
+    points["change_start_time"] = pd.to_datetime(points["change_start_time"], utc=True)
+    points["change_end_time"] = pd.to_datetime(points["change_end_time"], utc=True, errors="coerce")
+    reports: dict[str, Any] = {}
+    for kind, roots in (("baseline", baseline_experiment_dirs), ("learned", learned_experiment_dirs)):
+        if len(roots) != 2:
+            raise ValueError(f"{kind} requires reference and intervention experiment roots")
+        layouts = [ExperimentLayout.from_path(root) for root in roots]
+        paths = [layout.dense_baseline_embeddings if kind == "baseline" else layout.dense_embeddings for layout in layouts]
+        (ref, ref_v), (changed, changed_v) = [_change_dense(path) for path in paths]
+        samples: dict[int, list[float]] = {}
+        excluded = {"missing_reference_bin": 0, "missing_intervention_bin": 0}
+        eligible_users = 0
+        for point in points.itertuples(index=False):
+            r = ref[ref.user_id == point.user_id].copy(); c = changed[changed.user_id == point.user_id].copy()
+            if r.empty or c.empty:
+                excluded["missing_reference_bin" if r.empty else "missing_intervention_bin"] += 1; continue
+            eligible_users += 1
+            r["bin"] = np.floor((r.timestamp - point.change_start_time).dt.total_seconds() / 86400).astype(int)
+            c["bin"] = np.floor((c.timestamp - point.change_start_time).dt.total_seconds() / 86400).astype(int)
+            for bin_id in sorted(set(r.bin) & set(c.bin)):
+                ri = int(r[r.bin == bin_id].iloc[-1].row); ci = int(c[c.bin == bin_id].iloc[-1].row)
+                samples.setdefault(int(bin_id), []).append(1.0 - _cosine(ref_v[ri], changed_v[ci]))
+        curve = [{"relative_day": b, "mean_matched_cosine_drift": float(np.mean(v)), "users": len(v)} for b, v in sorted(samples.items())]
+        pre = [x for b, v in samples.items() if b < 0 for x in v]; during = [x for b, v in samples.items() if b >= 0 for x in v]
+        end = points.change_end_time.dropna()
+        duration = int((end.iloc[0] - points.change_start_time.iloc[0]).total_seconds() // 86400) if len(end) else None
+        post = [x for b, v in samples.items() if duration is not None and b >= duration for x in v]
+        peak = max(during) if during else None
+        reports[kind] = {"curve": curve, "adaptation": {"mean_drift_during_or_after_change": float(np.mean(during)) if during else None},
+            "recovery": {"mean_post_change_drift": float(np.mean(post)) if post else None},
+            "forgetting": {"peak_minus_final_post_change_drift": float(peak - np.mean(post)) if peak is not None and post else None},
+            "permanent_drift": {"final_drift": float(curve[-1]["mean_matched_cosine_drift"]) if curve else None},
+            "no_change_control": {"pre_change_drift": float(np.mean(pre)) if pre else None},
+            "coverage": {"truth_users": len(points), "eligible_users": eligible_users, "relative_bins": len(samples), "excluded": excluded},
+            "censoring": {"right_censored": duration is None, "temporary_recovery_observed": bool(post)}}
+    report = {"schema_version": "geoembeddings-change-evaluation/1.0", "intervention": pair.intervention_type,
+        "pair_manifest_sha256": sha256_file(pair_layout.manifest), "change_truth_sha256": sha256_file(truth_path),
+        "representations": reports, "deltas": {axis: ((reports["learned"][axis].get(next(iter(reports["learned"][axis]))) or 0) - (reports["baseline"][axis].get(next(iter(reports["baseline"][axis]))) or 0)) for axis in ("adaptation", "recovery", "forgetting", "permanent_drift")},
+        "limitations": ["Change semantics are synthetic and do not establish real-world causal validity.", "Single-vector drift cannot prove persistent/context disentanglement."]}
+    write_json(report, destination)
+    markdown.write_text(f"# Change evaluation\n\nIntervention: `{pair.intervention_type}`\n\n```json\n{json.dumps(report, indent=2)}\n```\n")
+    return report
+
+
 def evaluate_episode_response(
     truth_dir: str | Path, prepared_dir: str | Path, dense_path: str | Path,
     output_path: str | Path, config: dict[str, Any], *, kind: str,
