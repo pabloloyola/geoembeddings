@@ -1,0 +1,78 @@
+{
+  "simulator_version": "0.3.0",
+  "dataset_contract": {
+    "name": "geoembeddings-dataset",
+    "version": "1.0"
+  },
+  "config_schema_version": 1,
+  "config_source": "/workspace/scratch/ee93137f58e4/geoembeddings-unified/configs/simulation/kanto_v1.yaml",
+  "config_sha256": "9520f4a73abb7052559602650f40bbeb940ce758a2bc47c678a02b2c5bf69068",
+  "seed": 20260803,
+  "start_date": "2026-04-01",
+  "days": 7,
+  "users": 50,
+  "scenario": "mixed",
+  "full_kanto": false,
+  "coordinate_system": "WGS84; continuous synthetic locations sampled from overlapping Kanto hub catchments",
+  "geographic_splits": {
+    "development": "Tokyo, Kanagawa, Saitama, Chiba",
+    "holdout": "Ibaraki, Tochigi, Gunma"
+  },
+  "table_rows": {
+    "observed/observed_events.csv.gz": 1176,
+    "observed/users_observed.csv.gz": 50,
+    "truth/user_latents.csv.gz": 50,
+    "truth/episodes_truth.csv.gz": 350,
+    "truth/candidate_sets.csv.gz": 2800,
+    "truth/choices_truth.csv.gz": 350,
+    "truth/trajectories_truth.csv.gz": 1798,
+    "truth/observation_process.csv.gz": 200
+  },
+  "validation": {
+    "status": "passed",
+    "checks": {
+      "unique_observed_users": true,
+      "one_latent_row_per_user": true,
+      "event_users_resolve": true,
+      "episode_users_resolve": true,
+      "trajectory_users_resolve": true,
+      "observation_users_resolve": true,
+      "one_chosen_candidate_per_decision": true,
+      "candidate_and_choice_ids_match": true,
+      "no_truth_columns_in_observed_events": true,
+      "passive_and_active_present": true,
+      "multiple_services_present": true
+    },
+    "event_mode_counts": {
+      "passive": 954,
+      "transaction": 114,
+      "user_triggered": 108
+    },
+    "service_counts": {
+      "location": 954,
+      "local_commerce": 173,
+      "travel": 11,
+      "ecommerce": 38
+    },
+    "users_by_observed_service_count": {
+      "0": 3,
+      "1": 13,
+      "2": 20,
+      "3": 12,
+      "4": 2
+    },
+    "events_per_user": {
+      "p10": 6,
+      "p50": 26,
+      "p90": 34
+    },
+    "active_days_per_user": {
+      "p10": 5,
+      "p50": 7,
+      "p90": 7
+    },
+    "event_date_min": "2026-04-01T06:43:00+09:00",
+    "event_date_max": "2026-04-07T22:04:00+09:00"
+  },
+  "training_boundary": "Training code may read observed/ only. truth/ is reserved for evaluation."
+}

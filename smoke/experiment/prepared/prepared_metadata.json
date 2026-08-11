@@ -1,0 +1,84 @@
+{
+  "categorical_fields": [
+    "service_id",
+    "action_type",
+    "observation_mode",
+    "object_category",
+    "region_id",
+    "geohash_5",
+    "geohash_7"
+  ],
+  "continuous_fields": [
+    "latitude",
+    "longitude",
+    "log_delta_minutes",
+    "hour_sin",
+    "hour_cos",
+    "dow_sin",
+    "dow_cos",
+    "log_location_accuracy_m"
+  ],
+  "continuous_statistics": {
+    "dow_cos": {
+      "mean": -0.407461438529412,
+      "std": 0.5239777807261509
+    },
+    "dow_sin": {
+      "mean": 0.13299401524546148,
+      "std": 0.7360265303137719
+    },
+    "hour_cos": {
+      "mean": 0.0714732703657481,
+      "std": 0.7868584438204349
+    },
+    "hour_sin": {
+      "mean": 0.23699004268566895,
+      "std": 0.5653150278203763
+    },
+    "latitude": {
+      "mean": 35.676352358539766,
+      "std": 0.17285345514179595
+    },
+    "log_delta_minutes": {
+      "mean": 4.8676916733044235,
+      "std": 2.0536460764057396
+    },
+    "log_location_accuracy_m": {
+      "mean": 4.056372256210695,
+      "std": 0.6505317793319129
+    },
+    "longitude": {
+      "mean": 139.7201266779661,
+      "std": 0.21051556863823354
+    }
+  },
+  "information_boundary": "Vocabularies and normalization statistics were fit using observed training events only. No truth/ file is accepted or read by prepare or train.",
+  "observed_dir": "/workspace/scratch/ee93137f58e4/geoembeddings-unified/smoke/run/observed",
+  "rows": {
+    "events": 1176,
+    "users": 50
+  },
+  "source_files": {
+    "observed_events.csv.gz": "cc5c6a8352460ae4907d98b813b28d5a180b31d296895e10524214b0b7886eda",
+    "users_observed.csv.gz": "d4381e7c160b519bd9422662d89277b2ed9e807d707ea0cc151b3cfa0e36c82d"
+  },
+  "target_events_by_split": {
+    "test": 217,
+    "train": 767,
+    "validation": 192
+  },
+  "timestamp_max": "2026-04-07T13:04:00+00:00",
+  "timestamp_min": "2026-03-31T21:43:00+00:00",
+  "train_end": "2026-04-05T11:22:00+00:00",
+  "users_with_events": 47,
+  "validation_end": "2026-04-06T12:45:00+00:00",
+  "vocabulary_sizes": {
+    "action_type": 11,
+    "geohash_5": 106,
+    "geohash_7": 613,
+    "object_category": 16,
+    "observation_mode": 5,
+    "region_id": 13,
+    "service_id": 6
+  }
+}

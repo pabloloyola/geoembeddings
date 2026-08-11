@@ -1,0 +1,198 @@
+# Simulator and embedding data flow
+
+This document describes the implemented v0.5 pipeline. The simulator and
+embedding modules share the versioned `geoembeddings-dataset/1.0` contract.
+Users provide a dataset root (`--run-dir`); code resolves every observed and
+truth path centrally.
+
+## Information boundary
+
+```text
+runs/kanto_pilot/
+├── config.resolved.yaml
+├── manifest.json
+├── validation_report.json
+├── deep_validation_report.json
+├── observed/
+│   ├── users_observed.csv.gz
+│   └── observed_events.csv.gz
+└── truth/
+    ├── user_latents.csv.gz
+    ├── episodes_truth.csv.gz
+    ├── candidate_sets.csv.gz
+    ├── choices_truth.csv.gz
+    ├── trajectories_truth.csv.gz
+    └── observation_process.csv.gz
+```
+
+`prepare`, `baseline`, `train`, and `export` resolve and read only
+`observed/`. `evaluate` is the sole embedding command that receives the
+resolved `truth/` path. The observed schema rejects columns that look like
+latent traits, utilities, decisions, episode identifiers, chosen flags, or
+true coordinates.
+
+## End-to-end flow
+
+```mermaid
+flowchart TD
+    A["Simulation YAML"] --> B["Synthetic world and users"]
+    B --> C["Episodes, candidates, choices"]
+    C --> D["Observed and truth tables"]
+    D --> E["Contract and deep validation"]
+    E --> F["Train-only preprocessing"]
+    F --> G["Baseline or learned encoder"]
+    G --> H["Cutoff embeddings"]
+    H --> I["Protected evaluation"]
+```
+
+The one-command baseline path is:
+
+```bash
+uv run geoembed pipeline \
+  --run-dir runs/kanto_pilot \
+  --experiment-dir experiments/kanto_baseline \
+  --mode baseline
+```
+
+Use `--mode learned` to replace the statistical representation with GRU
+training and embedding export.
+
+## Simulator inputs
+
+The canonical file is `configs/simulation/kanto_v1.yaml`.
+
+| Section | Controls |
+|---|---|
+| `run` | cohort size, dates, seed, scenario |
+| `world.spatial` | overlapping home, work, destination, and POI catchments |
+| `world.regions` | Kanto anchors, relative density, regional price index, holdout flag |
+| `world.poi_categories` | category appeal and normalized price prior |
+| `population` | demographic mixtures and persistent latent-trait distributions |
+| `episodes` | routine, leisure, shopping, family, and travel intent generation |
+| `choice` | candidates, exposure, and stochastic utility coefficients |
+| `observation` | service adoption, recording probability, GPS error, missingness |
+| `events` | service-specific actions, rates, times, and catalog sizes |
+| `scenarios` | controlled opportunity, exposure, noise, and dropout interventions |
+
+### Interpreting normalized inputs
+
+Several variables use convenient synthetic scales; they are not real units or
+probabilities unless explicitly documented as probabilities.
+
+For example, a restaurant `base_price` of `0.70` rather than `0.50` shifts the
+mean of that category's generated price distribution upward by `0.20` before
+POI-specific noise and clipping. It is not ¥700 and does not mean a 70% purchase
+chance. The resulting POI price enters choice utility as a penalty whose size
+also depends on the user's generated price sensitivity.
+
+Likewise, regional `density: 0.72` is a relative simulation intensity. It
+affects regional sampling and POI count through the formulas in the simulator;
+it is not people per square kilometre.
+
+## Simulator outputs
+
+### `observed/users_observed.csv.gz`
+
+One public row per simulated user. It contains coarse demographic information,
+home region/prefecture, geographic split, and service-adoption indicators. It
+does not contain exact home/work coordinates or latent preferences.
+
+### `observed/observed_events.csv.gz`
+
+One row per recorded cross-service event. Fields include user, timestamp,
+service, action, observation mode, object/category, observed coordinates,
+region, geohash-5, geohash-7, accuracy, source, and session.
+
+This is the chronological history encoded by the embedding model.
+
+### Truth tables
+
+| File | Evaluator-only content |
+|---|---|
+| `user_latents.csv.gz` | exact home/work and persistent latent traits |
+| `episodes_truth.csv.gz` | generated user-day intent and destination |
+| `candidate_sets.csv.gz` | alternatives, exposure, utility components, chosen flag |
+| `choices_truth.csv.gz` | stochastic chosen item and its episode/context |
+| `trajectories_truth.csv.gz` | exact latent stops before observation noise |
+| `observation_process.csv.gz` | adoption, recording, GPS, and interval policy by service |
+
+## Embedding preprocessing
+
+`prepare` performs the handoff from the simulator contract to model-ready
+metadata. It:
+
+1. validates the two observed tables and rejects truth-like fields;
+2. sorts events by user and timestamp;
+3. computes global chronological train/validation/test cutoffs;
+4. builds categorical vocabularies from training events only;
+5. fits continuous normalization statistics from training events only;
+6. stores source hashes and resolved settings under the experiment directory.
+
+The source events are not copied.
+
+```text
+experiments/kanto_single_vector/
+├── prepared/
+│   ├── config.resolved.yaml
+│   ├── prepared_metadata.json
+│   └── vocabularies.json
+├── model/
+│   ├── best_model.pt
+│   └── training_report.json
+├── embeddings.npz
+├── statistical_baseline.npz
+├── evaluation.json
+└── baseline_evaluation.json
+```
+
+## Model input and target
+
+For a target event at time `t`, the learned model receives at most the previous
+64 observed events for that user. Each event contains separate categorical
+embeddings for service, action, observation mode, category, region, geohash-5,
+and geohash-7, plus standardized coordinates, elapsed time, cyclic hour/day,
+and location accuracy. `object_id` is disabled by default to reduce memorization.
+
+The baseline represents each user history with normalized categorical
+histograms and continuous-feature means and standard deviations. The learned
+encoder uses a GRU and emits a 128-dimensional history vector.
+
+## Training objective
+
+The default learned objective combines next-event heads with cross-window
+consistency:
+
+\[
+\mathcal L =
+0.2L_{service}+0.4L_{action}+1.0L_{category}+0.75L_{region}
++0.5L_{geohash5}+0.25L_{geohash7}+0.1L_{consistency}.
+\]
+
+This baseline deliberately exposes the tension between context sensitivity and
+persistent stability. It does not claim that one vector disentangles
+persistent traits, routines, and current episode state.
+
+## Evaluation
+
+The current evaluator reports:
+
+- next-event loss and top-k accuracy for a learned checkpoint;
+- frozen ridge probes for eight simulator latent traits;
+- cosine stability between train, validation, and final cutoffs;
+- a machine-readable status for the prioritized representation requirements.
+
+Because truth is accessed only at this stage, probes measure information present
+in a frozen representation without leaking it into training.
+
+## Path contract
+
+All public commands use the same two roots:
+
+```text
+--run-dir         simulator dataset root
+--experiment-dir  embedding artifacts root
+```
+
+Users never pass `observed/`, `truth/`, `prepared/`, checkpoint, or embedding
+filenames manually. See `docs/MIGRATION.md` for the exact mapping from the two
+earlier projects.

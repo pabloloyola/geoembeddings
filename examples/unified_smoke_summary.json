@@ -1,0 +1,23 @@
+{
+  "command": "geoembed pipeline --mode baseline --users 50 --days 7",
+  "status": "passed",
+  "simulation": {
+    "users": 50,
+    "days": 7,
+    "observed_events": 1176,
+    "candidate_rows": 2800
+  },
+  "contract_validation": "passed",
+  "deep_validation": "passed",
+  "embedding": {
+    "kind": "non_learned_statistical_baseline",
+    "users_with_events": 47,
+    "rows_across_cutoffs": 141,
+    "dimensions": 786
+  },
+  "evaluation": {
+    "mean_train_to_test_cosine": 0.9603694309012372,
+    "mean_held_out_trait_probe_r2": -0.2070108044782643
+  },
+  "interpretation": "The unified handoff is operational. The small-run baseline is stable but does not recover persistent traits well, which is the intended diagnostic failure mode."
+}

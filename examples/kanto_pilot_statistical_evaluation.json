@@ -1,0 +1,25 @@
+{
+  "dataset": {
+    "users_in_observed_table": 500,
+    "users_with_at_least_one_event": 481,
+    "events": 22584,
+    "baseline_embedding_dim": 9134
+  },
+  "persistent_trait_probes": {
+    "metric": "held-out-user ridge-probe R2",
+    "train_users": 383,
+    "test_users": 98,
+    "mean_r2": -0.09320890537974072
+  },
+  "cross_cutoff_stability": {
+    "train_to_validation_mean_cosine": 0.9935701873102908,
+    "validation_to_test_mean_cosine": 0.9923248631889278,
+    "train_to_test_mean_cosine": 0.9858514366505919
+  },
+  "interpretation": [
+    "The non-learned aggregate baseline is highly stable over time.",
+    "Its held-out latent-trait recovery is worse than predicting the probe-test mean.",
+    "This is a concrete example of why stability alone is not evidence that an embedding preserves useful persistent characteristics."
+  ]
+}
+

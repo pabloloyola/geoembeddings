@@ -1,0 +1,85 @@
+{
+  "cross_cutoff_stability": {
+    "train_to_test": {
+      "mean_cosine_similarity": 0.9603694309012372,
+      "p10": 0.9427272839126896,
+      "p90": 0.9759140244204452,
+      "users": 47
+    },
+    "train_to_validation": {
+      "mean_cosine_similarity": 0.9801454408043171,
+      "p10": 0.969547091252314,
+      "p90": 0.9930897628428269,
+      "users": 47
+    },
+    "validation_to_test": {
+      "mean_cosine_similarity": 0.9930963988147832,
+      "p10": 0.9886986837217486,
+      "p90": 0.9969902109079356,
+      "users": 47
+    }
+  },
+  "information_boundary": {
+    "evaluation": "truth/ opened only by this evaluator command",
+    "train": "observed/ only"
+  },
+  "next_event": {
+    "status": "not_applicable_for_non_learned_baseline"
+  },
+  "persistent_trait_probes": {
+    "mean_r2": -0.2070108044782643,
+    "metric": "held-out-user ridge-probe R2",
+    "r2": {
+      "digital_engagement": -0.24954738887448835,
+      "distance_sensitivity": -0.12444529117304781,
+      "family_orientation": -0.050072278661972724,
+      "novelty_seeking": -0.070052455649942,
+      "price_sensitivity": -0.8631405857581753,
+      "time_flexibility": -0.1723760511709127,
+      "transit_preference": 0.18272230765944175,
+      "travel_propensity": -0.3091746921970173
+    },
+    "status": "ok",
+    "test_users": 9,
+    "train_users": 38
+  },
+  "requirements": {
+    "R1_persistent_context_separation": {
+      "evidence": [
+        "persistent_trait_probes",
+        "cross_cutoff_stability"
+      ],
+      "missing": "episode-conditioned contextual embeddings",
+      "status": "partial"
+    },
+    "R2_multiscale_spatial_fidelity": {
+      "evidence": [],
+      "missing": "distance-aware and boundary-robust retrieval tests",
+      "status": "pending"
+    },
+    "R3_multiscale_temporal_fidelity": {
+      "evidence": [],
+      "missing": "routine and periodicity probes",
+      "status": "pending"
+    },
+    "R4_episode_coherence": {
+      "status": "pending"
+    },
+    "R5_preference_opportunity_separation": {
+      "status": "pending"
+    },
+    "R6_cross_service_alignment": {
+      "status": "pending"
+    },
+    "R7_noise_and_sparsity_robustness": {
+      "status": "pending"
+    },
+    "R8_geographic_temporal_generalization": {
+      "status": "pending"
+    },
+    "R9_new_context_recommendation": {
+      "missing": "observable requests, impressions, availability, and candidate metadata",
+      "status": "blocked_by_data_contract"
+    }
+  }
+}

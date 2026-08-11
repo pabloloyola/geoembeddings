@@ -1,0 +1,235 @@
+{
+  "checks": [
+    {
+      "expectation": "Every table count matches manifest.json",
+      "layer": "integrity",
+      "name": "Manifest row counts",
+      "passed": true,
+      "severity": "error",
+      "value": "all match"
+    },
+    {
+      "expectation": "Zero duplicate primary keys",
+      "layer": "integrity",
+      "name": "Primary-key uniqueness",
+      "passed": true,
+      "severity": "error",
+      "value": {
+        "Choices": 0,
+        "Episodes": 0,
+        "Latent users": 0,
+        "Observed users": 0,
+        "Trajectories": 0
+      }
+    },
+    {
+      "expectation": "Every user_id resolves to observed/users",
+      "layer": "integrity",
+      "name": "User foreign keys",
+      "passed": true,
+      "severity": "error",
+      "value": {
+        "episodes": 0,
+        "events": 0,
+        "latents": 0,
+        "observation": 0,
+        "trajectories": 0
+      }
+    },
+    {
+      "expectation": "One matching chosen candidate and declared candidate count per decision",
+      "layer": "integrity",
+      "name": "Choice/candidate consistency",
+      "passed": true,
+      "severity": "error",
+      "value": 0
+    },
+    {
+      "expectation": "No latent, utility, episode, or true-coordinate columns in observed tables",
+      "layer": "integrity",
+      "name": "Observed/truth boundary",
+      "passed": true,
+      "severity": "error",
+      "value": "no forbidden columns"
+    },
+    {
+      "expectation": "All observed events fall inside the simulated interval",
+      "layer": "integrity",
+      "name": "Event time window",
+      "passed": true,
+      "severity": "error",
+      "value": 0
+    },
+    {
+      "expectation": "All observed points fall in a broad Kanto bounding box with positive accuracy",
+      "layer": "integrity",
+      "name": "Coordinate plausibility",
+      "passed": true,
+      "severity": "error",
+      "value": 0
+    },
+    {
+      "expectation": "At least 99% of users have distinct home coordinates",
+      "layer": "coherence",
+      "name": "Continuous home geography",
+      "passed": true,
+      "severity": "error",
+      "value": 1.0
+    },
+    {
+      "expectation": "At least 10% of sampled users are within 5 km of a user assigned to another hub catchment",
+      "layer": "coherence",
+      "name": "Cross-region spatial overlap",
+      "passed": true,
+      "severity": "error",
+      "value": {
+        "median_nearest_cross_region_km": 6.629,
+        "share_with_cross_region_neighbor_within_5km": 0.36
+      }
+    },
+    {
+      "expectation": "At least 99% of passive events match a true stop within 15 minutes",
+      "layer": "coherence",
+      "name": "Passive-to-trajectory matching",
+      "passed": true,
+      "severity": "error",
+      "value": 1.0
+    },
+    {
+      "expectation": "Matched passive events retain the true region label",
+      "layer": "coherence",
+      "name": "Passive region consistency",
+      "passed": true,
+      "severity": "error",
+      "value": 0
+    },
+    {
+      "expectation": "Median passive displacement is nonzero and plausible for configured synthetic noise",
+      "layer": "coherence",
+      "name": "GPS noise is present",
+      "passed": true,
+      "severity": "error",
+      "value": {
+        "median_m": 30.09,
+        "p95_m": 124.06
+      }
+    },
+    {
+      "expectation": "Chosen POIs are nearer on average than the candidate pool",
+      "layer": "mechanism",
+      "name": "Choice responds to distance",
+      "passed": true,
+      "severity": "error",
+      "value": {
+        "candidate_mean_km": 6.952,
+        "chosen_mean_km": 5.451
+      }
+    },
+    {
+      "expectation": "Chosen POIs are more often exposed than candidates overall",
+      "layer": "mechanism",
+      "name": "Choice responds to exposure",
+      "passed": true,
+      "severity": "error",
+      "value": {
+        "candidate_share": 0.606,
+        "chosen_share": 0.737
+      }
+    },
+    {
+      "expectation": "Chosen alternatives have higher mean total utility",
+      "layer": "mechanism",
+      "name": "Choice responds to utility",
+      "passed": true,
+      "severity": "error",
+      "value": {
+        "alternative_mean": -0.9,
+        "chosen_mean": -0.324
+      }
+    },
+    {
+      "expectation": "Recorded stochastic residual is non-negative for every candidate",
+      "layer": "mechanism",
+      "name": "Utility decomposition",
+      "passed": true,
+      "severity": "error",
+      "value": 0
+    },
+    {
+      "expectation": "Digital engagement positively correlates with recorded event volume",
+      "layer": "mechanism",
+      "name": "Non-random observability",
+      "passed": true,
+      "severity": "error",
+      "value": 0.172
+    },
+    {
+      "expectation": "All five intended episode types appear",
+      "layer": "coverage",
+      "name": "Episode coverage",
+      "passed": true,
+      "severity": "error",
+      "value": {
+        "family_outing": 14,
+        "leisure": 40,
+        "routine": 209,
+        "shopping": 80,
+        "travel": 7
+      }
+    },
+    {
+      "expectation": "At least half of users have observations in two or more services",
+      "layer": "coverage",
+      "name": "Cross-service cohort",
+      "passed": true,
+      "severity": "error",
+      "value": 0.68
+    },
+    {
+      "expectation": "At least 100 travel events in the pilot; still treat this as a sparse probe",
+      "layer": "coverage",
+      "name": "Travel signal volume",
+      "passed": false,
+      "severity": "warning",
+      "value": {
+        "events": 11,
+        "share": 0.0094
+      }
+    }
+  ],
+  "dataset": "/workspace/scratch/ee93137f58e4/geoembeddings-unified/smoke/run",
+  "distributions": {
+    "intents": {
+      "family_outing": 14,
+      "leisure": 40,
+      "routine": 209,
+      "shopping": 80,
+      "travel": 7
+    },
+    "modes": {
+      "passive": 954,
+      "transaction": 114,
+      "user_triggered": 108
+    },
+    "services": {
+      "ecommerce": 38,
+      "local_commerce": 173,
+      "location": 954,
+      "travel": 11
+    }
+  },
+  "scenario": "mixed",
+  "simulator_version": "0.3.0",
+  "status": "passed",
+  "summary": {
+    "checks_passed": 19,
+    "checks_total": 20,
+    "choices": 350,
+    "errors": 0,
+    "median_gps_error_m": 30.09,
+    "observed_events": 1176,
+    "passive_trace_match_rate": 1.0,
+    "users": 50,
+    "warnings": 1
+  }
+}

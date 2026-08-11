@@ -1,0 +1,409 @@
+config_version: 1
+run:
+  users: 50
+  days: 7
+  start_date: '2026-04-01'
+  seed: 20260803
+  scenario: mixed
+  full_kanto: false
+  output: /workspace/scratch/ee93137f58e4/geoembeddings-unified/smoke/run
+world:
+  spatial:
+    home_spread_km_base: 4.5
+    home_spread_km_low_density_bonus: 5.5
+    work_spread_km_base: 3.5
+    work_spread_km_low_density_bonus: 3.5
+    destination_spread_km: 2.2
+    east_west_anisotropy: 1.15
+    routine_stop_jitter_km: 0.15
+    activity_stop_jitter_km: 0.35
+    poi_spread_km_base: 2.3
+    poi_spread_km_low_density_bonus: 4.8
+    poi_min_count: 2
+    poi_base_count: 2
+    poi_density_count: 9
+    poi_tourism_bonus: 2
+    tourism_categories:
+    - hotel
+    - onsen
+    tourism_regions:
+    - hakone
+    - tokyo_core
+  regions:
+  - id: tokyo_core
+    name: Central Tokyo
+    prefecture: Tokyo
+    lat: 35.6812
+    lon: 139.7671
+    density: 1.0
+    price_index: 1.0
+    holdout: false
+  - id: nerima
+    name: Nerima
+    prefecture: Tokyo
+    lat: 35.7375
+    lon: 139.6545
+    density: 0.72
+    price_index: 0.83
+    holdout: false
+  - id: setagaya
+    name: Setagaya
+    prefecture: Tokyo
+    lat: 35.6466
+    lon: 139.6532
+    density: 0.76
+    price_index: 0.9
+    holdout: false
+  - id: yokohama
+    name: Yokohama
+    prefecture: Kanagawa
+    lat: 35.4658
+    lon: 139.6223
+    density: 0.86
+    price_index: 0.88
+    holdout: false
+  - id: kawasaki
+    name: Kawasaki
+    prefecture: Kanagawa
+    lat: 35.5308
+    lon: 139.7029
+    density: 0.82
+    price_index: 0.86
+    holdout: false
+  - id: hakone
+    name: Hakone
+    prefecture: Kanagawa
+    lat: 35.2324
+    lon: 139.1069
+    density: 0.24
+    price_index: 1.05
+    holdout: false
+  - id: omiya
+    name: Omiya
+    prefecture: Saitama
+    lat: 35.9064
+    lon: 139.6238
+    density: 0.67
+    price_index: 0.76
+    holdout: false
+  - id: kawagoe
+    name: Kawagoe
+    prefecture: Saitama
+    lat: 35.9251
+    lon: 139.4858
+    density: 0.48
+    price_index: 0.72
+    holdout: false
+  - id: chiba
+    name: Chiba
+    prefecture: Chiba
+    lat: 35.6074
+    lon: 140.1065
+    density: 0.65
+    price_index: 0.75
+    holdout: false
+  - id: funabashi
+    name: Funabashi
+    prefecture: Chiba
+    lat: 35.6947
+    lon: 139.9826
+    density: 0.69
+    price_index: 0.77
+    holdout: false
+  - id: tsukuba
+    name: Tsukuba
+    prefecture: Ibaraki
+    lat: 36.0835
+    lon: 140.0764
+    density: 0.35
+    price_index: 0.69
+    holdout: true
+  - id: utsunomiya
+    name: Utsunomiya
+    prefecture: Tochigi
+    lat: 36.5551
+    lon: 139.8828
+    density: 0.34
+    price_index: 0.67
+    holdout: true
+  - id: takasaki
+    name: Takasaki
+    prefecture: Gunma
+    lat: 36.322
+    lon: 139.0034
+    density: 0.31
+    price_index: 0.66
+    holdout: true
+  poi_categories:
+    convenience:
+      appeal: 0.45
+      base_price: 0.35
+    grocery:
+      appeal: 0.38
+      base_price: 0.65
+    restaurant:
+      appeal: 0.65
+      base_price: 0.7
+    cafe:
+      appeal: 0.52
+      base_price: 0.52
+    pharmacy:
+      appeal: 0.34
+      base_price: 0.44
+    mall:
+      appeal: 0.58
+      base_price: 0.8
+    park:
+      appeal: 0.2
+      base_price: 0.15
+    hotel:
+      appeal: 0.55
+      base_price: 0.88
+    onsen:
+      appeal: 0.72
+      base_price: 0.92
+  poi_attributes:
+    quality_sd: 0.17
+    price_sd: 0.13
+    price_min: 0.05
+    price_max: 1.35
+    popularity_alpha_base: 2.0
+    popularity_alpha_density_weight: 2.0
+    popularity_beta: 2.5
+population:
+  home_density_power: 0.75
+  excluded_work_regions:
+  - hakone
+  work_commute_decay_km: 28.0
+  age_groups:
+    18-29: 0.14
+    30-39: 0.23
+    40-49: 0.25
+    50-64: 0.25
+    65+: 0.13
+  households:
+    single: 0.32
+    couple: 0.25
+    family: 0.34
+    multigenerational: 0.09
+  family_households:
+  - family
+  - multigenerational
+  digitally_younger_groups:
+  - 18-29
+  - 30-39
+  family_orientation_means:
+    family_household: 0.78
+    other: 0.22
+  digital_engagement_means:
+    younger: 0.72
+    older: 0.5
+  transit_preference_means:
+    dense: 0.68
+    sparse: 0.42
+  dense_threshold: 0.6
+  latent_sd: 0.18
+  latent_means:
+    price_sensitivity: 0.58
+    distance_sensitivity: 0.6
+    novelty_seeking: 0.5
+    travel_propensity: 0.35
+    time_flexibility: 0.45
+  preference_categories:
+  - grocery
+  - restaurant
+  - cafe
+  - mall
+  - park
+  - onsen
+  preference_mean: 0.52
+episodes:
+  routine_min_weight: 0.25
+  weights:
+    travel:
+      base: 0.008
+      latent: 0.035
+      weekend: 0.018
+    family_outing:
+      base: 0.02
+      weekday: 0.025
+      weekend: 0.13
+    leisure:
+      base: 0.06
+      weekday: 0.04
+      weekend: 0.19
+    shopping:
+      base: 0.16
+      weekday: 0.02
+      weekend: 0.12
+  secondary_shopping_probability: 0.45
+  secondary_restaurant_probability: 0.09
+  nearby_region_switch_probability: 0.33
+  nearby_region_pool_size: 5
+  travel_distance_decay_km: 90.0
+  travel_bonus_regions:
+  - hakone
+  travel_region_bonus: 1.3
+  category_weights:
+    routine:
+      convenience: 3
+      grocery: 3
+      restaurant: 2
+      cafe: 2
+      pharmacy: 1
+    shopping:
+      grocery: 4
+      mall: 3
+      restaurant: 2
+      cafe: 1
+    leisure:
+      restaurant: 4
+      cafe: 3
+      park: 2
+      mall: 2
+    family_outing:
+      restaurant: 4
+      park: 4
+      mall: 3
+      cafe: 1
+    travel:
+      restaurant: 4
+      hotel: 3
+      onsen: 2
+      cafe: 1
+  schedule_hours:
+    episode_start: 5.0
+    episode_end: 23.5
+    morning_home: 6.8
+    work_arrival: 8.4
+    midday_work: 12.2
+    home_commute: 18.2
+    travel_arrival: 9.5
+    routine_choice: 12.4
+    other_choice_start: 15.0
+    other_choice_span: 4.0
+    evening_home: 22.0
+    ecommerce_start: 20.0
+    ecommerce_span: 2.0
+choice:
+  default_category_preference: 0.5
+  candidate_count:
+    default: 8
+    opportunity_confounded: 5
+  family_fit_categories:
+  - park
+  - mall
+  - restaurant
+  travel_fit_categories:
+  - hotel
+  - onsen
+  - restaurant
+  family_fit_high: 0.7
+  family_fit_low: 0.1
+  travel_episode_fit_high: 0.8
+  episode_fit_default: 0.25
+  preference_weight: 1.8
+  quality_weight: 0.8
+  price_weight: 1.5
+  distance_intercept: 0.45
+  distance_sensitivity_weight: 1.65
+  exposure_intercept: 0.08
+  exposure_popularity_weight: 0.7
+  exposure_engagement_weight: 0.18
+  exposure_positive: 1.0
+  exposure_negative: -0.15
+  noise_shape: 1.0
+  noise_scale: 0.2
+observation:
+  services:
+    location:
+      adoption_intercept: 0.48
+      engagement_coefficient: 0.44
+      base_record_probability: 0.72
+      event_location_accuracy_m: 22.0
+    local_commerce:
+      adoption_intercept: 0.36
+      engagement_coefficient: 0.52
+      base_record_probability: 0.9
+      event_location_accuracy_m: 22.0
+    ecommerce:
+      adoption_intercept: 0.43
+      engagement_coefficient: 0.47
+      base_record_probability: 0.9
+      event_location_accuracy_m: 22.0
+    travel:
+      adoption_intercept: 0.22
+      engagement_coefficient: 0.42
+      travel_propensity_coefficient: 0.18
+      base_record_probability: 0.9
+      event_location_accuracy_m: 22.0
+  standard_record_intercept: 0.72
+  standard_record_engagement_coefficient: 0.34
+  biased_record_intercept: 0.22
+  biased_record_engagement_coefficient: 0.95
+  gps_min_m: 18.0
+  gps_engagement_range_m: 150.0
+  passive_interval_min_minutes: 20.0
+  passive_interval_engagement_range_minutes: 100.0
+  passive_time_jitter_hours: 0.08
+events:
+  local_commerce:
+    action_weights:
+      search: 1
+      visit: 2
+      payment: 4
+    event_delay_hours: 0.05
+    location_accuracy_m: 18.0
+  ecommerce:
+    event_probability_intercept: 0.08
+    engagement_coefficient: 0.17
+    episode_bonus: 0.14
+    bonus_episodes:
+    - shopping
+    - travel
+    product_category_weights:
+      daily_goods: 3
+      food: 3
+      family: 2
+      travel_goods: 1
+      electronics: 1
+    travel_goods_weight_during_travel: 2
+    action_weights:
+      browse: 3
+      search: 3
+      add_to_cart: 2
+      purchase: 2
+    product_catalog_size: 300
+    location_accuracy_m: 35.0
+  travel:
+    action_hours:
+      destination_search: 7.4
+      reservation: 8.0
+    reservation_probability: 0.75
+    location_accuracy_m: 30.0
+scenarios:
+  clean:
+    distance_scale: 0.7
+    exposure_scale: 0.25
+    gps_scale: 0.55
+    dropout_scale: 0.45
+  mixed:
+    distance_scale: 1.0
+    exposure_scale: 0.8
+    gps_scale: 1.0
+    dropout_scale: 1.0
+  opportunity_confounded:
+    distance_scale: 1.9
+    exposure_scale: 0.55
+    gps_scale: 0.85
+    dropout_scale: 0.9
+  exposure_confounded:
+    distance_scale: 0.95
+    exposure_scale: 2.3
+    gps_scale: 0.9
+    dropout_scale: 1.0
+  observation_biased:
+    distance_scale: 1.0
+    exposure_scale: 0.85
+    gps_scale: 1.7
+    dropout_scale: 2.1

@@ -1,0 +1,51 @@
+seed: 20260806
+data:
+  max_sequence_length: 64
+  min_history_events: 2
+  train_fraction: 0.7
+  validation_fraction: 0.15
+  include_object_id: false
+  categorical_fields:
+  - service_id
+  - action_type
+  - observation_mode
+  - object_category
+  - region_id
+  - geohash_5
+  - geohash_7
+  continuous_fields:
+  - latitude
+  - longitude
+  - log_delta_minutes
+  - hour_sin
+  - hour_cos
+  - dow_sin
+  - dow_cos
+  - log_location_accuracy_m
+model:
+  categorical_embedding_dim: 24
+  event_dim: 128
+  hidden_dim: 128
+  user_embedding_dim: 128
+  gru_layers: 1
+  dropout: 0.1
+  event_dropout: 0.1
+objectives:
+  next_service: 0.2
+  next_action: 0.4
+  next_category: 1.0
+  next_region: 0.75
+  next_geohash_5: 0.5
+  next_geohash_7: 0.25
+  cross_window_consistency: 0.1
+training:
+  batch_size: 128
+  epochs: 8
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  gradient_clip_norm: 1.0
+  num_workers: 0
+  device: auto
+evaluation:
+  probe_train_fraction: 0.8
+  ridge_alpha: 10.0

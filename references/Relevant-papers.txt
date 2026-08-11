@@ -1,0 +1,26 @@
+Individual Mobility Prediction via Attentive Marked Temporal Point Processes
+https://arxiv.org/pdf/2109.02715
+
+Spatio-Temporal Graph Neural Point Process for Traffic Congestion Event
+Prediction
+https://ojs.aaai.org/index.php/AAAI/article/view/26669
+
+Mobility-Embedded POIs: Learning What A Place Is and How It Is Used
+from Human Movement
+https://arxiv.org/pdf/2601.21149v3
+
+MobEvolve: An Agentic Self-Evolving Heuristic System for Interpretable
+Human Mobility Generation
+https://arxiv.org/pdf/2606.01640
+
+ITINERA: Integrating Spatial Optimization with Large Language
+Models for Open-domain Urban Itinerary Planning
+https://aclanthology.org/2024.emnlp-industry.104.pdf
+
+Pretrained Mobility Transformer: A Foundation
+Model for Human Mobility
+https://arxiv.org/pdf/2406.02578v1
+
+Mobility-Embedded POIs: Learning What A Place Is and How It Is Used
+from Human Movement
+https://arxiv.org/pdf/2601.21149v3
