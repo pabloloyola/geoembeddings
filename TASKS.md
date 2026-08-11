@@ -266,7 +266,7 @@ steps without losing PR traceability.
   - **Known limitation/blocker:** contract changes require explicit versioning;
     truth declarations must not enter observed tables.
 
-- [ ] **T1.11c — Versioned pair-manifest contract.**
+- [x] **T1.11c — Versioned pair-manifest contract.**
   - **Requirement IDs:** R5, R7.
   - **Prerequisites:** T1.11b.
   - **Affected layer:** simulator, observed contract, evaluator.
@@ -279,6 +279,16 @@ steps without losing PR traceability.
     hashes, invariant objects, allowed changes, and user/time/object matching keys.
   - **Known limitation/blocker:** declarations are protected truth and cannot be
     inputs to prepare/train/export.
+  - **Completion note (2026-08-11):** typed
+    `geoembeddings-pair-manifest/1.0` declarations now bind reference and
+    intervention run identities, manifest/config/source/entity hashes,
+    intervention parameters, invariants, allowed changes, semantic matching
+    keys, stream lineage, and creation provenance. The canonical protected
+    pair-root CLI rejects incompatible/malformed/ambiguous declarations and
+    permits overwrite only after validating the exact existing pair artifact.
+    Fixed-seed observation-stream integration coverage preserves all six
+    identity classes. Pair field equality and representation metrics remain
+    explicitly gated on T1.11d/T1.11f.
 
 - [ ] **T1.11d — Pair-integrity validator.**
   - **Requirement IDs:** R5, R7.

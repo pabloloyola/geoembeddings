@@ -63,6 +63,47 @@ EXPERIMENT_DIR/
     └── embedding_comparison.md
 ```
 
+Protected matched-run declarations use a third canonical root:
+
+```text
+PAIR_DIR/
+├── pair_manifest.json
+├── pair_integrity.json                 # T1.11d
+├── counterfactual_comparison.json      # T1.11f
+└── counterfactual_comparison.md        # T1.11f
+```
+
+## `pair-manifest`
+
+### Purpose
+
+Declare two identity-compatible simulator runs for later R5/R7 pair validation
+and evaluation. This evaluator/simulator-side artifact is never an input to
+`prepare`, `baseline`, `train`, or `export`.
+
+```bash
+uv run geoembed pair-manifest \
+  --reference-run-dir runs/reference \
+  --intervention-run-dir runs/observation-intervention \
+  --output pairs/observation/pair_manifest.json
+```
+
+Both arguments must be dataset roots; internal observed/truth filenames cannot
+be supplied. The command reads both complete run manifests and canonical tables,
+infers `identity`, `observation`, `exposure`, or `opportunity` from scenario and
+stream lineage, hashes every source, and writes schema
+`geoembeddings-pair-manifest/1.0`. The contract records run roots, simulator and
+dataset identities, manifest/config/source/entity hashes, intervention
+parameters, invariant entity classes, allowed field changes, semantic matching
+keys, stream lineage, and creation provenance.
+
+The command rejects missing or malformed hashes, unsupported identity or pair
+schemas, incompatible dataset contracts, ambiguous/reused matching keys,
+overlapping invariant/change declarations, and identity mismatches in declared
+invariants. Existing output is immutable by default. `--overwrite` is accepted
+only for the exact canonical filename and only when the existing regular file
+is itself a valid pair manifest; it does not overwrite arbitrary files.
+
 ## `simulate`
 
 ### Purpose

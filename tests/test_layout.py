@@ -5,7 +5,7 @@ import json
 import pytest
 
 from geoembeddings.contract import DATASET_CONTRACT_NAME, DATASET_CONTRACT_VERSION
-from geoembeddings.layout import DatasetLayout, ExperimentLayout
+from geoembeddings.layout import DatasetLayout, ExperimentLayout, PairLayout
 
 
 def test_layout_resolves_all_paths(tmp_path) -> None:
@@ -23,6 +23,9 @@ def test_layout_resolves_all_paths(tmp_path) -> None:
     assert experiment.reliability_evaluation("baseline") == experiment.root / "baseline_reliability.json"
     assert experiment.reliability_evaluation("learned") == experiment.root / "reliability.json"
     assert experiment.offline_benchmark == experiment.root / "benchmarks" / "offline.json"
+    pair = PairLayout.from_path(tmp_path / "pair")
+    assert pair.manifest == pair.root / "pair_manifest.json"
+    assert pair.integrity_report == pair.root / "pair_integrity.json"
 
 
 def test_layout_validates_contract(tmp_path) -> None:
