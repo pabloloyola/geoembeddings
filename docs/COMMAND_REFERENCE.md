@@ -522,6 +522,24 @@ Yes. It is a protected comparative evaluator.
 There is intentionally no aggregate winner. Read stability together with
 distinctiveness, effective rank, and retained information.
 
+## Spatial and transfer evaluation (`evaluate --transfer`)
+
+Run both frozen representations against the identical versioned slice contract:
+
+```bash
+uv run geoembed evaluate --transfer --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed evaluate --transfer --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+```
+
+The first two commands write `baseline_transfer_evaluation.json` and
+`learned_transfer_evaluation.json`. `compare` rejects differences in observed
+source hashes, users, cutoffs, fitted training contract, slice-definition hash,
+or slice coverage, then adds independent R2/R8 deltas. It never creates an
+aggregate spatial score. Thresholds, known regions, and known geohashes are fit
+from training events only; held-out and unseen labels affect evaluation slices
+and coverage only.
+
 ## `robustness`
 
 Construct versioned, deterministic observed-data views and evaluate R6/R7:

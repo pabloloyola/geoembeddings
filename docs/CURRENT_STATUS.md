@@ -52,13 +52,13 @@ executable while other named axes remain absent. Artifacts are relative to
 | ID | Status | Responsible command | Artifact or present limitation |
 |---|---|---|---|
 | R1 | partial | `evaluate`; `evaluate --episodes`; `compare` | `evaluation.json`, `episode_response.json`, and `comparison/embedding_comparison.json`; factorized persistent/context outputs and matched change scenarios pending |
-| R2 | partial | `train`; `evaluate` | `model/training_report.json` and `evaluation.json` contain next-geohash metrics; distance retrieval and boundary-pair evaluation pending |
+| R2 | partial | `train`; `evaluate --transfer`; `compare` | transfer reports contain train-scaled distance retrieval and geohash-boundary pairs; real geographic calibration remains pending |
 | R3 | partial | `train`; `evaluate` | `model/training_report.json` and `evaluation.json` cover future-time next-event prediction; routine, periodicity, and duration probes pending |
 | R4 | partial | `export-dense`; `evaluate --episodes`; `compare` | `dense_embeddings.npz`, `episode_response.json`, and matched episode deltas in `comparison/embedding_comparison.json`; factorized persistent/context separation and matched change scenarios pending |
 | R5 | pending | — | Matched counterfactual exposure/opportunity evaluator and artifacts pending |
 | R6 | partial | `robustness`; `compare` | Leave-one-service-out drift, coverage, and frozen-probe degradation are executable; candidate-aware cross-service transfer remains pending |
 | R7 | partial | `robustness`; `compare` | `robustness/{kind}_robustness.json` covers deterministic GPS, timestamp, and recent-truncation views; real-noise calibration and causal invariance remain unmeasurable |
-| R8 | partial | `prepare`; `evaluate` | Chronological split metadata in `prepared/prepared_metadata.json` and future-time metrics in `evaluation.json`; explicit geographic/POI holdouts pending |
+| R8 | partial | `prepare`; `evaluate --transfer`; `compare` | held-out-region and seen/unseen-geohash slices report coverage separately; unseen-POI transfer remains blocked by the observable recommendation contract |
 | R9 | blocked | — | Observable recommendation request, candidate, impression, and interaction contract is absent |
 | R10 | pending | — | Uncertainty evaluator and artifact pending |
 | R11 | pending | — | Matched transient/sustained change scenarios and adaptation evaluator pending |

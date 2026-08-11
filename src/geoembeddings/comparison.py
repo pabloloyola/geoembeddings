@@ -201,6 +201,27 @@ def compare_embeddings(
         report["R6_R7_robustness_comparison"] = {"axes_are_not_composited": True,
             "R6_views": [row for row in compared if row["view_kind"] == "leave-one-service-out"],
             "R7_views": [row for row in compared if row["view_kind"] != "leave-one-service-out"]}
+    baseline_transfer = Path(baseline_embeddings_path).parent / "baseline_transfer_evaluation.json"
+    learned_transfer = Path(learned_embeddings_path).parent / "learned_transfer_evaluation.json"
+    if baseline_transfer.is_file() or learned_transfer.is_file():
+        if not (baseline_transfer.is_file() and learned_transfer.is_file()):
+            raise ValueError("Spatial comparison requires both baseline and learned transfer reports")
+        left, right = read_json(baseline_transfer), read_json(learned_transfer)
+        fields = ("source_hashes", "train_end", "validation_end", "slice_definition_sha256",
+                  "users", "cutoffs")
+        mismatch = [field for field in fields if left["metric_contract"].get(field) != right["metric_contract"].get(field)]
+        if mismatch or left["slices"] != right["slices"] or left["train_only_fit"] != right["train_only_fit"]:
+            raise ValueError(f"Spatial reports are not matched; mismatched contract fields: {mismatch}")
+        report["R2_R8_spatial_transfer_comparison"] = {
+            "axes_are_not_composited": True, "coverage": left["coverage"], "slices": left["slices"],
+            "distance_retrieval": {"baseline": left["distance_retrieval"], "learned": right["distance_retrieval"],
+                "mean_top1_distance_km_learned_minus_baseline": _nullable_delta(
+                    right["distance_retrieval"]["mean_top1_distance_km"], left["distance_retrieval"]["mean_top1_distance_km"])},
+            "geohash_boundary_pairs": {"baseline": left["geohash_boundary_pairs"],
+                "learned": right["geohash_boundary_pairs"],
+                "mean_cosine_learned_minus_baseline": _nullable_delta(
+                    right["geohash_boundary_pairs"]["mean_cross_boundary_cosine"],
+                    left["geohash_boundary_pairs"]["mean_cross_boundary_cosine"])}}
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     report["outputs"] = {
@@ -595,7 +616,7 @@ def _requirement_status() -> dict[str, Any]:
                 "common_future_event_probes.next_geohash_5",
                 "common_future_event_probes.next_geohash_7",
             ],
-            "missing": "metric-distance and geohash-boundary tests",
+            "supplemental": "evaluate --transfer provides metric-distance and geohash-boundary tests",
         },
         "R3_multiscale_temporal_fidelity": {
             "status": "partial",
@@ -624,7 +645,7 @@ def _requirement_status() -> dict[str, Any]:
         "R8_geographic_temporal_generalization": {
             "status": "partial",
             "evidence": ["common_future_event_probes"],
-            "missing": "explicit held-out-region evaluation",
+            "supplemental": "evaluate --transfer provides held-out-region and unseen-geohash slices",
         },
         "R9_new_context_recommendation": {
             "status": "blocked_by_data_contract",

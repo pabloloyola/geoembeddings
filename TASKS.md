@@ -153,7 +153,7 @@ implemented evaluator surfaces do not substitute for the missing reference.
   - **Known limitation/blocker:** deterministic corruption is a sensitivity
     analysis, not proof of real-world noise or causal invariance.
 
-- [ ] **T1.5 (P1B) — Add spatial and transfer evaluation.**
+- [x] **T1.5 (P1B) — Add spatial and transfer evaluation.**
   - **Requirement IDs:** R2, R8.
   - **Prerequisites:** T0.2, explicit train/test geography definitions.
   - **Affected layer:** evaluator.
@@ -164,7 +164,13 @@ implemented evaluator surfaces do not substitute for the missing reference.
     proving split construction and normalization use no held-out information.
   - **Completion evidence:** held-out-region, unseen-cell/geohash, later-time,
     distance-retrieval, and boundary-consistency metrics each report user/label coverage.
-  - **Known limitation/blocker:** unseen-POI transfer remains gated by T3 contract.
+  - **Completion evidence:** versioned `evaluation.transfer` definitions now drive
+    train-fitted distance retrieval, boundary pairs, held-out regions, and
+    seen/unseen geohash slices. Matched reports are produced with the documented
+    baseline/learned commands and rejected by `compare` when identity, fitting,
+    definitions, or coverage differ.
+  - **Known limitation/blocker:** unseen-POI transfer remains gated by T3 contract;
+    observed noisy coordinates are synthetic and these slices do not prove causal transfer.
 
 - [ ] **T1.6 (P1C) — Add temporal and routine diagnostics.**
   - **Requirement IDs:** R3, R4.

@@ -58,6 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_embedding_arguments(evaluate)
     evaluate.add_argument("--kind", choices=("learned", "baseline"), default="learned")
     evaluate.add_argument("--episodes", action="store_true", help="Evaluate dense embeddings at protected episode boundaries")
+    evaluate.add_argument("--transfer", action="store_true", help="Evaluate versioned R2/R8 spatial transfer slices")
 
     robustness = commands.add_parser("robustness", help="Re-encode deterministic observed-data robustness views for R6/R7")
     _add_embedding_arguments(robustness)
@@ -222,11 +223,22 @@ def _evaluate(
     config_path: Path,
     kind: str,
     episodes: bool = False,
+    transfer: bool = False,
 ) -> dict[str, Any]:
     from .evaluation import evaluate_embeddings, evaluate_episode_response
 
-    run.validate(require_truth=True)
     learned = kind == "learned"
+    if episodes and transfer:
+        raise ValueError("--episodes and --transfer select separate supplemental reports")
+    if transfer:
+        run.validate(require_truth=False)
+        from .spatial_evaluation import evaluate_spatial_transfer
+        embeddings = experiment.embeddings if learned else experiment.baseline_embeddings
+        if not embeddings.is_file():
+            raise FileNotFoundError(f"Missing {kind} embeddings: {embeddings}")
+        return evaluate_spatial_transfer(run.observed, experiment.prepared, embeddings,
+            experiment.transfer_evaluation(kind), load_config(config_path), kind=kind)
+    run.validate(require_truth=True)
     if episodes:
         dense = experiment.dense_embeddings if learned else experiment.dense_baseline_embeddings
         output = experiment.episode_response if learned else experiment.baseline_episode_response
@@ -355,7 +367,7 @@ def main() -> None:
         elif args.command == "export-dense":
             result = _export_dense(run, experiment, config_path, args.event_stride, args.kind)
         elif args.command == "evaluate":
-            result = _evaluate(run, experiment, config_path, args.kind, args.episodes)
+            result = _evaluate(run, experiment, config_path, args.kind, args.episodes, args.transfer)
         else:
             result = _robustness(run, experiment, config_path, args.kind, args.views)
     elif args.command == "compare":
