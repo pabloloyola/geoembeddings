@@ -51,3 +51,10 @@ def test_dense_export_accepts_observed_event_stride() -> None:
     )
     assert args.event_stride == 5
     assert not hasattr(args, "truth_dir")
+
+
+def test_robustness_command_uses_only_canonical_roots() -> None:
+    args = build_parser().parse_args(["robustness", "--kind", "baseline", "--run-dir",
+        "runs/pilot", "--experiment-dir", "experiments/pilot"])
+    assert args.kind == "baseline"
+    assert not hasattr(args, "observed_dir") and not hasattr(args, "truth_dir")

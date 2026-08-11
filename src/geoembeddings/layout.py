@@ -114,3 +114,13 @@ class ExperimentLayout:
     @property
     def comparison_dir(self) -> Path:
         return self.root / "comparison"
+
+    @property
+    def robustness_dir(self) -> Path:
+        return self.root / "robustness"
+
+    def robustness_embeddings(self, kind: str, rate: float) -> Path:
+        return self.robustness_dir / kind / f"removal_{rate:.6f}.npz"
+
+    def robustness_report(self, kind: str) -> Path:
+        return self.robustness_dir / f"{kind}_event_removal.json"

@@ -5,6 +5,7 @@ from typing import Any
 
 import numpy as np
 import torch
+import pandas as pd
 from torch.utils.data import DataLoader
 
 from .data import DenseUserCutoffDataset, UserCutoffDataset, collate_user_cutoffs
@@ -18,10 +19,14 @@ def export_embeddings(
     checkpoint_path: str | Path,
     output_path: str | Path,
     config: dict[str, Any],
+    *,
+    events: pd.DataFrame | None = None,
+    min_history_events: int = 1,
 ) -> dict[str, Any]:
     device = resolve_device(str(config["training"].get("device", "auto")))
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-    dataset = UserCutoffDataset(observed_dir, prepared_dir, checkpoint["config"])
+    dataset = UserCutoffDataset(observed_dir, prepared_dir, checkpoint["config"], events=events,
+                                min_history_events=min_history_events)
     model = build_model(
         checkpoint["vocabularies"],
         len(checkpoint["continuous_fields"]),

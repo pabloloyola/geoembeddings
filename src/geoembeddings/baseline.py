@@ -17,9 +17,14 @@ def export_statistical_baseline(
     prepared_dir: str | Path,
     output_path: str | Path,
     config: dict[str, Any],
+    *,
+    events: pd.DataFrame | None = None,
+    min_history_events: int = 1,
 ) -> dict[str, Any]:
     """Export normalized event histograms and continuous moments, with no learned parameters."""
-    _, events = load_observed(observed_dir)
+    if events is None:
+        _, events = load_observed(observed_dir)
+    events = events.copy()
     prepared_dir = Path(prepared_dir)
     metadata = read_json(prepared_dir / "prepared_metadata.json")
     vocabularies: dict[str, dict[str, int]] = read_json(prepared_dir / "vocabularies.json")
@@ -41,7 +46,7 @@ def export_statistical_baseline(
         ordered = np.asarray(indices, dtype=np.int64)
         for cutoff_name, cutoff in cutoffs.items():
             eligible = ordered[(events.iloc[ordered]["timestamp"] <= cutoff).to_numpy()][-maximum:]
-            if len(eligible) == 0:
+            if len(eligible) < min_history_events:
                 continue
             components = []
             for field_index, field in enumerate(categorical_fields):

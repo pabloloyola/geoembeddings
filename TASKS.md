@@ -14,7 +14,10 @@ definition of done in `AGENTS.md`.
 
 - [x] **T1.1 (R1, R4, R11)** Add dense timestamped embedding export with no truth labels.
 - [x] **T1.2 (R1, R4)** Add evaluator-side episode-boundary joins and response curves.
-- [ ] **T1.3 (R7)** Add deterministic event-removal robustness views.
+- [x] **T1.3 (R7)** Add deterministic event-removal robustness views. The
+  configuration-driven `robustness` command uses matched learned/baseline masks,
+  reports sparse coverage and frozen-probe degradation, and keeps GPS and
+  missing-service robustness explicitly pending under T1.4/T1.5.
 - [ ] **T1.4 (R7)** Add GPS-noise and timestamp-jitter robustness views.
 - [ ] **T1.5 (R6, R7)** Add leave-one-service-out encoding/evaluation.
 - [ ] **T1.6 (R8)** Add explicit held-out-region and unseen-cell slices.

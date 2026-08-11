@@ -167,6 +167,32 @@ def compare_embeddings(
         }
         report["episode_response_comparison"] = {name: {"baseline": a, "learned": b,
             "learned_minus_baseline": (b-a) if a is not None and b is not None else None} for name, (a,b) in metrics.items()}
+    baseline_robust = Path(baseline_embeddings_path).parent / "robustness" / "baseline_event_removal.json"
+    learned_robust = Path(learned_embeddings_path).parent / "robustness" / "learned_event_removal.json"
+    if baseline_robust.is_file() or learned_robust.is_file():
+        if not (baseline_robust.is_file() and learned_robust.is_file()):
+            raise ValueError("R7 comparison requires both baseline and learned robustness reports")
+        left, right = read_json(baseline_robust), read_json(learned_robust)
+        contract_fields = ("source_hashes", "algorithm", "seed", "field_order", "removal_rates")
+        mismatch = [key for key in contract_fields if left["metric_contract"].get(key) != right["metric_contract"].get(key)]
+        if mismatch:
+            raise ValueError(f"R7 reports are not matched; mismatched fields: {mismatch}")
+        compared = []
+        for a, b in zip(left["rates"], right["rates"]):
+            row_fields = ("rate", "removed_events", "realized_removal_rate", "encoded_keys")
+            bad = [key for key in row_fields if a.get(key) != b.get(key)]
+            if bad:
+                raise ValueError(f"R7 rate reports are not matched; mismatched fields: {bad}")
+            compared.append({"rate": a["rate"], "matched_rows": a["matched_rows"],
+                "cosine_drift_mean": {"baseline": a["cosine_drift"]["mean"],
+                    "learned": b["cosine_drift"]["mean"],
+                    "learned_minus_baseline": _nullable_delta(b["cosine_drift"]["mean"], a["cosine_drift"]["mean"])},
+                "coverage": {"baseline": a["coverage"], "learned": b["coverage"],
+                    "learned_minus_baseline": b["coverage"] - a["coverage"]},
+                "probe_mean_r2_degradation": {"baseline": a["probe_mean_r2_degradation"],
+                    "learned": b["probe_mean_r2_degradation"],
+                    "learned_minus_baseline": _nullable_delta(b["probe_mean_r2_degradation"], a["probe_mean_r2_degradation"])}})
+        report["R7_event_removal_comparison"] = {"axes_are_not_composited": True, "rates": compared}
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     report["outputs"] = {
@@ -178,6 +204,10 @@ def compare_embeddings(
         _render_markdown(report), encoding="utf-8"
     )
     return report
+
+
+def _nullable_delta(left: float | None, right: float | None) -> float | None:
+    return left - right if left is not None and right is not None else None
 
 
 def _validate_prepared_match(

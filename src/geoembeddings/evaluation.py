@@ -296,6 +296,61 @@ def evaluate_embeddings(
     return report
 
 
+def evaluate_event_removal(
+    truth_dir: str | Path, original_embeddings_path: str | Path,
+    export_manifest: dict[str, Any], output_path: str | Path, config: dict[str, Any],
+) -> dict[str, Any]:
+    """Evaluate matched unmodified/thinned rows; truth opens only here for frozen probes."""
+    latent_path = Path(truth_dir) / "user_latents.csv.gz"
+    if Path(truth_dir).name != "truth" or not latent_path.is_file():
+        raise ValueError("event-removal evaluation requires the canonical truth/ boundary")
+    original = np.load(original_embeddings_path, allow_pickle=False)
+    original_map = {(str(u), str(c)): e.astype(np.float64) for u, c, e in
+                    zip(original["user_id"], original["cutoff"], original["embedding"])}
+    latent = pd.read_csv(latent_path)
+    original_test = [(key, value) for key, value in original_map.items() if key[1] == "test"]
+    original_probe = _latent_probe(np.asarray([k[0] for k, _ in original_test]),
+        np.stack([v for _, v in original_test]), latent,
+        float(config["evaluation"]["probe_train_fraction"]), float(config["evaluation"]["ridge_alpha"]))
+    rates = []
+    for artifact in export_manifest["artifacts"]:
+        if artifact["path"] is None:
+            rates.append({**artifact, "matched_rows": 0, "coverage": 0.0,
+                          "cosine_drift": _summary([]), "probe": {"status": "unencodable"},
+                          "probe_mean_r2_degradation": None})
+            continue
+        payload = np.load(artifact["path"], allow_pickle=False)
+        thinned = {(str(u), str(c)): e.astype(np.float64) for u, c, e in
+                   zip(payload["user_id"], payload["cutoff"], payload["embedding"])}
+        keys = sorted(set(original_map) & set(thinned))
+        drifts = [1.0 - float(np.dot(original_map[k], thinned[k]) /
+                  max(np.linalg.norm(original_map[k]) * np.linalg.norm(thinned[k]), 1e-12)) for k in keys]
+        tests = [k for k in keys if k[1] == "test"]
+        matched_original_probe = (_latent_probe(np.asarray([k[0] for k in tests]),
+                    np.stack([original_map[k] for k in tests]), latent,
+                    float(config["evaluation"]["probe_train_fraction"]),
+                    float(config["evaluation"]["ridge_alpha"])) if tests else {"status": "unencodable"})
+        probe = (_latent_probe(np.asarray([k[0] for k in tests]), np.stack([thinned[k] for k in tests]),
+                    latent, float(config["evaluation"]["probe_train_fraction"]),
+                    float(config["evaluation"]["ridge_alpha"])) if tests else {"status": "unencodable"})
+        base_r2, thin_r2 = matched_original_probe.get("mean_r2"), probe.get("mean_r2")
+        rates.append({**artifact, "matched_rows": len(keys),
+            "coverage": len(keys) / max(len(original_map), 1), "cosine_drift": _summary(drifts),
+            "matched_unmodified_probe": matched_original_probe, "probe": probe, "probe_mean_r2_degradation":
+                (base_r2 - thin_r2 if base_r2 is not None and thin_r2 is not None else None)})
+    report = {"metric_contract": {"version": "event-removal/1.0",
+        "source_hashes": export_manifest["source_hashes"], "algorithm": export_manifest["algorithm"],
+        "seed": export_manifest["seed"], "kind": export_manifest["kind"],
+        "field_order": export_manifest["field_order"],
+        "removal_rates": [a["rate"] for a in export_manifest["artifacts"]]},
+        "unmodified_rows": len(original_map), "unmodified_probe": original_probe, "rates": rates,
+        "R7_axes": ["cosine_drift", "coverage", "realized_removal", "frozen_probe_degradation"],
+        "limitations": "Event removal tests sparsity only; it does not establish GPS, service-missingness, or causal invariance.",
+        "information_boundary": "truth/ is opened only by this evaluator; masks and encoders are observed-only"}
+    write_json(report, output_path)
+    return report
+
+
 def _latent_probe(
     embedding_users: np.ndarray,
     embeddings: np.ndarray,
