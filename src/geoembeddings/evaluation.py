@@ -347,20 +347,27 @@ def evaluate_embeddings(
     payload = loaded.arrays
     user_ids = payload["user_id"].astype(str)
     cutoffs = payload["cutoff"].astype(str)
-    embeddings = loaded.embedding.astype(np.float64)
     latent = pd.read_csv(latent_path)
-
     final_mask = cutoffs == "test"
-    final_users = user_ids[final_mask]
-    final_embeddings = embeddings[final_mask]
-    probe_report = _latent_probe(
-        final_users,
-        final_embeddings,
-        latent,
-        float(config["evaluation"]["probe_train_fraction"]),
-        float(config["evaluation"]["ridge_alpha"]),
-    )
-    stability = _cutoff_stability(user_ids, cutoffs, embeddings)
+    component_reports = {}
+    for component_name, component_values in loaded.components.items():
+        embeddings = component_values.astype(np.float64)
+        component_reports[component_name] = {
+            "intended_axis": {
+                "persistent": "persistent information and matched-intervention invariance",
+                "context": "episode response and temporary-change adaptation",
+                "combined": "downstream task information",
+            }[component_name],
+            "persistent_trait_probes": _latent_probe(
+                user_ids[final_mask], embeddings[final_mask], latent,
+                float(config["evaluation"]["probe_train_fraction"]),
+                float(config["evaluation"]["ridge_alpha"]),
+            ),
+            "cross_cutoff_stability": _cutoff_stability(user_ids, cutoffs, embeddings),
+            "collapse_diagnostics": _component_collapse_diagnostics(user_ids, cutoffs, embeddings),
+        }
+    probe_report = component_reports["combined"]["persistent_trait_probes"]
+    stability = component_reports["combined"]["cross_cutoff_stability"]
 
     learned_model = checkpoint_path is not None
     report = {
@@ -388,6 +395,7 @@ def evaluate_embeddings(
             "evaluation": "truth/ opened only by this evaluator command",
         },
         "next_event": next_event,
+        "component_evaluations": component_reports,
         "persistent_trait_probes": probe_report,
         "cross_cutoff_stability": stability,
         "requirements": {
@@ -434,6 +442,43 @@ def evaluate_embeddings(
     }
     write_json(report, output_path)
     return report
+
+
+def _component_collapse_diagnostics(user_ids: np.ndarray, cutoffs: np.ndarray,
+                                    embeddings: np.ndarray) -> dict[str, Any]:
+    """Always report geometry alongside apparently desirable branch behavior."""
+    test = embeddings[cutoffs == "test"]
+    test_users = user_ids[cutoffs == "test"]
+    centered = test - test.mean(axis=0, keepdims=True)
+    singular = np.linalg.svd(centered, compute_uv=False) if len(test) else np.asarray([])
+    variance = singular ** 2
+    effective_rank = (float(variance.sum() ** 2 / np.square(variance).sum())
+                      if np.square(variance).sum() > 0 else 0.0)
+    normalized = embeddings / np.maximum(np.linalg.norm(embeddings, axis=1, keepdims=True), 1e-12)
+    similarities = normalized @ normalized.T
+    same, different = [], []
+    for i in range(len(embeddings)):
+        for j in range(i + 1, len(embeddings)):
+            (same if user_ids[i] == user_ids[j] else different).append(float(similarities[i, j]))
+    retrieval_correct = retrieval_total = 0
+    for cutoff in ("validation", "test"):
+        query_indices = np.flatnonzero(cutoffs == cutoff)
+        reference_indices = np.flatnonzero(cutoffs == "train")
+        for index in query_indices:
+            if len(reference_indices):
+                nearest = reference_indices[int(np.argmax(similarities[index, reference_indices]))]
+                retrieval_correct += int(user_ids[nearest] == user_ids[index]); retrieval_total += 1
+    return {
+        "same_user_cosine_mean": float(np.mean(same)) if same else None,
+        "different_user_cosine_mean": float(np.mean(different)) if different else None,
+        "same_different_separation": (float(np.mean(same) - np.mean(different))
+                                      if same and different else None),
+        "temporal_retrieval_accuracy": retrieval_correct / retrieval_total if retrieval_total else None,
+        "temporal_retrieval_queries": retrieval_total,
+        "centered_effective_rank": effective_rank,
+        "test_users": int(len(test_users)),
+        "task_information": "persistent probe is reported above; combined next-event diagnostics are report-level",
+    }
 
 
 def evaluate_event_removal(

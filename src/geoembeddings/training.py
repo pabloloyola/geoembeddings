@@ -74,6 +74,10 @@ def train_model(
         config,
         categorical_fields=categorical_fields,
     ).to(device)
+    parameter_counts = {
+        "total": sum(parameter.numel() for parameter in model.parameters()),
+        "trainable": sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad),
+    }
     optimizer = AdamW(
         model.parameters(),
         lr=float(config["training"]["learning_rate"]),
@@ -112,6 +116,13 @@ def train_model(
                     "continuous_fields": train_dataset.continuous_fields,
                     "epoch": epoch,
                     "validation_metrics": validation_metrics,
+                    "parameter_counts": parameter_counts,
+                    "capacity_match": getattr(model, "capacity_match", None),
+                    "seed": seed,
+                    "preparation_identity": {
+                        "prepared_metadata_sha256": sha256_file(prepared_metadata_path),
+                        "source_files": dict(prepared_metadata["source_files"]),
+                    },
                 },
                 checkpoint_path,
             )
@@ -126,6 +137,21 @@ def train_model(
         ).to_dict(),
         "device": str(device),
         "model_variant": model_variant,
+        "parameter_counts": parameter_counts,
+        "capacity_match": getattr(model, "capacity_match", None),
+        "seed": seed,
+        "configuration_snapshot": config,
+        "configuration_sha256": _canonical_config_hash(config),
+        "preparation_identity": {
+            "prepared_metadata_sha256": sha256_file(prepared_metadata_path),
+            "source_files": dict(prepared_metadata["source_files"]),
+            "train_end": str(prepared_metadata["train_end"]),
+            "validation_end": str(prepared_metadata["validation_end"]),
+        },
+        "artifact_lineage": {
+            "checkpoint_sha256": sha256_file(checkpoint_path),
+            "checkpoint": str(checkpoint_path.resolve()),
+        },
         "categorical_fields": categorical_fields,
         "continuous_fields": list(train_dataset.continuous_fields),
         "train_windows": len(train_dataset),
@@ -185,10 +211,11 @@ def _run_epoch(
                 batch["late_lengths"],
                 augment=True,
             )
-            losses.append(
-                consistency_weight
-                * (1.0 - F.cosine_similarity(early.combined, late.combined).mean())
-            )
+            route = str(config.get("model", {}).get("consistency_route", "combined"))
+            if route not in {"persistent", "context", "combined"}:
+                raise ValueError(f"Invalid consistency_route: {route!r}")
+            losses.append(consistency_weight * (1.0 - F.cosine_similarity(
+                getattr(early, route), getattr(late, route)).mean()))
 
         if not losses:
             raise ValueError("No active training objectives matched the model heads")
@@ -208,6 +235,13 @@ def _run_epoch(
         metrics[f"{name}_accuracy"] = correct[name] / max(total_examples, 1)
         metrics[f"{name}_top5"] = top5_correct[name] / max(total_examples, 1)
     return metrics
+
+
+def _canonical_config_hash(config: dict[str, Any]) -> str:
+    """Hash the resolved in-memory configuration without writing an artifact."""
+    import hashlib
+    import json
+    return hashlib.sha256(json.dumps(config, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def _validate_batch_values(

@@ -296,3 +296,42 @@ def test_training_rejects_unknown_model_before_creating_output(tmp_path):
     with pytest.raises(ValueError, match="Unknown model variant"):
         train_model(tmp_path / "observed", tmp_path / "prepared", output, config)
     assert not output.exists()
+
+
+@pytest.mark.parametrize("variant", ["factorized_pc", "persistent_only", "context_only"])
+def test_factorized_variants_are_finite_mask_safe_and_backpropagate(variant):
+    config, vocabularies = _model_fixture()
+    config["model"].update({
+        "variant": variant, "recent_history_events": 2,
+        "persistent_update_rate": 0.1,
+        "loss_routing": {"next_service": "context", "next_action": "combined"},
+        "consistency_route": "persistent",
+    })
+    model = build_model(vocabularies, 8, config)
+    categorical = torch.randint(0, 3, (3, 5, 2))
+    continuous = torch.randn(3, 5, 8, requires_grad=True)
+    lengths = torch.tensor([5, 3, 2])  # deliberately retained as CPU metadata
+    output = model.encode_components(categorical, continuous, lengths)
+    assert output.persistent.shape == output.context.shape == output.combined.shape == (3, 5)
+    assert all(torch.isfinite(value).all() for value in
+               (output.persistent, output.context, output.combined))
+    output.combined.square().mean().backward()
+    assert continuous.grad is not None and torch.isfinite(continuous.grad).all()
+    if variant == "persistent_only":
+        assert torch.count_nonzero(output.context) == 0
+    if variant == "context_only":
+        assert torch.count_nonzero(output.persistent) == 0
+
+
+def test_factorized_loss_routing_uses_named_branch():
+    config, vocabularies = _model_fixture()
+    config["model"].update({"variant": "factorized_pc", "recent_history_events": 2,
+                            "persistent_update_rate": .1,
+                            "loss_routing": {"next_service": "context",
+                                             "next_action": "persistent"}})
+    model = build_model(vocabularies, 8, config).eval()
+    assert model.loss_routes == {"next_service": "context", "next_action": "persistent"}
+    categorical = torch.randint(0, 3, (2, 4, 2)); continuous = torch.randn(2, 4, 8)
+    embedding, logits = model(categorical, continuous, torch.tensor([4, 2]))
+    assert embedding.shape == (2, 5)
+    assert set(logits) == {"next_service", "next_action"}

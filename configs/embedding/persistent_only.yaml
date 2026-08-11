@@ -1,0 +1,147 @@
+data:
+  categorical_fields:
+  - service_id
+  - action_type
+  - observation_mode
+  - object_category
+  - region_id
+  - geohash_5
+  - geohash_7
+  continuous_fields:
+  - latitude
+  - longitude
+  - log_delta_minutes
+  - hour_sin
+  - hour_cos
+  - dow_sin
+  - dow_cos
+  - log_location_accuracy_m
+  include_object_id: false
+  max_sequence_length: 64
+  min_history_events: 2
+  train_fraction: 0.7
+  validation_fraction: 0.15
+evaluation:
+  episode_response:
+    boundary_bin_edges_hours:
+    - -24
+    - -12
+    - -6
+    - -3
+    - -1
+    - 0
+    - 1
+    - 3
+    - 6
+    - 12
+    - 24
+  event_removal:
+    algorithm_version: sha256-event-removal/1.0
+    rates:
+    - 0.0
+    - 0.1
+    - 0.25
+    - 0.5
+    seed: 20260811
+  probe_train_fraction: 0.8
+  reliability:
+    calibration_bins: 5
+    coverage_levels:
+    - 0.25
+    - 0.5
+    - 0.75
+    - 1.0
+    minimum_bin_count: 5
+    resamples: 200
+    schema_version: geoembeddings-reliability-report/1.0
+    seed: 20260811
+  ridge_alpha: 10.0
+  robustness:
+    algorithm_version: sha256-robustness-views/2.0
+    schema_version: robustness-spec/1.0
+    seed: 20260811
+    views:
+      gps:
+      - sigma_m: 25.0
+      - sigma_m: 100.0
+      leave-one-service-out:
+      - service_id: location
+      - service_id: local_commerce
+      - service_id: ecommerce
+      - service_id: travel
+      recent-truncation:
+      - remove_recent_events: 1
+      - remove_recent_events: 8
+      timestamp:
+      - max_jitter_seconds: 300.0
+      - max_jitter_seconds: 1800.0
+  temporal_routine:
+    day_bin_edges:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 7
+    diagnostic_max_rows: 1024
+    hour_bin_edges:
+    - 0
+    - 6
+    - 10
+    - 16
+    - 20
+    - 24
+    probe_train_fraction: 0.8
+    repeated_min_occurrences: 2
+    split_seed: 20250301
+  transfer:
+    boundary_max_distance_km: 2.0
+    distance_metric: haversine_km
+    distance_relevance_quantile: 0.5
+    geohash_fields:
+    - geohash_5
+    - geohash_7
+    held_out_regions:
+    - hakone
+    retrieval_k:
+    - 1
+    - 5
+    schema_version: spatial-transfer-slices/1.0
+model:
+  categorical_embedding_dim: 24
+  dropout: 0.1
+  event_dim: 128
+  event_dropout: 0.1
+  gru_layers: 1
+  hidden_dim: 128
+  user_embedding_dim: 128
+  variant: persistent_only
+  recent_history_events: 16
+  persistent_update_rate: 0.1
+  ablation: fusion
+  consistency_route: persistent
+  loss_routing:
+    next_service: context
+    next_action: context
+    next_category: combined
+    next_region: combined
+    next_geohash_5: combined
+    next_geohash_7: combined
+objectives:
+  cross_window_consistency: 0.1
+  next_action: 0.4
+  next_category: 1.0
+  next_geohash_5: 0.5
+  next_geohash_7: 0.25
+  next_region: 0.75
+  next_service: 0.2
+seed: 20260806
+training:
+  batch_size: 128
+  device: auto
+  epochs: 8
+  gradient_clip_norm: 1.0
+  learning_rate: 0.001
+  num_workers: 0
+  weight_decay: 0.0001

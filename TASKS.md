@@ -466,6 +466,10 @@ gated by T1.6.
   - **Completion evidence:** parameter budget is documented/matched and all
     branches train/export with finite outputs.
   - **Known limitation/blocker:** scientific completion waits for T2.7 comparison.
+  - **Implementation note (2026-08-11):** `factorized_pc` now provides shared
+    event features, padded long/recent GRUs, conservative persistent updates,
+    gated fusion, and component exports. Scientific completion remains gated on
+    a matched run because no current baseline artifact is available.
 
 - [ ] **T2.5 — Capacity controls and ablations.**
   - **Requirement IDs:** R1, R4.
@@ -479,6 +483,9 @@ gated by T1.6.
     hashes, and matched evaluation inputs for all controls.
   - **Known limitation/blocker:** exhaustive ablations may be compute-limited;
     omissions must be explicit.
+  - **Implementation note (2026-08-11):** versioned configs cover a dynamically
+    parameter-matched single GRU, persistent-only, context-only, fusion, and both
+    loss-routing removals. No performance claim is recorded without artifacts.
 
 - [ ] **T2.6 — Branch-specific objectives and reports.**
   - **Requirement IDs:** R1, R4, R5, R6, R7.
@@ -493,6 +500,9 @@ gated by T1.6.
     task information, invariance, response, and collapse diagnostics.
   - **Known limitation/blocker:** covariance/orthogonality is diagnostic only,
     not semantic disentanglement.
+  - **Implementation note (2026-08-11):** named objective and consistency routes
+    are observed-only; base evaluation reports every component with persistent
+    probes, stability, separation, retrieval, and centered effective rank.
 
 - [ ] **T2.7 — Matched factorization decision.**
   - **Requirement IDs:** R1, R4, R5, R6, R7.
@@ -509,6 +519,9 @@ gated by T1.6.
     limitations are reported separately.
   - **Known limitation/blocker:** no aggregate winner; failure to beat controls
     blocks routine expansion rather than being hidden by next-event accuracy.
+  - **Decision note (2026-08-11):** currently unmeasurable and therefore **do
+    not advance**. `docs/FACTORIZATION_DECISION.md` defines the per-axis gate;
+    matched immutable control artifacts have not yet been generated.
 
 ## P3 — Recommendation contract and ranking
 
