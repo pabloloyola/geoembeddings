@@ -49,7 +49,7 @@ evidence.
   pipeline, statistical baseline, and matched comparison are recorded in
   `docs/VERIFICATION.md`; this is plumbing evidence only.
 
-- [ ] **T0.1a — Register the complete smoke artifact manifest.**
+- [x] **T0.1a — Register the complete artifact manifest workflow.**
   - **Requirement IDs:** R1, R3, R4, R7 (evidence provenance only).
   - **Prerequisites:** T0.1.
   - **Affected layer:** documentation.
@@ -63,6 +63,11 @@ evidence.
     all report/export identifiers, and a same-preparation-contract assertion.
   - **Known limitation/blocker:** generated binaries may live in external
     storage; the smoke cohort is not scientific evidence.
+  - **Replacement completion evidence (2026-08-11):** the unavailable T0.1
+    smoke was not regenerated under its old identity. The stronger, newly named
+    `t0.4-r2-r3-reference-20260811` lineage exercises the completed indexer and
+    is authenticated by `docs/artifacts/t0.4-r2-r3-reference-20260811.json`,
+    including all current supplemental reports and the offline benchmark.
 
 - [x] **T0.2 — Record the 500-user reference disposition — closed as evidence
   lost/unverifiable.**
@@ -137,8 +142,7 @@ evidence.
     `t0.3-cpu-smoke-20260811` smoke lineage; it is not the unavailable T0.2
     reference. Proceed next to T1.7 reliability and offline-efficiency work.
 
-- [ ] **T0.4 — Add naive next-event baselines and balance metrics (diagnostic
-  implementation complete; reference-scale acceptance evidence missing).**
+- [x] **T0.4 — Add naive next-event baselines and balance metrics.**
   - **Requirement IDs:** R2, R3.
   - **Prerequisites:** prepared train-only vocabularies and current evaluation.
   - **Affected layer:** evaluator.
@@ -169,6 +173,11 @@ evidence.
     indexed at `docs/artifacts/t0.4-r2-r3-reference-20260811.json` or a newly
     named successor. The lost/unverifiable T0.2 artifacts are not recovered
     evidence and cannot satisfy this gate.
+  - **Acceptance evidence (2026-08-11):** the immutable 500-user, seed-20260811
+    replacement lineage and per-target learned-versus-naive diagnostics are
+    indexed at `docs/artifacts/t0.4-r2-r3-reference-20260811.json`; the
+    non-composite interpretation, coverage, missingness, and unsupported claims
+    are recorded in `docs/decisions/t0.4-r2-r3-reference-20260811.md`.
 
 ## P1 — Evaluator foundations
 

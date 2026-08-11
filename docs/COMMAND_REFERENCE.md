@@ -788,9 +788,10 @@ simulate -> validate -> prepare -> train -> export -> evaluate learned
 
 ### `scripts/index_artifacts.py`
 
-Create the T0.1a/T0.2 evidence inventory only after the baseline and learned
-cutoff/dense exports, episode evaluations, robustness views, and comparison
-reports have been generated from the same preparation:
+Create the T0.1a evidence inventory only after the baseline and learned
+cutoff/dense exports, base/episode/transfer/temporal-routine/reliability
+evaluations, robustness views, offline benchmark, and comparison reports have
+been generated from the same preparation:
 
 ```bash
 uv run python scripts/index_artifacts.py \
@@ -814,10 +815,11 @@ The output schema is `geoembeddings-evidence-index/1.0`:
 | `provenance` | Git commit, simulator-manifest hash, resolved simulation/training/evaluation seeds, cohort size, train/validation cutoffs, observed-source hashes, preparation contract, ordered categorical/continuous fields, and preparation-metadata hash |
 | `evidence_identity.{baseline,learned}` | Exact user set/hash, cutoff set, source hashes, and preparation identity for each representation |
 | `required_artifacts.shared` | Manifest, resolved simulator/embedding configs, deep validation, preparation metadata, and vocabularies |
-| `required_artifacts.baseline` | Cutoff/dense exports and evaluation, episode, and robustness reports |
-| `required_artifacts.learned` | Checkpoint/training report, cutoff/dense exports, and evaluation, episode, and robustness reports |
+| `required_artifacts.baseline` | Cutoff/dense exports and base, episode, robustness, transfer, temporal/routine, and reliability reports |
+| `required_artifacts.learned` | Checkpoint/training report, cutoff/dense exports, and base, episode, robustness, transfer, temporal/routine, and reliability reports |
 | `required_artifacts.robustness_views` | Every baseline and learned versioned robustness NPZ |
 | `required_artifacts.comparison` | JSON and Markdown matched-comparison reports |
+| `required_artifacts.benchmarks` | Matched observed-only offline benchmark report |
 | `comparability_audit` | Separate source, cutoff, field-order, user-set, and preparation-contract checks with blocking diagnostics |
 
 Indexing aborts before writing output if required artifacts are absent, an

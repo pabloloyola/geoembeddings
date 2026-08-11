@@ -100,6 +100,9 @@ def build_artifact_index(
             ("baseline_evaluation_report", experiment.baseline_evaluation),
             ("baseline_episode_response_report", experiment.baseline_episode_response),
             ("baseline_robustness_report", experiment.robustness_report("baseline")),
+            ("baseline_transfer_report", experiment.transfer_evaluation("baseline")),
+            ("baseline_temporal_routine_report", experiment.temporal_routine_evaluation("baseline")),
+            ("baseline_reliability_report", experiment.reliability_evaluation("baseline")),
         ],
         "learned": [
             ("learned_checkpoint", experiment.checkpoint),
@@ -109,6 +112,9 @@ def build_artifact_index(
             ("learned_evaluation_report", experiment.evaluation),
             ("learned_episode_response_report", experiment.episode_response),
             ("learned_robustness_report", experiment.robustness_report("learned")),
+            ("learned_transfer_report", experiment.transfer_evaluation("learned")),
+            ("learned_temporal_routine_report", experiment.temporal_routine_evaluation("learned")),
+            ("learned_reliability_report", experiment.reliability_evaluation("learned")),
         ],
         "robustness_views": [
             (f"{kind}_robustness_view_{path.stem}", path)
@@ -118,6 +124,9 @@ def build_artifact_index(
         "comparison": [
             ("embedding_comparison_json", experiment.comparison_json),
             ("embedding_comparison_markdown", experiment.comparison_markdown),
+        ],
+        "benchmarks": [
+            ("offline_benchmark", experiment.offline_benchmark),
         ],
     }
     missing = [str(path) for entries in groups.values() for _, path in entries if not path.is_file()]
@@ -221,9 +230,10 @@ def _validate_report_identity(experiment: ExperimentLayout, metadata: dict[str, 
         path = experiment.robustness_report(kind)
         if path.is_file():
             report = read_json(path)
-            if _canonical_source_hashes(report.get("source_hashes", {})) != expected_sources:
+            contract = report.get("metric_contract", report)
+            if _canonical_source_hashes(contract.get("source_hashes", {})) != expected_sources:
                 errors.append(f"{kind} robustness observed-source hashes mismatch")
-            fields = report.get("field_order", {}).get("categorical")
+            fields = contract.get("field_order", {}).get("categorical")
             if fields != metadata["categorical_fields"]:
                 errors.append(f"{kind} robustness categorical field order mismatch: report={fields!r}, prepared={metadata['categorical_fields']!r}")
     reports = [read_json(experiment.robustness_report(kind)) for kind in ("baseline", "learned") if experiment.robustness_report(kind).is_file()]
