@@ -60,6 +60,14 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--episodes", action="store_true", help="Evaluate dense embeddings at protected episode boundaries")
     evaluate.add_argument("--transfer", action="store_true", help="Evaluate versioned R2/R8 spatial transfer slices")
     evaluate.add_argument("--temporal-routine", action="store_true", help="Evaluate protected R3/R4 temporal and routine diagnostics")
+    evaluate.add_argument("--reliability", action="store_true", help="Evaluate seeded R10 representation reliability")
+    evaluate.add_argument("--overwrite", action="store_true", help="Replace the selected supplemental report")
+
+    benchmark = commands.add_parser("benchmark", help="Benchmark frozen offline exports and evaluation on CPU")
+    _add_embedding_arguments(benchmark)
+    benchmark.add_argument("--warmup", type=int, default=1)
+    benchmark.add_argument("--iterations", type=int, default=5)
+    benchmark.add_argument("--overwrite", action="store_true")
 
     robustness = commands.add_parser("robustness", help="Re-encode deterministic observed-data robustness views for R6/R7")
     _add_embedding_arguments(robustness)
@@ -226,12 +234,23 @@ def _evaluate(
     episodes: bool = False,
     transfer: bool = False,
     temporal_routine: bool = False,
+    reliability: bool = False,
+    overwrite: bool = False,
 ) -> dict[str, Any]:
     from .evaluation import evaluate_embeddings, evaluate_episode_response
 
     learned = kind == "learned"
-    if sum((episodes, transfer, temporal_routine)) > 1:
-        raise ValueError("--episodes, --transfer, and --temporal-routine select separate supplemental reports")
+    if sum((episodes, transfer, temporal_routine, reliability)) > 1:
+        raise ValueError("Supplemental evaluation modes select separate reports")
+    if reliability:
+        run.validate(require_truth=False)
+        from .reliability import evaluate_reliability
+        embeddings = experiment.embeddings if learned else experiment.baseline_embeddings
+        if not embeddings.is_file():
+            raise FileNotFoundError(f"Missing {kind} embeddings: {embeddings}")
+        return evaluate_reliability(run.observed, experiment.prepared, embeddings,
+            experiment.reliability_evaluation(kind), load_config(config_path), kind=kind,
+            overwrite=overwrite)
     if temporal_routine:
         run.validate(require_truth=True)
         from .temporal_routine_evaluation import evaluate_temporal_routine
@@ -358,13 +377,23 @@ def _pipeline(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _benchmark(run: DatasetLayout, experiment: ExperimentLayout, config_path: Path,
+               warmup: int, iterations: int, overwrite: bool) -> dict[str, Any]:
+    from .benchmark import run_offline_benchmark
+    run.validate(require_truth=False)
+    return run_offline_benchmark(run.observed, experiment.prepared,
+        {"baseline": experiment.baseline_embeddings, "learned": experiment.embeddings},
+        experiment.offline_benchmark, load_config(config_path), warmup=warmup,
+        iterations=iterations, overwrite=overwrite)
+
+
 def main() -> None:
     args = build_parser().parse_args()
     if args.command == "simulate":
         result = _simulate(args)
     elif args.command == "validate":
         result = _validate(DatasetLayout.from_path(args.run_dir), args.output)
-    elif args.command in {"prepare", "train", "baseline", "export", "export-dense", "evaluate", "robustness"}:
+    elif args.command in {"prepare", "train", "baseline", "export", "export-dense", "evaluate", "robustness", "benchmark"}:
         run = DatasetLayout.from_path(args.run_dir)
         experiment = ExperimentLayout.from_path(args.experiment_dir)
         config_path = Path(args.config).expanduser().resolve()
@@ -379,7 +408,10 @@ def main() -> None:
         elif args.command == "export-dense":
             result = _export_dense(run, experiment, config_path, args.event_stride, args.kind)
         elif args.command == "evaluate":
-            result = _evaluate(run, experiment, config_path, args.kind, args.episodes, args.transfer, args.temporal_routine)
+            result = _evaluate(run, experiment, config_path, args.kind, args.episodes, args.transfer,
+                               args.temporal_routine, args.reliability, args.overwrite)
+        elif args.command == "benchmark":
+            result = _benchmark(run, experiment, config_path, args.warmup, args.iterations, args.overwrite)
         else:
             result = _robustness(run, experiment, config_path, args.kind, args.views)
     elif args.command == "compare":

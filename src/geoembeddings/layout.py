@@ -149,6 +149,19 @@ class ExperimentLayout:
             raise ValueError(f"Unsupported transfer artifact kind: {kind}")
         return self.root / f"{kind}_transfer_evaluation.json"
 
+    def reliability_evaluation(self, kind: str) -> Path:
+        if kind not in {"baseline", "learned"}:
+            raise ValueError(f"Unsupported reliability artifact kind: {kind}")
+        return self.root / ("baseline_reliability.json" if kind == "baseline" else "reliability.json")
+
+    @property
+    def benchmarks_dir(self) -> Path:
+        return self.root / "benchmarks"
+
+    @property
+    def offline_benchmark(self) -> Path:
+        return self.benchmarks_dir / "offline.json"
+
     @property
     def comparison_dir(self) -> Path:
         return self.root / "comparison"

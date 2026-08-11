@@ -794,3 +794,38 @@ effective rank separate. `compare` requires matched sources, dense keys,
 definitions, split, and row coverage and computes no aggregate winner. Because
 the simulator has no controlled schedule-shift intervention, that axis is
 explicitly blocked rather than replaced by an observational proxy.
+
+## Reliability evaluation (`evaluate --reliability`)
+
+```bash
+uv run geoembed evaluate --reliability --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed evaluate --reliability --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+```
+
+The commands consume `statistical_baseline.npz` or `embeddings.npz` plus the
+observed sources and preparation metadata; they do not open `truth/`. Outputs
+are respectively `baseline_reliability.json` and `reliability.json`. Existing
+reports are rejected unless `--overwrite` is explicit. Schema
+`geoembeddings-reliability-report/1.0` records runtime metadata, seed,
+representation kind, source hashes, preparation and cutoff identities,
+resampling settings, per-user sample counts, insufficient users/bins, seeded
+cutoff-bootstrap embedding variance, reliability-error bins, and coverage-risk
+points. This is a repeatability diagnostic over the three frozen cutoffs, not
+calibrated real-world uncertainty; event/window bootstrap is future work.
+
+## Offline benchmark (`benchmark`)
+
+```bash
+uv run geoembed benchmark --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR \
+  --warmup 1 --iterations 5
+```
+
+The observed-only command reads existing baseline and learned exports and writes
+`benchmarks/offline.json` under schema
+`geoembeddings-offline-benchmark/1.0`. Each representation reports workload,
+artifact bytes/hash, frozen-export read/validation, in-memory export serialization, and reliability-evaluation
+latency (mean/p50/p95/min/max), throughput, Python peak allocation, process peak
+RSS, warmup/iteration counts, CPU/software metadata, and explicit missing
+artifact status. It rejects source/preparation mismatch and existing output
+unless `--overwrite` is passed. It never accepts a truth path and does not
+measure training, online update latency, or hardware-normalized performance.

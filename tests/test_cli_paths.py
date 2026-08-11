@@ -58,3 +58,14 @@ def test_robustness_command_uses_only_canonical_roots() -> None:
         "runs/pilot", "--experiment-dir", "experiments/pilot"])
     assert args.kind == "baseline"
     assert not hasattr(args, "observed_dir") and not hasattr(args, "truth_dir")
+
+
+def test_reliability_and_benchmark_use_canonical_roots() -> None:
+    parser = build_parser()
+    reliability = parser.parse_args(["evaluate", "--reliability", "--kind", "baseline",
+        "--run-dir", "runs/pilot", "--experiment-dir", "experiments/pilot"])
+    benchmark = parser.parse_args(["benchmark", "--run-dir", "runs/pilot",
+        "--experiment-dir", "experiments/pilot", "--warmup", "2", "--iterations", "7"])
+    assert reliability.reliability and reliability.kind == "baseline"
+    assert benchmark.warmup == 2 and benchmark.iterations == 7
+    assert not hasattr(benchmark, "truth_dir")

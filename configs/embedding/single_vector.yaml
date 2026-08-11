@@ -54,6 +54,13 @@ training:
 evaluation:
   probe_train_fraction: 0.80
   ridge_alpha: 10.0
+  reliability:
+    schema_version: geoembeddings-reliability-report/1.0
+    seed: 20260811
+    resamples: 200
+    calibration_bins: 5
+    minimum_bin_count: 5
+    coverage_levels: [0.25, 0.50, 0.75, 1.0]
   transfer:
     schema_version: spatial-transfer-slices/1.0
     distance_metric: haversine_km
