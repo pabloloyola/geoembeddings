@@ -35,6 +35,9 @@ def _diagnostics(layout: DatasetLayout) -> dict[str, float]:
         "mean_candidate_count": sum(float(row["candidate_count"]) for row in choices) / max(1, len(choices)),
         "observed_event_count": float(len(events)),
         "mean_location_gps_sd_m": sum(float(row["gps_sd_m"]) for row in location) / max(1, len(location)),
+        "mean_routine_choice_hour": sum(int(row["timestamp"][11:13]) + int(row["timestamp"][14:16]) / 60
+                                         for row in choices if row["choice_context"] == "routine") /
+                                    max(1, sum(row["choice_context"] == "routine" for row in choices)),
     }
     change_path = layout.truth / "change_points_truth.csv.gz"
     if change_path.is_file():
@@ -101,6 +104,7 @@ def simulate_pair(config_path: str | Path, reference_run_dir: str | Path,
         "behavioral_diagnostics": definition["behavioral_diagnostics"],
         "declaration_version": definition.get("declaration_version"),
         "change": definition.get("change"),
+        "schedule_shift": definition.get("schedule_shift"),
     }
     if intervention in {"temporary-trip", "sustained-preference"}:
         reference_config["run"]["intervention"] = copy.deepcopy(intervention_config["run"]["intervention"])

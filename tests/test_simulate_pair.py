@@ -46,6 +46,18 @@ def test_simulate_pair_is_immutable(tmp_path: Path) -> None:
                       users=10, days=2, seed=17)
 
 
+def test_schedule_shift_preserves_preferences_and_one_off_context(tmp_path: Path) -> None:
+    result = simulate_pair(CONFIG, tmp_path / "reference", tmp_path / "intervention", tmp_path / "pair",
+                           intervention="schedule-shift", users=12, days=7, seed=20260811)
+    manifest = json.loads(Path(result["pair_manifest"]).read_text())
+    integrity = json.loads(Path(result["pair_integrity"]).read_text())
+    assert result["status"] == "passed"
+    assert manifest["intervention_parameters"]["schedule_shift"] == {"weekday_hours": 2.0, "weekend_hours": -1.0}
+    assert integrity["table_results"]["truth.user_latents"]["allowed_changes"] == {}
+    assert integrity["table_results"]["truth.episodes"]["allowed_changes"] == {}
+    assert integrity["table_results"]["truth.choices"]["allowed_changes"]["truth.choices.timestamp"] > 0
+
+
 def test_change_interval_duration_and_censoring() -> None:
     assert change_interval(date(2026, 1, 1), 10, {"start_day_offset": 3, "duration_days": 2}) == (date(2026, 1, 4), date(2026, 1, 6))
     assert change_interval(date(2026, 1, 1), 10, {"start_day_offset": 3, "duration_days": None}) == (date(2026, 1, 4), None)

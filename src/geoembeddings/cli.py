@@ -28,7 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     simulate_pair = commands.add_parser("simulate-pair", help="Generate and validate a configured matched intervention")
     simulate_pair.add_argument("--config", type=Path, default=DEFAULT_SIMULATION_CONFIG)
-    simulate_pair.add_argument("--intervention", required=True, choices=("exposure", "opportunity", "observation", "temporary-trip", "sustained-preference"))
+    simulate_pair.add_argument("--intervention", required=True, choices=("exposure", "opportunity", "observation", "temporary-trip", "sustained-preference", "schedule-shift"))
     simulate_pair.add_argument("--reference-run-dir", required=True, type=Path)
     simulate_pair.add_argument("--intervention-run-dir", required=True, type=Path)
     simulate_pair.add_argument("--pair-dir", required=True, type=Path)

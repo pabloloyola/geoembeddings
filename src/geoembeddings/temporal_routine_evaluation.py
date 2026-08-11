@@ -139,6 +139,7 @@ def evaluate_temporal_routine(truth_dir: str | Path, prepared_dir: str | Path,
     assigned["embedding_index"] = np.arange(len(assigned))
     assigned["hour_bin"] = [cyclic_bin(x.hour + x.minute / 60, hour_edges, 24) for x in assigned["timestamp"]]
     assigned["day_bin"] = [cyclic_bin(x.weekday(), day_edges, 7) for x in assigned["timestamp"]]
+    assigned["day_type"] = np.where(assigned["timestamp"].dt.weekday >= 5, "weekend", "weekday")
     assigned["temporal_bin"] = assigned["day_bin"].astype(str) + ":" + assigned["hour_bin"].astype(str)
     episode_lookup = episodes.set_index(["user_id", "episode_id"])
     labeled = assigned[assigned["episode_id"].notna()].copy()
@@ -174,13 +175,17 @@ def evaluate_temporal_routine(truth_dir: str | Path, prepared_dir: str | Path,
             "class_counts": selected["routine_class"].value_counts().sort_index().to_dict() if len(selected) else {}, "rows": coverage_rows},
         "cyclic_probes": {"hour": _intent_probe(diagnostic_rows.assign(primary_intent=diagnostic_rows.hour_bin.astype(str)), embeddings, fraction, float(config["evaluation"]["ridge_alpha"])),
             "day": _intent_probe(diagnostic_rows.assign(primary_intent=diagnostic_rows.day_bin.astype(str)), embeddings, fraction, float(config["evaluation"]["ridge_alpha"]))},
+        "weekday_weekend_behavior": {"label_source": "protected evaluator calendar join",
+            "probe": _intent_probe(diagnostic_rows.assign(primary_intent=diagnostic_rows.day_type), embeddings, fraction, float(config["evaluation"]["ridge_alpha"])),
+            "class_counts": diagnostic_rows["day_type"].value_counts().sort_index().to_dict()},
         "duration_tasks": {name: _ridge_regression(diagnostic_labeled, embeddings, name, fraction, float(config["evaluation"]["ridge_alpha"]), seed) for name in ("episode_duration_hours", "elapsed_episode_hours", "remaining_episode_hours")},
         "periodic_retrieval": {**periodic_retrieval(diagnostic_rows, embeddings),
             "eligible_rows": len(assigned), "sampled_rows": len(diagnostic_rows)},
         "repeated_routine_vs_one_off": {"selection": "routine intent repeated per user versus singleton non-routine intent", "probe": class_probe},
         "collapse_diagnostics": {**_geometry(diagnostic_rows, embeddings),
             "eligible_rows": len(assigned), "sampled_rows": len(diagnostic_rows)},
-        "schedule_shift": {"status": "blocked", "reason": "Simulator audit found no controlled matched schedule-shift intervention; observational calendar labels are not a substitute."},
+        "schedule_shift": {"status": "available_via_paired_intervention", "intervention": "schedule-shift",
+            "note": "Observational calendar probes remain distinct from the matched schedule response."},
         "information_boundary": "Truth episode, intent, schedule, and duration labels are joined only inside evaluator-only code.",
     }
     write_json(report, output_path)

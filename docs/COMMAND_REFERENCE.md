@@ -927,9 +927,9 @@ temporal definitions live under `evaluation.temporal_routine` in embedding YAML.
 Reports keep cyclic probes, duration tasks, periodic user/state retrieval,
 repeated-routine-versus-one-off classification, coverage, separation, and
 effective rank separate. `compare` requires matched sources, dense keys,
-definitions, split, and row coverage and computes no aggregate winner. Because
-the simulator has no controlled schedule-shift intervention, that axis is
-explicitly blocked rather than replaced by an observational proxy.
+definitions, split, and row coverage and computes no aggregate winner. Use
+`simulate-pair --intervention schedule-shift` followed by `evaluate-pair` for
+the controlled response axis; observational calendar probes are not a substitute.
 
 ## Reliability evaluation (`evaluate --reliability`)
 

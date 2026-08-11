@@ -148,8 +148,8 @@ Run baseline and learned dense exports, both `evaluate --temporal-routine`
 commands, and `compare`. Verify identical source hashes, dense users/keys,
 temporal definitions, split seed, and row-level coverage. Interpret R3 and R4
 axes independently alongside different-user cosine and effective-rank ratio.
-The schedule-shift field must remain `blocked` until a controlled matched
-simulator intervention exists.
+The schedule-shift response must come from a passing controlled matched pair;
+the weekday/weekend probe alone is not a counterfactual substitute.
 
 ## T1.11b stable-identity smoke (2026-08-11)
 
