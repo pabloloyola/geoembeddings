@@ -26,6 +26,16 @@ def build_parser() -> argparse.ArgumentParser:
     simulate = commands.add_parser("simulate", help="Generate one versioned simulator run")
     _add_simulation_arguments(simulate)
 
+    simulate_pair = commands.add_parser("simulate-pair", help="Generate and validate a configured matched intervention")
+    simulate_pair.add_argument("--config", type=Path, default=DEFAULT_SIMULATION_CONFIG)
+    simulate_pair.add_argument("--intervention", required=True, choices=("exposure", "opportunity", "observation"))
+    simulate_pair.add_argument("--reference-run-dir", required=True, type=Path)
+    simulate_pair.add_argument("--intervention-run-dir", required=True, type=Path)
+    simulate_pair.add_argument("--pair-dir", required=True, type=Path)
+    simulate_pair.add_argument("--users", type=int)
+    simulate_pair.add_argument("--days", type=int)
+    simulate_pair.add_argument("--seed", type=int)
+
     validate = commands.add_parser("validate", help="Deep-validate a simulator run")
     validate.add_argument("--run-dir", required=True, type=Path)
     validate.add_argument("--output", type=Path)
@@ -400,6 +410,11 @@ def main() -> None:
     args = build_parser().parse_args()
     if args.command == "simulate":
         result = _simulate(args)
+    elif args.command == "simulate-pair":
+        from .simulate_pair import simulate_pair
+        result = simulate_pair(args.config, args.reference_run_dir, args.intervention_run_dir,
+                               args.pair_dir, intervention=args.intervention, users=args.users,
+                               days=args.days, seed=args.seed)
     elif args.command == "validate":
         result = _validate(DatasetLayout.from_path(args.run_dir), args.output)
     elif args.command == "pair-manifest":

@@ -67,8 +67,11 @@ Protected matched-run declarations use a third canonical root:
 
 ```text
 PAIR_DIR/
+├── reference_input.yaml               # immutable resolved pair input
+├── intervention_input.yaml            # immutable resolved pair input
 ├── pair_manifest.json
 ├── pair_integrity.json                 # T1.11d
+├── behavioral_diagnostics.json         # T1.11e
 ├── counterfactual_comparison.json      # T1.11f
 └── counterfactual_comparison.md        # T1.11f
 ```
@@ -124,6 +127,33 @@ overlapping invariant/change declarations, and identity mismatches in declared
 invariants. Existing output is immutable by default. `--overwrite` is accepted
 only for the exact canonical filename and only when the existing regular file
 is itself a valid pair manifest; it does not overwrite arbitrary files.
+
+## `simulate-pair`
+
+Generate a complete configured exposure, opportunity, or observation pair and
+execute its structural, field-integrity, and behavioral gates:
+
+```bash
+uv run geoembed simulate-pair \
+  --intervention opportunity \
+  --reference-run-dir runs/opportunity-reference \
+  --intervention-run-dir runs/opportunity-intervention \
+  --pair-dir pairs/opportunity \
+  --users 50 --days 7 --seed 20260811
+```
+
+The command reads overrides, affected streams, invariants, permitted changes,
+and expected diagnostics from the versioned simulation YAML. It creates both
+dataset roots and the protected pair root, saves exact input YAML snapshots,
+runs deep validation while requiring all structural integrity checks, creates
+and validates the pair manifest, and writes `behavioral_diagnostics.json`. It
+refuses to start when any destination exists and deliberately has no overwrite
+option. Small smoke cohorts may miss deep coverage targets; those results stay
+visible in each run's `deep_validation_report.json` and are not confused with
+the separately enumerated structural gate.
+
+The defaults are synthetic experimental assumptions, not measurements or
+claims about Tokyo, Kanto, opportunity, exposure, or observation processes.
 
 ## `simulate`
 

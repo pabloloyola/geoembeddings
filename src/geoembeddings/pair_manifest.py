@@ -27,7 +27,7 @@ MATCHING_KEYS = {
 ALLOWED_FIELDS = {
     "identity": (),
     "observation": ("observed.*", "truth.observation_process.*"),
-    "exposure": ("truth.candidate_sets.exposed", "truth.candidate_sets.exposure_score", "truth.choices.*", "observed.*"),
+    "exposure": ("truth.candidate_sets.utility_exposure", "truth.candidate_sets.utility_total", "truth.candidate_sets.is_chosen", "truth.choices.chosen_poi_id", "truth.trajectories.true_region_id", "truth.trajectories.true_latitude", "truth.trajectories.true_longitude", "observed.events.*"),
     "opportunity": ("truth.candidate_sets.*", "truth.choices.*", "truth.trajectories.*", "observed.*"),
 }
 INVARIANTS = {
@@ -65,6 +65,9 @@ def _identity(layout: DatasetLayout, manifest: dict[str, Any]) -> PairRunIdentit
 
 
 def _intervention_type(reference: dict[str, Any], intervention: dict[str, Any]) -> str:
+    declaration = intervention.get("intervention")
+    if isinstance(declaration, dict) and declaration.get("type") in {"exposure", "opportunity", "observation"}:
+        return str(declaration["type"])
     changed_streams = [name for name, seed in reference["identity"]["random_streams"]["seeds"].items()
                        if intervention["identity"]["random_streams"]["seeds"].get(name) != seed]
     if not changed_streams and reference.get("scenario") == intervention.get("scenario"):
@@ -99,14 +102,20 @@ def create_pair_manifest(reference_run_dir: str | Path, intervention_run_dir: st
                (("reference", reference_manifest), ("intervention", intervention_manifest))}
     changed_streams = sorted(name for name in streams["reference"]["seeds"]
                              if streams["reference"]["seeds"][name] != streams["intervention"]["seeds"][name])
+    definition = intervention_manifest.get("intervention") or {}
+    configured_invariants = tuple(definition.get("invariant_entities", INVARIANTS[kind]))
+    configured_fields = tuple(definition.get("permitted_changes", ALLOWED_FIELDS[kind]))
     pair = PairManifest(
         schema_version=PAIR_MANIFEST_SCHEMA, reference=reference_identity,
         intervention=intervention_identity, intervention_type=kind,
         intervention_parameters={"reference_scenario": reference_manifest.get("scenario"),
                                  "intervention_scenario": intervention_manifest.get("scenario"),
-                                 "changed_streams": changed_streams},
-        invariant_entity_classes=tuple(INVARIANTS[kind]),
-        allowed_to_change_fields=tuple(ALLOWED_FIELDS[kind]), matching_keys=MATCHING_KEYS,
+                                 "changed_streams": changed_streams,
+                                 "config_overrides": definition.get("config_overrides", {}),
+                                 "affected_random_streams": definition.get("affected_random_streams", []),
+                                 "expected_behavioral_diagnostics": definition.get("behavioral_diagnostics", [])},
+        invariant_entity_classes=configured_invariants,
+        allowed_to_change_fields=configured_fields, matching_keys=MATCHING_KEYS,
         stream_lineage=streams,
         creation_provenance={"created_at": datetime.now(timezone.utc).isoformat(),
                              "geoembeddings_version": __version__, "python": platform.python_version(),
