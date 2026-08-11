@@ -152,6 +152,23 @@ Passing establishes internal simulator-pair integrity only. It is not evidence
 that the intervention corresponds to a real causal mechanism or that results
 generalize outside the simulator.
 
+After preparing and exporting both representation kinds for both runs, execute
+the protected evaluator (arguments are ordered reference, intervention):
+
+```bash
+uv run geoembed evaluate-pair --pair-manifest PAIR_DIR/pair_manifest.json \
+  --baseline-experiment-dir REF_BASELINE_EXPERIMENT INT_BASELINE_EXPERIMENT \
+  --learned-experiment-dir REF_LEARNED_EXPERIMENT INT_LEARNED_EXPERIMENT
+```
+
+The evaluator refuses missing, failing, or stale pair integrity and validates
+source lineage, preparation split/field contracts, representation kind, exact
+baseline/learned keys within each run, and cross-run match coverage before it
+opens protected invariant labels. It writes versioned
+`counterfactual_comparison.json` and `.md` beside the manifest. Exposure,
+opportunity, and observation interventions are never pooled; GPS/missingness
+sensitivity is not described as controlled exposure/opportunity invariance.
+
 ### Configured paired simulation (T1.11e; R5/R7)
 
 `geoembed simulate-pair` reads the versioned `interventions` section of the

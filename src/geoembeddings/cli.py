@@ -49,6 +49,15 @@ def build_parser() -> argparse.ArgumentParser:
     validate_pair = commands.add_parser("validate-pair", help="Validate a declared simulator pair at field level")
     validate_pair.add_argument("--pair-manifest", required=True, type=Path)
 
+    evaluate_pair = commands.add_parser("evaluate-pair", help="Evaluate matched counterfactual representations for R5/R7")
+    evaluate_pair.add_argument("--pair-manifest", required=True, type=Path)
+    evaluate_pair.add_argument("--baseline-experiment-dir", required=True, type=Path, nargs=2,
+        metavar=("REFERENCE", "INTERVENTION"))
+    evaluate_pair.add_argument("--learned-experiment-dir", required=True, type=Path, nargs=2,
+        metavar=("REFERENCE", "INTERVENTION"))
+    evaluate_pair.add_argument("--config", type=Path, default=DEFAULT_EMBEDDING_CONFIG)
+    evaluate_pair.add_argument("--overwrite", action="store_true")
+
     prepare = commands.add_parser("prepare", help="Fit leakage-safe preprocessing")
     _add_embedding_arguments(prepare)
 
@@ -424,6 +433,11 @@ def main() -> None:
     elif args.command == "validate-pair":
         from .pair_integrity import validate_pair
         result = validate_pair(args.pair_manifest)
+    elif args.command == "evaluate-pair":
+        from .pair_evaluation import evaluate_pair
+        result = evaluate_pair(args.pair_manifest, args.baseline_experiment_dir,
+            args.learned_experiment_dir, load_config(Path(args.config).expanduser().resolve()),
+            overwrite=args.overwrite)
     elif args.command in {"prepare", "train", "baseline", "export", "export-dense", "evaluate", "robustness", "benchmark"}:
         run = DatasetLayout.from_path(args.run_dir)
         experiment = ExperimentLayout.from_path(args.experiment_dir)

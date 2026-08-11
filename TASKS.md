@@ -335,7 +335,7 @@ steps without losing PR traceability.
     experimental simulator assumptions only; T1.11f is still required before
     any representation-level R5/R7 conclusion.
 
-- [ ] **T1.11f — Matched counterfactual evaluator.**
+- [x] **T1.11f — Matched counterfactual evaluator.**
   - **Requirement IDs:** R5, R7.
   - **Prerequisites:** T1.11e and baseline/learned exports from both paired runs.
   - **Affected layer:** evaluator.
@@ -349,6 +349,15 @@ steps without losing PR traceability.
     invariance, embedding drift, and downstream degradation reported separately.
   - **Known limitation/blocker:** paired simulator evidence supports controlled
     causal claims only within the simulator, not external causal validity.
+  - **Completion note (2026-08-11):** `evaluate-pair` hard-gates on the supported,
+    hash-current passing integrity report, authenticates both representation kinds
+    and all four source/preparation/export contracts, and rejects mismatched keys,
+    fields, cutoffs, users, lineage, dimensions, or invariant labels before metrics.
+    Versioned JSON and Markdown keep each intervention and representation separate
+    and report coverage/exclusions, frozen persistent/preference probes, drift,
+    separation, retrieval, effective rank, task information, hashes, seeds, and
+    limitations without an aggregate winner. No complete reference-scale paired
+    artifact is archived; external causal validity and real-noise calibration remain blocked.
 
 - [ ] **T1.15 — Temporary-trip and sustained-preference-change scenarios.**
   - **Requirement IDs:** R1, R11.

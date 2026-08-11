@@ -315,3 +315,22 @@ No aggregate winner is derived: the learned artifact is larger and its
 coverage-risk behavior differs, while timing on this warm filesystem happened
 to be lower. These hardware-specific smoke measurements do not measure training
 or online incremental updates and are not calibrated real-world uncertainty.
+
+## T1.11f matched-evaluator verification (2026-08-11)
+
+Requirement IDs: R5 and R7. This is an evaluator-only change; the observed
+contract and model APIs are unchanged. No complete paired baseline/learned
+reference artifact existed before this change, so the baseline is the passing
+T1.11e pair-integrity artifact rather than a representation result.
+
+```bash
+uv run pytest tests/test_pair_evaluation.py tests/test_pair_integrity.py tests/test_simulate_pair.py
+uv run geoembed evaluate-pair --help
+```
+
+The evaluator authenticates the manifest/integrity chain and all four frozen
+exports before protected labels are opened. Unit coverage exercises matching,
+exclusions, drift, retrieval, effective rank, frozen probes, and the modeling
+information boundary. A reference-scale paired result is not claimed or
+archived; simulator-only validity and uncalibrated observation mechanisms remain
+explicit limitations.
