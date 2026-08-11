@@ -137,7 +137,8 @@ evidence.
     `t0.3-cpu-smoke-20260811` smoke lineage; it is not the unavailable T0.2
     reference. Proceed next to T1.7 reliability and offline-efficiency work.
 
-- [ ] **T0.4 — Add naive next-event baselines and balance metrics.**
+- [ ] **T0.4 — Add naive next-event baselines and balance metrics (diagnostic
+  implementation complete; reference-scale acceptance evidence missing).**
   - **Requirement IDs:** R2, R3.
   - **Prerequisites:** prepared train-only vocabularies and current evaluation.
   - **Affected layer:** evaluator.
@@ -149,11 +150,25 @@ evidence.
   - **Command → expected artifact:** `uv run geoembed evaluate --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR` → `evaluation.json` with train-fitted majority/popularity accuracy, macro-F1 or balanced accuracy, class counts, and known-label coverage.
   - **Minimum coverage:** unit tests for imbalance, unknown labels, and zero
     coverage; integration test proving all baseline statistics fit train only.
+  - **Implemented diagnostic surface (static confirmation, 2026-08-11):**
+    `src/geoembeddings/training.py` fits the majority/popularity control and
+    class counts from `EventWindowDataset(..., "train", ...)` targets, then
+    reports learned and naive macro-F1, balanced accuracy, class counts, and
+    known-label coverage. `tests/test_next_event_diagnostics.py` exercises an
+    imbalanced majority, unknown and zero-known-label coverage, finite balance
+    metrics, and invariance of fitted counts/majority to changed evaluation
+    frequencies. `docs/COMMAND_REFERENCE.md` documents the same train-only
+    report contract. This confirms implementation and tests, not scientific
+    acceptance.
   - **Completion evidence:** the durably indexed replacement reference reports
     learned-versus-naive, coverage-aware deltas per target without changing
     frozen embeddings.
   - **Known limitation/blocker:** next-event prediction does not prove embedding
-    quality, spatial transfer, or disentanglement.
+    quality, spatial transfer, or disentanglement. T0.4 remains scientifically
+    incomplete until a new immutable run and experiment lineage is durably
+    indexed at `docs/artifacts/t0.4-r2-r3-reference-20260811.json` or a newly
+    named successor. The lost/unverifiable T0.2 artifacts are not recovered
+    evidence and cannot satisfy this gate.
 
 ## P1 — Evaluator foundations
 
