@@ -524,27 +524,34 @@ distinctiveness, effective rank, and retained information.
 
 ## `robustness`
 
-Measure R7 event-sparsity sensitivity by deterministically removing observed
-events and re-encoding causal histories. Rates and seed come from the embedding
-YAML (defaults: seed `20260811`, rates `0`, `0.1`, `0.25`, `0.5`).
+Construct versioned, deterministic observed-data views and evaluate R6/R7:
 
 ```bash
-uv run geoembed robustness --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-uv run geoembed robustness --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed robustness --views gps,timestamp,leave-one-service-out,recent-truncation --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed robustness --views gps,timestamp,leave-one-service-out,recent-truncation --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
 ```
 
-The SHA-256 selection key includes the observed-event source hash, seed, user
-ID, timestamp, and canonical row discriminator. It is independent of input
-order and global RNG state. Original cutoffs are preserved; histories below
-`min_history_events` are omitted and explicitly reported, never substituted.
+The versioned specifications live under `evaluation.robustness` in the embedding
+YAML. Each stable `view_id` hashes its view kind, parameters, and specification
+version. GPS offsets and timestamp jitter, service selection, and truncation are
+keyed by the observed-event source hash, seed, user, original timestamp, and
+canonical row discriminator; they do not use global RNG state and do not depend
+on CSV row order. `recent-truncation` removes the configured number of most
+recent observed events per user; leave-one-service-out removes exactly the
+configured public `service_id`.
 
-Canonical artifacts are `robustness/{kind}/removal_RATE.npz` and
-`robustness/{kind}_event_removal.json`. They record hashes, algorithm/version,
-seed, requested/realized rates and counts, model kind, field order, keys,
-coverage, cosine drift, and frozen-probe degradation. Encoding reads only
-`observed/`; truth opens afterward at evaluation. `compare` requires identical
-hashes, specifications, masks, cutoffs, and keys before producing separate
-learned-minus-baseline R7 axes. This test does not cover GPS or missing services.
+View exports are `robustness/{kind}/{view_id}.npz`; reports are
+`robustness/{kind}_robustness.json`. Exports and reports contain the source and
+specification hashes, algorithm/version, seed, view IDs/specifications, mask
+hashes, field order, requested and realized corruption, encoded keys, coverage,
+cosine drift, frozen-probe degradation, and explicit insufficient-history
+exclusions. Empty views stay unencodable and never fall back to clean history.
+View construction and encoding read only `observed/`; the CLI validates and
+opens `truth/` only after encoding, for protected frozen probes. `compare`
+rejects mismatched specifications, hashes, masks, view IDs, keys, coverage,
+users, or cutoffs before reporting distinct learned-minus-baseline R6 and R7
+axes. These are controlled sensitivity tests, not causal or real-noise claims.
 
 ## `pipeline`
 

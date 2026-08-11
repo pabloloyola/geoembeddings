@@ -7,7 +7,7 @@ import pytest
 
 from geoembeddings.baseline import export_statistical_baseline
 from geoembeddings.config import load_config
-from geoembeddings.robustness import deterministic_event_removal, export_robustness_views
+from geoembeddings.robustness import deterministic_event_removal, export_robustness_views, perturb_view
 
 
 def _events(n: int = 40) -> pd.DataFrame:
@@ -44,14 +44,36 @@ def test_zero_full_duplicate_and_source_hash_edges() -> None:
         deterministic_event_removal(pd.concat([events, events.iloc[[0]]]), source_hash="a", seed=3, rate=.5)
 
 
+@pytest.mark.parametrize("view,parameters", [
+    ("gps", {"sigma_m": 50}), ("timestamp", {"max_jitter_seconds": 600}),
+    ("leave-one-service-out", {"service_id": "s1"}),
+    ("recent-truncation", {"remove_recent_events": 2}),
+])
+def test_views_are_deterministic_and_row_order_independent(view: str, parameters: dict) -> None:
+    events = _events()
+    events["latitude"] = 35.0; events["longitude"] = 139.0
+    left, left_details, left_mask = perturb_view(events, source_hash="a" * 64, seed=9,
+                                                  kind=view, parameters=parameters)
+    right, right_details, right_mask = perturb_view(events.sample(frac=1, random_state=2),
+        source_hash="a" * 64, seed=9, kind=view, parameters=parameters)
+    assert left.equals(right)
+    assert left_details == right_details
+    assert left_mask.equals(right_mask)
+    assert left.equals(left.sort_values(["user_id", "timestamp"]).reset_index(drop=True))
+    if view == "gps":
+        assert left.latitude.between(-90, 90).all() and left.longitude.between(-180, 180).all()
+    if view == "leave-one-service-out": assert "s1" not in set(left.service_id)
+    if view == "recent-truncation": assert left.groupby("user_id").size().eq(8).all()
+
+
 def test_sparse_histories_are_reported_unencodable_and_masks_match_kinds(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     root = Path(__file__).resolve().parents[1]
     run, experiment = root / "smoke/run", root / "smoke/experiment"
     config = load_config(root / "configs/embedding/single_vector.yaml")
-    config["evaluation"]["event_removal"] = {"algorithm_version": "sha256-event-removal/1.0",
-                                              "seed": 19, "rates": [0.0, 1.0]}
+    config["evaluation"]["robustness"] = {"schema_version": "robustness-spec/1.0", "seed": 19,
+        "views": {"recent-truncation": [{"remove_recent_events": 0}, {"remove_recent_events": 10000}]}}
     baseline = export_robustness_views(run / "observed", experiment / "prepared", Path("unused"),
         tmp_path, config, kind="baseline")
     def fake_learned(observed_dir, prepared_dir, checkpoint_path, output_path, config, **kwargs):
@@ -60,8 +82,9 @@ def test_sparse_histories_are_reported_unencodable_and_masks_match_kinds(
     learned = export_robustness_views(run / "observed", experiment / "prepared",
         Path("fake-checkpoint"), tmp_path, config, kind="learned")
     for a, b in zip(baseline["artifacts"], learned["artifacts"]):
-        assert a["removed_events"] == b["removed_events"]
+        assert a["changed_events"] == b["changed_events"]
         assert a["encoded_keys"] == b["encoded_keys"]
     assert baseline["artifacts"][1]["path"] is None
     assert baseline["artifacts"][1]["unencodable_keys"]
+    assert baseline["artifacts"][0]["view_id"] == learned["artifacts"][0]["view_id"]
     assert baseline["information_boundary"].endswith("observed/ only")

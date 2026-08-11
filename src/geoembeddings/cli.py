@@ -59,9 +59,11 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--kind", choices=("learned", "baseline"), default="learned")
     evaluate.add_argument("--episodes", action="store_true", help="Evaluate dense embeddings at protected episode boundaries")
 
-    robustness = commands.add_parser("robustness", help="Re-encode deterministic event-removal views and evaluate R7")
+    robustness = commands.add_parser("robustness", help="Re-encode deterministic observed-data robustness views for R6/R7")
     _add_embedding_arguments(robustness)
     robustness.add_argument("--kind", choices=("learned", "baseline"), default="learned")
+    robustness.add_argument("--views", default=None,
+        help="Comma-separated views: gps,timestamp,leave-one-service-out,recent-truncation")
 
     compare = commands.add_parser(
         "compare", help="Compare baseline and learned embeddings with common frozen probes"
@@ -283,7 +285,7 @@ def _compare(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _robustness(run: DatasetLayout, experiment: ExperimentLayout, config_path: Path,
-                kind: str) -> dict[str, Any]:
+                kind: str, views: str | None = None) -> dict[str, Any]:
     from .evaluation import evaluate_event_removal
     from .robustness import export_robustness_views
 
@@ -295,8 +297,11 @@ def _robustness(run: DatasetLayout, experiment: ExperimentLayout, config_path: P
         raise FileNotFoundError(f"Missing unmodified {kind} embeddings: {original}")
     if kind == "learned" and not checkpoint.is_file():
         raise FileNotFoundError(f"Missing trained checkpoint: {checkpoint}")
+    requested = None if views is None else [value.strip() for value in views.split(",") if value.strip()]
+    if views is not None and not requested:
+        raise ValueError("--views must contain at least one view")
     manifest = export_robustness_views(run.observed, experiment.prepared, checkpoint,
-                                       experiment.robustness_dir, config, kind=kind)
+                                       experiment.robustness_dir, config, kind=kind, views=requested)
     # This validation is deliberately deferred until view construction and encoding finish.
     run.validate(require_truth=True)
     return evaluate_event_removal(run.truth, original, manifest,
@@ -352,7 +357,7 @@ def main() -> None:
         elif args.command == "evaluate":
             result = _evaluate(run, experiment, config_path, args.kind, args.episodes)
         else:
-            result = _robustness(run, experiment, config_path, args.kind)
+            result = _robustness(run, experiment, config_path, args.kind, args.views)
     elif args.command == "compare":
         result = _compare(args)
     elif args.command == "pipeline":

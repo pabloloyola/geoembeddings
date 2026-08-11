@@ -58,6 +58,25 @@ evaluation:
     algorithm_version: sha256-event-removal/1.0
     seed: 20260811
     rates: [0.0, 0.1, 0.25, 0.5]
+  robustness:
+    schema_version: robustness-spec/1.0
+    algorithm_version: sha256-robustness-views/2.0
+    seed: 20260811
+    views:
+      gps:
+        - {sigma_m: 25.0}
+        - {sigma_m: 100.0}
+      timestamp:
+        - {max_jitter_seconds: 300.0}
+        - {max_jitter_seconds: 1800.0}
+      leave-one-service-out:
+        - {service_id: location}
+        - {service_id: local_commerce}
+        - {service_id: ecommerce}
+        - {service_id: travel}
+      recent-truncation:
+        - {remove_recent_events: 1}
+        - {remove_recent_events: 8}
   episode_response:
     # Half-open, boundary-relative hours: [left, right).  These edges are part
     # of the comparison contract and must match across representations.

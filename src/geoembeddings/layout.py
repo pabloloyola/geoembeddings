@@ -123,4 +123,4 @@ class ExperimentLayout:
         return self.robustness_dir / kind / f"removal_{rate:.6f}.npz"
 
     def robustness_report(self, kind: str) -> Path:
-        return self.robustness_dir / f"{kind}_event_removal.json"
+        return self.robustness_dir / f"{kind}_robustness.json"
