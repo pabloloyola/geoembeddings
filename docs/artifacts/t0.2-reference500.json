@@ -1,0 +1,87 @@
+{
+  "schema_version": "geoembeddings-evidence-index/1.0",
+  "task_id": "T0.2",
+  "evidence_status": "absent",
+  "completion_claim": false,
+  "index_location": "docs/artifacts/t0.2-reference500.json",
+  "storage": {
+    "immutable_artifact_root": null,
+    "durable_external_identifier": null,
+    "reason": "No repository artifact and no durable external-storage identifier was available during the 2026-08-11 audit. Expected relative paths below are requirements, not artifact references."
+  },
+  "provenance": {
+    "source_commit": null,
+    "simulator_manifest_sha256": null,
+    "simulation_seed": null,
+    "training_seed": null,
+    "evaluation_seed": null,
+    "cohort_users": null,
+    "expected_cohort_users": 500,
+    "cutoffs": null,
+    "observed_source_hashes": null,
+    "preparation_metadata": {
+      "identifier": null,
+      "sha256": null,
+      "contract_version": null,
+      "categorical_field_order": null
+    }
+  },
+  "evidence_identity": {
+    "baseline": {
+      "observed_source_hashes": null,
+      "cutoffs": null,
+      "categorical_field_order": null,
+      "user_set_sha256": null,
+      "preparation_metadata_sha256": null
+    },
+    "learned": {
+      "observed_source_hashes": null,
+      "cutoffs": null,
+      "categorical_field_order": null,
+      "user_set_sha256": null,
+      "preparation_metadata_sha256": null
+    }
+  },
+  "required_artifacts": {
+    "shared": [
+      {"id": "dataset_manifest", "expected_relative_path": "RUN_DIR/manifest.json", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "resolved_simulation_config", "expected_relative_path": "RUN_DIR/config.resolved.yaml", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "prepared_metadata", "expected_relative_path": "EXPERIMENT_DIR/prepared/prepared_metadata.json", "identifier": null, "sha256": null, "status": "missing"}
+    ],
+    "baseline": [
+      {"id": "baseline_cutoff_export", "expected_relative_path": "EXPERIMENT_DIR/statistical_baseline.npz", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "baseline_dense_export", "expected_relative_path": "EXPERIMENT_DIR/dense_statistical_baseline.npz", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "baseline_evaluation_report", "expected_relative_path": "EXPERIMENT_DIR/baseline_evaluation.json", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "baseline_episode_response_report", "expected_relative_path": "EXPERIMENT_DIR/baseline_episode_response.json", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "baseline_event_removal_report", "expected_relative_path": "EXPERIMENT_DIR/robustness/baseline_event_removal.json", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "baseline_robustness_report", "expected_relative_path": "EXPERIMENT_DIR/robustness/baseline_robustness.json", "identifier": null, "sha256": null, "status": "missing"}
+    ],
+    "learned": [
+      {"id": "learned_checkpoint", "expected_relative_path": "EXPERIMENT_DIR/model/best_model.pt", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "learned_training_report", "expected_relative_path": "EXPERIMENT_DIR/model/training_report.json", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "learned_cutoff_export", "expected_relative_path": "EXPERIMENT_DIR/embeddings.npz", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "learned_dense_export", "expected_relative_path": "EXPERIMENT_DIR/dense_embeddings.npz", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "learned_evaluation_report", "expected_relative_path": "EXPERIMENT_DIR/evaluation.json", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "learned_episode_response_report", "expected_relative_path": "EXPERIMENT_DIR/episode_response.json", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "learned_event_removal_report", "expected_relative_path": "EXPERIMENT_DIR/robustness/learned_event_removal.json", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "learned_robustness_report", "expected_relative_path": "EXPERIMENT_DIR/robustness/learned_robustness.json", "identifier": null, "sha256": null, "status": "missing"}
+    ],
+    "comparison": [
+      {"id": "embedding_comparison_json", "expected_relative_path": "EXPERIMENT_DIR/comparison/embedding_comparison.json", "identifier": null, "sha256": null, "status": "missing"},
+      {"id": "embedding_comparison_markdown", "expected_relative_path": "EXPERIMENT_DIR/comparison/embedding_comparison.md", "identifier": null, "sha256": null, "status": "missing"}
+    ]
+  },
+  "comparability_audit": {
+    "baseline_and_learned_source_hashes_match": null,
+    "cutoffs_match": null,
+    "categorical_field_order_matches": null,
+    "users_match": null,
+    "preparation_contract_matches": null,
+    "result": "not_auditable",
+    "blocking_reasons": [
+      "No immutable artifact location or durable external identifier was found.",
+      "Source commit, manifest hash, seeds, cohort, cutoffs, observed-source hashes, and preparation identity are unavailable.",
+      "All required baseline, learned, and comparison identifiers are missing."
+    ]
+  }
+}
