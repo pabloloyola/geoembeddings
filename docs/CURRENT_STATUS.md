@@ -17,15 +17,21 @@
 - Statistical history-vector baseline
 - MPS-safe single-vector GRU training
 - Learned embedding export at three cutoffs
+- Observed-only dense timestamped embedding export with configurable event
+  stride and no protected truth labels
 - Protected latent probes and next-event evaluation
 - Fair frozen baseline-versus-learned comparison
 
-Release verification is recorded in `docs/VERIFICATION.md`: 13 tests passed and
-a 50-user, 7-day learned pipeline plus baseline comparison completed end to end.
+The historical release verification recorded in `docs/VERIFICATION.md` reports
+13 passing tests and a 50-user, 7-day learned pipeline plus baseline comparison
+completed end to end. That is a dated verification record, not the current test
+inventory: the repository now contains 24 test functions across seven test
+modules, including dense-export coverage added after that record.
 
 ## Pending scientific capabilities
 
-- Dense and episode-aligned embedding exports
+- T1.2 protected evaluator alignment of dense timestamps to episode boundaries
+  and direct episode-response evidence
 - Direct persistent/context and routine/context metrics
 - Controlled corruption and missing-service robustness
 - Explicit geographic holdout experiments
@@ -41,10 +47,19 @@ Run the comparison on the same 500-user dataset already used for learned
 training. Preserve `embedding_comparison.json` and `.md` as the pre-factorization
 reference. Then begin Phase 1 of `docs/ROADMAP.md`.
 
-## T1.2 episode response (R1, R4)
+## T1.1 dense export and remaining T1.2 work (R1, R4)
 
-The protected evaluator joins observed-event dense embeddings to truth episodes in memory and writes `episode_response.json` or `baseline_episode_response.json`. Statistical and learned dense exports remain observed-only. Coverage, response curves, coherence, boundary change, drift/recovery, a held-out-user intent probe, different-user separation, and effective rank are reported. These are single-vector diagnostics, not evidence of disentanglement.
+The observed-only dense timestamped export is implemented. Statistical and
+learned exports contain public user IDs, observed timestamps, cutoff kinds,
+history counts, and embeddings, with no episode IDs or other protected truth
+labels. T1.2 remains the protected evaluator work that aligns those timestamps
+to truth episode boundaries and produces direct episode-response evidence.
 
-### Matched smoke evidence (seed 20260811)
+No episode-coherence or persistent/context-disentanglement claim follows from
+the dense export alone. Those claims must remain pending until T1.2 provides
+direct protected evidence and the relevant baseline-versus-learned diagnostics.
 
-A 20-user, 3-day matched smoke run (`/tmp/t12-run`, `/tmp/t12-exp`) produced 186 unique dense rows for each representation. Learned-minus-baseline deltas were -0.02373 within-episode consecutive cosine, +0.01754 boundary-change magnitude, and +0.07824 post-episode recovery cosine. Coverage was 18/20 users, 53/60 episodes, and 6/10 bins. This tiny run is executable evidence only: deep simulation validation failed at this scale, two users had no observed dense history, and no scientific model-improvement claim is warranted.
+The historical 50-user, 7-day smoke comparison remains an execution and
+contract check only. Its small held-out sample and incomplete fine-geohash
+coverage support no scientific model-quality, episode-coherence, or
+disentanglement claim.
