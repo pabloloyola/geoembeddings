@@ -737,3 +737,22 @@ uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
 ```
 
 Artifacts are `dense_statistical_baseline.npz`, `dense_embeddings.npz`, `baseline_episode_response.json`, and `episode_response.json`. `compare` rejects differing source hashes, users, timestamps/cutoffs, or bin edges and adds learned-minus-baseline episode deltas. Sparse exports remain valid; coverage reports missing users and bins.
+
+## Temporal and routine diagnostics (`evaluate --temporal-routine`)
+
+```bash
+uv run geoembed evaluate --temporal-routine --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed evaluate --temporal-routine --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+```
+
+The commands consume the corresponding dense export and write
+`baseline_temporal_routine.json` or `learned_temporal_routine.json`. Only the
+evaluator joins public timestamps to protected episode and intent labels. All
+temporal definitions live under `evaluation.temporal_routine` in embedding YAML.
+Reports keep cyclic probes, duration tasks, periodic user/state retrieval,
+repeated-routine-versus-one-off classification, coverage, separation, and
+effective rank separate. `compare` requires matched sources, dense keys,
+definitions, split, and row coverage and computes no aggregate winner. Because
+the simulator has no controlled schedule-shift intervention, that axis is
+explicitly blocked rather than replaced by an observational proxy.

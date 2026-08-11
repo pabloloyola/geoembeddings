@@ -179,7 +179,7 @@ evidence.
   - **Known limitation/blocker:** unseen-POI transfer remains gated by T3 contract;
     observed noisy coordinates are synthetic and these slices do not prove causal transfer.
 
-- [ ] **T1.6 (P1C) — Add temporal and routine diagnostics.**
+- [x] **T1.6 (P1C) — Add temporal and routine diagnostics.**
   - **Requirement IDs:** R3, R4.
   - **Prerequisites:** T1.2 and simulator audit of routine/schedule truth validity.
   - **Affected layer:** evaluator, documentation.
@@ -192,6 +192,10 @@ evidence.
     and repeated-routine-versus-one-off results with coverage and collapse checks.
   - **Known limitation/blocker:** declare schedule shift `blocked` if the simulator
     lacks a controlled intervention; do not substitute an observational proxy.
+  - **Completion note (2026-08-11):** evaluator-only dense/truth joins now emit
+    matched cyclic, duration, periodic retrieval, repeated-versus-one-off,
+    coverage, separation, and collapse diagnostics. Simulator audit found no
+    controlled schedule-shift scenario, so that evaluation remains blocked.
 
 - [ ] **T1.7 (P1D) — Add reliability and offline-efficiency evaluation.**
   - **Requirement IDs:** R10, R13.

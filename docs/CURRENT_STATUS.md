@@ -55,8 +55,8 @@ executable while other named axes remain absent. Artifacts are relative to
 |---|---|---|---|
 | R1 | partial | `evaluate`; `evaluate --episodes`; `compare` | `evaluation.json`, `episode_response.json`, and `comparison/embedding_comparison.json`; factorized persistent/context outputs and matched change scenarios pending |
 | R2 | partial | `train`; `evaluate --transfer`; `compare` | transfer reports contain train-scaled distance retrieval and geohash-boundary pairs; real geographic calibration remains pending |
-| R3 | partial | `train`; `evaluate` | `model/training_report.json` and `evaluation.json` cover future-time next-event prediction; routine, periodicity, and duration probes pending |
-| R4 | partial | `export-dense`; `evaluate --episodes`; `compare` | `dense_embeddings.npz`, `episode_response.json`, and matched episode deltas in `comparison/embedding_comparison.json`; factorized persistent/context separation and matched change scenarios pending |
+| R3 | partial | `train`; `evaluate --temporal-routine`; `compare` | `{kind}_temporal_routine.json` adds cyclic, duration, and periodic retrieval axes with matched coverage; controlled schedule shift is blocked |
+| R4 | partial | `export-dense`; `evaluate --episodes`; `evaluate --temporal-routine`; `compare` | episode response plus repeated-routine-versus-one-off axes are executable; factorized separation and matched change scenarios remain pending |
 | R5 | pending | — | Matched counterfactual exposure/opportunity evaluator and artifacts pending |
 | R6 | partial | `robustness`; `compare` | Leave-one-service-out drift, coverage, and frozen-probe degradation are executable; candidate-aware cross-service transfer remains pending |
 | R7 | partial | `robustness`; `compare` | `robustness/{kind}_robustness.json` covers deterministic GPS, timestamp, and recent-truncation views; real-noise calibration and causal invariance remain unmeasurable |
