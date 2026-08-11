@@ -20,7 +20,11 @@ contracts, not scientific superiority or disentanglement.
 
 ## Now
 
-T0.2a selected the evaluator-gate path without naming an aggregate winner. T1.4 is complete; the next task must follow the remaining requirement gates.
+T0.2 is the immediate task. Its registered evidence index is machine-readable
+but records that the 500-user archive and every durable artifact identifier are
+absent. T0.2a therefore remains pending. Its decision record selects only
+`finish the evaluator gate` and leaves every scientific axis pending; T1.4's
+implemented evaluator surfaces do not substitute for the missing reference.
 
 ## Later/gated
 
@@ -72,7 +76,7 @@ T0.2a selected the evaluator-gate path without naming an aggregate winner. T1.4 
   - **Known limitation/blocker:** the run is semi-synthetic and compute-heavy;
     missing users or labels must be explained, never silently dropped.
 
-- [x] **T0.2a — Reconcile status and record the post-reference decision.**
+- [ ] **T0.2a — Reconcile status and record the post-reference decision.**
   - **Requirement IDs:** R1, R3, R4, R7.
   - **Prerequisites:** T0.2 and its complete artifact index.
   - **Affected layer:** evaluator, documentation.
@@ -87,6 +91,8 @@ T0.2a selected the evaluator-gate path without naming an aggregate winner. T1.4 
     action is selected: repair/ablate, finish evaluator gate, or factorize.
   - **Known limitation/blocker:** no aggregate winner; observational and
     single-vector metrics cannot establish causal invariance or disentanglement.
+    The current decision record is an absence audit: all axes remain pending
+    until T0.2 supplies durable artifacts and passes the comparability audit.
 
 - [ ] **T0.3 — Add runtime metadata to reports.**
   - **Requirement IDs:** R13.

@@ -16,15 +16,21 @@ Evidence milestones:
    identifiers, source commit, dataset manifest hash, and a statement that the
    baseline and learned reports share the same preparation contract. Large
    generated binaries are not required to be committed to Git.
-3. **500-user scientific baseline archived — pending and immediate next.** Run
+3. **500-user scientific baseline archived — pending and immediate next.** The
+   registered `docs/artifacts/t0.2-reference500.json` currently records absent
+   evidence rather than a completed archive. Run
    the matched baseline-versus-learned reference using the known working
    settings. Preserve resolved simulation and embedding configs, source hashes,
    seeds, cutoffs, checkpoint and training report, both cutoff exports, both
    episode reports, both event-removal reports, and comparison JSON/Markdown.
    Its artifact index must contain immutable paths or external-storage
    identifiers, source commit, dataset manifest hash, and an explicit statement
-   that baseline and learned reports share the same preparation contract.
-4. **Runtime/device metadata recorded.** Attach the environment evidence needed
+   that baseline and learned reports share source hashes, cutoffs, categorical
+   field order, users, and the same preparation contract.
+4. **T0.2a decision reconciled — pending.** The decision record selects only
+   `finish the evaluator gate`, with no aggregate winner, but all per-axis
+   conclusions remain pending until milestone 3 passes its comparability audit.
+5. **Runtime/device metadata recorded.** Attach the environment evidence needed
    to reproduce and interpret the scientific reference.
 
 Exit gate: milestone 3 is archived and indexed; the baseline and learned
@@ -236,7 +242,9 @@ The episode-response evaluator is executable through `evaluate --episodes`. Conf
 
 ### T1.4 robustness gate (completed)
 
-The selected T0.2a action was the evaluator-gate path. `robustness --views`
+The provisional T0.2a record selects the evaluator-gate path as its only action,
+but T0.2a remains pending because the reference evidence is absent. Independently,
+`robustness --views`
 now covers versioned GPS, timestamp, leave-one-service-out, and recent-history
 truncation views for R6/R7, with matched baseline/learned populations and strict
 comparison contracts. The sensitivity suite does not establish causal

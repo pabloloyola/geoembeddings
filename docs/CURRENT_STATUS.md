@@ -39,8 +39,8 @@ the **500-user scientific baseline as archived**.
 |---|---|---|
 | 50-user execution/contract smoke passed | verified | The learned and baseline paths completed under one preparation contract, as recorded in `docs/VERIFICATION.md`; the small cohort is not scientific evidence. |
 | Complete smoke artifact manifest registered | pending | Record immutable paths or external-storage identifiers, source commit, dataset manifest hash, and the shared-preparation-contract statement; large generated binaries need not be committed. |
-| 500-user scientific baseline archived | pending — immediate next task | Run and index the matched baseline-versus-learned reference with configs, hashes, seeds, cutoffs, checkpoint/training report, exports, episode reports, event-removal reports, and comparison JSON/Markdown. |
-| T0.2a post-reference action | completed | `docs/decisions/t0.2a-reference-decision.md` selects exactly the evaluator-gate path; it does not select an aggregate winner or authorize factorization. |
+| 500-user scientific baseline archived | pending — immediate next task | `docs/artifacts/t0.2-reference500.json` is registered, but its audit records no immutable location or durable external identifier and marks every required artifact missing. Run, archive, and re-index the matched reference. |
+| T0.2a post-reference action | pending | `docs/decisions/t0.2a-reference-decision.md` selects exactly `finish the evaluator gate`, but every per-axis conclusion remains pending because T0.2 provenance and reports are absent. It declares no aggregate winner and does not authorize factorization. |
 
 ## Requirement status
 
@@ -97,9 +97,11 @@ or disentanglement claim.
 
 ## Immediate instruction
 
-T0.2a selected the evaluator-gate path, and T1.4 is complete. Preserve the archived 500-user matched baseline-versus-learned scientific reference. Preserve same-run episode and event-removal reports
-alongside `embedding_comparison.json` and `.md`, and register every required
-output in an artifact index. The index must give immutable paths or external
-storage identifiers, source commit, dataset manifest hash, and an explicit
-same-preparation-contract statement. Only after this scientific reference is
-archived should it serve as the pre-factorization comparison baseline.
+Complete T0.2 before treating the reference as evidence. Generate the 500-user
+matched baseline-versus-learned run, preserve same-run cutoff and dense exports,
+episode and robustness reports, and comparison JSON/Markdown, then replace each
+missing entry in `docs/artifacts/t0.2-reference500.json` with an immutable local
+location or durable external identifier and hash. Record source commit,
+simulator manifest hash, seeds, cohort, cutoffs, observed-source hashes,
+categorical field order, users, and preparation identity; the comparability
+audit must pass. Only then populate the T0.2a axes and reconsider its checkbox.
