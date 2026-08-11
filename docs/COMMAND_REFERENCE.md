@@ -605,6 +605,45 @@ simulate -> validate -> prepare -> train -> export -> evaluate learned
 
 ## Inspecting artifacts
 
+### `scripts/index_artifacts.py`
+
+Create the T0.1a/T0.2 evidence inventory only after the baseline and learned
+cutoff/dense exports, episode evaluations, robustness views, and comparison
+reports have been generated from the same preparation:
+
+```bash
+uv run python scripts/index_artifacts.py \
+  --run-dir runs/reference500 \
+  --experiment-dir experiments/reference500 \
+  --output docs/artifacts/t0.2-reference500.json \
+  --task-id T0.2
+```
+
+The command never edits generated run or experiment artifacts. It resolves
+canonical filenames through `DatasetLayout` and `ExperimentLayout`, hashes each
+file as raw bytes with SHA-256, and writes only `--output`. Local identifiers
+are normalized relative to the repository when possible; external URI schemes
+and hosts are normalized without retrieving their content.
+
+The output schema is `geoembeddings-evidence-index/1.0`:
+
+| Field | Meaning |
+|---|---|
+| `schema_version`, `task_id`, `index_location` | Index identity and normalized destination |
+| `provenance` | Git commit, simulator-manifest hash, resolved simulation/training/evaluation seeds, cohort size, train/validation cutoffs, observed-source hashes, preparation contract, ordered categorical/continuous fields, and preparation-metadata hash |
+| `evidence_identity.{baseline,learned}` | Exact user set/hash, cutoff set, source hashes, and preparation identity for each representation |
+| `required_artifacts.shared` | Manifest, resolved simulator/embedding configs, deep validation, preparation metadata, and vocabularies |
+| `required_artifacts.baseline` | Cutoff/dense exports and evaluation, episode, and robustness reports |
+| `required_artifacts.learned` | Checkpoint/training report, cutoff/dense exports, and evaluation, episode, and robustness reports |
+| `required_artifacts.robustness_views` | Every baseline and learned versioned robustness NPZ |
+| `required_artifacts.comparison` | JSON and Markdown matched-comparison reports |
+| `comparability_audit` | Separate source, cutoff, field-order, user-set, and preparation-contract checks with blocking diagnostics |
+
+Indexing aborts before writing output if required artifacts are absent, an
+embedding is non-finite, observed files no longer match preparation hashes, or
+baseline and learned users/cutoffs/report provenance differ. This is an
+identity and completeness audit, not an aggregate scientific winner.
+
 Readable JSON/YAML:
 
 ```bash
