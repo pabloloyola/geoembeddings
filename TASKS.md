@@ -114,7 +114,7 @@ evidence.
     report-based scientific conclusions. T0.2a is
     complete only as the recorded evidence-disposition decision.
 
-- [ ] **T0.3 — Add runtime metadata to reports.**
+- [x] **T0.3 — Add runtime metadata to reports.**
   - **Requirement IDs:** R13.
   - **Prerequisites:** report schemas and T0.2 report inventory.
   - **Affected layer:** model, evaluator.
@@ -127,6 +127,14 @@ evidence.
     metadata schema and preserve scientific metric fields.
   - **Known limitation/blocker:** hardware metadata aids reproducibility but is
     not a cross-device performance benchmark.
+  - **Completion note (2026-08-11):** versioned, typed runtime provenance is
+    present in CPU train and matched compare reports and in compatible base,
+    episode, robustness, transfer, and temporal-routine evaluation reports.
+    Unit and CPU integration tests validate serialization, null device/source
+    handling, finite duration, integer seed, JSON round trips, and preservation
+    of scientific metrics and lineage fields. Acceptance uses the newly named
+    `t0.3-cpu-smoke-20260811` smoke lineage; it is not the unavailable T0.2
+    reference. Proceed next to T1.7 reliability and offline-efficiency work.
 
 - [ ] **T0.4 — Add naive next-event baselines and balance metrics.**
   - **Requirement IDs:** R2, R3.

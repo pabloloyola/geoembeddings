@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import random
+import time
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,7 @@ from torch.utils.data import DataLoader
 from .data import EventWindowDataset, collate_windows
 from .io import read_json, write_json
 from .model import build_model
+from .runtime_metadata import collect_runtime_metadata
 
 
 def resolve_device(requested: str) -> torch.device:
@@ -40,6 +42,7 @@ def train_model(
     output_dir: str | Path,
     config: dict[str, Any],
 ) -> dict[str, Any]:
+    started = time.perf_counter()
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     seed = int(config.get("seed", 0))
@@ -100,6 +103,9 @@ def train_model(
         )
 
     report = {
+        "runtime_metadata": collect_runtime_metadata(
+            duration_seconds=time.perf_counter() - started, seed=seed, device=device
+        ).to_dict(),
         "device": str(device),
         "categorical_fields": categorical_fields,
         "continuous_fields": list(train_dataset.continuous_fields),

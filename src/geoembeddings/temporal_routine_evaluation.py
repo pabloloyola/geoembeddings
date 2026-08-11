@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,7 @@ import pandas as pd
 
 from .evaluation import _cosine, _intent_probe, _summary, assign_episode_intervals, load_episode_evaluation_inputs
 from .io import write_json
+from .runtime_metadata import collect_runtime_metadata
 
 
 def cyclic_bin(value: float, edges: list[float], period: float) -> int:
@@ -107,6 +109,7 @@ def _geometry(rows: pd.DataFrame, embeddings: np.ndarray) -> dict[str, Any]:
 def evaluate_temporal_routine(truth_dir: str | Path, prepared_dir: str | Path,
                               dense_path: str | Path, output_path: str | Path,
                               config: dict[str, Any], *, kind: str) -> dict[str, Any]:
+    started = time.perf_counter()
     dense, embeddings, episodes = load_episode_evaluation_inputs(dense_path, truth_dir)
     settings = config.get("evaluation", {}).get("temporal_routine", {})
     hour_edges = settings.get("hour_bin_edges", [])
@@ -137,6 +140,8 @@ def evaluate_temporal_routine(truth_dir: str | Path, prepared_dir: str | Path,
                       "class": getattr(r, "routine_class", None), "temporal_bin": str(r.temporal_bin),
                       "history_event_count": int(r.history_event_count)} for r in selected.itertuples()]
     report = {
+        "runtime_metadata": collect_runtime_metadata(duration_seconds=time.perf_counter() - started,
+            seed=seed, device=None).to_dict(),
         "metric_contract": {"version": "temporal-routine/1.0", "kind": kind, "source_hashes": metadata["source_files"],
             "prepared_metadata_sha256": hashlib.sha256(metadata_path.read_bytes()).hexdigest(),
             "dense_users": sorted(dense.user_id.unique()), "dense_keys_sha256": hashlib.sha256("\n".join(f"{u}\0{t.isoformat()}" for u,t in zip(dense.user_id,dense.timestamp)).encode()).hexdigest(),
