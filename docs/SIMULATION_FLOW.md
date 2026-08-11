@@ -1,9 +1,11 @@
 # Simulator and embedding data flow
 
-This document describes the implemented v0.5 pipeline. The simulator and
-embedding modules share the versioned `geoembeddings-dataset/1.0` contract.
-Users provide a dataset root (`--run-dir`); code resolves every observed and
-truth path centrally.
+This document describes the implemented v0.5 pipeline. New simulator runs and
+embedding modules share the versioned `geoembeddings-dataset/2.0` contract.
+Event-only `geoembeddings-dataset/1.0` runs remain readable by the legacy
+modeling path, but readers do not fabricate the recommendation tables added in
+2.0. Users provide a dataset root (`--run-dir`); code resolves every observed
+and truth path centrally.
 
 ## Information boundary
 
@@ -30,10 +32,9 @@ runs/kanto_pilot/
 ```
 
 `prepare`, `baseline`, `train`, and `export` resolve and read only
-`observed/`. `evaluate` is the sole embedding command that receives the
-resolved `truth/` path. The observed schema rejects columns that look like
-latent traits, utilities, decisions, episode identifiers, chosen flags, or
-true coordinates.
+`observed/`. Protected evaluator commands alone receive resolved `truth/`
+paths. The observed schema rejects columns that look like latent traits,
+utilities, decisions, episode identifiers, chosen flags, or true coordinates.
 
 ## End-to-end flow
 
@@ -98,9 +99,10 @@ unchanged.
 `sha256-root-seed-and-stream-name/1.0` derivation algorithm, root seed, all five
 resolved stream seeds, identity-generation version `sha256-semantic-key/1.0`,
 entity counts, and order-independent identity-set hashes under
-`sha256-canonical-sorted-identifiers/1.0`. This is run-level metadata, so the
-public `geoembeddings-dataset/1.0` tables did **not** change and need no
-migration or contract-version bump.
+`sha256-canonical-sorted-identifiers/1.0`. This identity addition was run-level
+metadata and did not itself require a dataset-contract bump. The later 2.0 bump
+was caused by the new observable recommendation tables, not by identity
+metadata.
 
 The paired-run matching keys are: cohort-slot-derived user IDs; configured
 region IDs; POI IDs derived from `(region_id, category, object_slot)`; episode

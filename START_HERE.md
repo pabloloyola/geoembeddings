@@ -19,8 +19,9 @@ Read these files in order before editing code:
 8. `TASKS.md`
 
 Then inspect the implementation and tests associated with the first selected
-task. Do not start by replacing the model. The highest-priority work is to make
-the requirements measurable before optimizing them.
+task. Do not start by replacing the model. The evaluator foundations are now
+implemented; follow the T2.7 matched-factorization gate described below before
+optimizing or adding a routine branch.
 
 ## Reproduce the tested path
 

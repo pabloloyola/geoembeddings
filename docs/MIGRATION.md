@@ -16,6 +16,8 @@ assemble by hand.
 
 Existing simulator runs remain readable when their manifest predates the
 explicit contract field, provided the canonical observed files are present.
-New runs declare dataset contract `geoembeddings-dataset/1.0` in
-`manifest.json`.
-
+New runs declare dataset contract `geoembeddings-dataset/2.0` in
+`manifest.json`. Event-only `geoembeddings-dataset/1.0` runs remain readable by
+the legacy modeling path; recommendation consumers require the 2.0 public POI,
+request, impression, and interaction tables, and readers never synthesize
+those tables for a 1.0 run.
