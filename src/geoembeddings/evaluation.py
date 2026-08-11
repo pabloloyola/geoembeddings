@@ -195,7 +195,20 @@ def _intent_probe(rows: pd.DataFrame, embeddings: np.ndarray, fraction: float, a
     x_mean, x_std = x[train].mean(0), x[train].std(0); x_std[x_std < 1e-8] = 1
     x = (x - x_mean) / x_std
     y = np.stack([(labels == c).astype(float) for c in classes], 1)
-    weights = np.linalg.solve(x[train].T @ x[train] + alpha*np.eye(x.shape[1]), x[train].T @ y[train])
+    x_train = x[train]
+    if x_train.shape[0] < x_train.shape[1]:
+        # Statistical histograms can have many more columns than labeled rows.
+        # The dual ridge form is equivalent, but avoids constructing and solving
+        # a potentially multi-gigabyte feature-by-feature system.
+        dual = np.linalg.solve(
+            x_train @ x_train.T + alpha * np.eye(x_train.shape[0]), y[train]
+        )
+        weights = x_train.T @ dual
+    else:
+        weights = np.linalg.solve(
+            x_train.T @ x_train + alpha * np.eye(x_train.shape[1]),
+            x_train.T @ y[train],
+        )
     prediction = classes[np.argmax(x[~train] @ weights, axis=1)]
     truth = labels[~train]
     majority = classes[np.argmax([(labels[train] == c).sum() for c in classes])]
