@@ -4,16 +4,33 @@
 
 Goal: establish a reproducible baseline before new scientific code.
 
-Deliverables:
+Evidence milestones:
 
-- a 50-user smoke learned/baseline comparison;
-- a 500-user reference comparison using the known working settings;
-- archived resolved configs, source hashes, training report, exports, and
-  comparison report;
-- runtime/device metadata.
+1. **Execution/contract smoke passed — verified.** The 50-user, 7-day learned
+   pipeline, statistical baseline, and comparison completed under a shared
+   preparation contract. `docs/VERIFICATION.md` records the commands and
+   limitations. This state verifies plumbing only and is not an archived
+   scientific baseline.
+2. **Complete smoke manifest registered — pending.** Preserve or register an
+   index of the smoke outputs with immutable paths or external-storage
+   identifiers, source commit, dataset manifest hash, and a statement that the
+   baseline and learned reports share the same preparation contract. Large
+   generated binaries are not required to be committed to Git.
+3. **500-user scientific baseline archived — pending and immediate next.** Run
+   the matched baseline-versus-learned reference using the known working
+   settings. Preserve resolved simulation and embedding configs, source hashes,
+   seeds, cutoffs, checkpoint and training report, both cutoff exports, both
+   episode reports, both event-removal reports, and comparison JSON/Markdown.
+   Its artifact index must contain immutable paths or external-storage
+   identifiers, source commit, dataset manifest hash, and an explicit statement
+   that baseline and learned reports share the same preparation contract.
+4. **Runtime/device metadata recorded.** Attach the environment evidence needed
+   to reproduce and interpret the scientific reference.
 
-Exit gate: the baseline and learned exports share the same preparation contract,
-and the report contains no unexplained missing users or non-finite values.
+Exit gate: milestone 3 is archived and indexed; the baseline and learned
+exports and reports share the same preparation contract, and the reports
+contain no unexplained missing users or non-finite values. Passing milestone 1
+alone does not satisfy the Phase 0 exit gate.
 
 ## Phase 1 — Make the requirements measurable
 
