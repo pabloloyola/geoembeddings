@@ -42,6 +42,17 @@ def build_parser() -> argparse.ArgumentParser:
     export = commands.add_parser("export", help="Export learned user embeddings")
     _add_embedding_arguments(export)
 
+    export_dense = commands.add_parser(
+        "export-dense", help="Export learned embeddings at observed event timestamps"
+    )
+    _add_embedding_arguments(export_dense)
+    export_dense.add_argument(
+        "--event-stride",
+        type=int,
+        default=1,
+        help="Export every Nth observed event per user, always including first and last",
+    )
+
     evaluate = commands.add_parser("evaluate", help="Evaluate learned or baseline embeddings")
     _add_embedding_arguments(evaluate)
     evaluate.add_argument("--kind", choices=("learned", "baseline"), default="learned")
@@ -170,6 +181,29 @@ def _export(run: DatasetLayout, experiment: ExperimentLayout, config_path: Path)
     )
 
 
+def _export_dense(
+    run: DatasetLayout,
+    experiment: ExperimentLayout,
+    config_path: Path,
+    event_stride: int,
+) -> dict[str, Any]:
+    from .export import export_dense_embeddings
+
+    run.validate(require_truth=False)
+    if event_stride < 1:
+        raise ValueError("--event-stride must be at least 1")
+    if not experiment.checkpoint.is_file():
+        raise FileNotFoundError(f"Missing trained checkpoint: {experiment.checkpoint}")
+    return export_dense_embeddings(
+        run.observed,
+        experiment.prepared,
+        experiment.checkpoint,
+        experiment.dense_embeddings,
+        load_config(config_path),
+        event_stride=event_stride,
+    )
+
+
 def _evaluate(
     run: DatasetLayout,
     experiment: ExperimentLayout,
@@ -268,7 +302,7 @@ def main() -> None:
         result = _simulate(args)
     elif args.command == "validate":
         result = _validate(DatasetLayout.from_path(args.run_dir), args.output)
-    elif args.command in {"prepare", "train", "baseline", "export", "evaluate"}:
+    elif args.command in {"prepare", "train", "baseline", "export", "export-dense", "evaluate"}:
         run = DatasetLayout.from_path(args.run_dir)
         experiment = ExperimentLayout.from_path(args.experiment_dir)
         config_path = Path(args.config).expanduser().resolve()
@@ -280,6 +314,8 @@ def main() -> None:
             result = _baseline(run, experiment, config_path)
         elif args.command == "export":
             result = _export(run, experiment, config_path)
+        elif args.command == "export-dense":
+            result = _export_dense(run, experiment, config_path, args.event_stride)
         else:
             result = _evaluate(run, experiment, config_path, args.kind)
     elif args.command == "compare":

@@ -37,6 +37,10 @@ history_event_count
 
 Do not write episode IDs into the model export.
 
+Status: the observed-only dense export foundation is implemented through
+`export-dense`, including configurable event stride and the schema above.
+Protected episode-boundary joining remains Phase 1.2 work.
+
 ### 1.2 Robustness operators
 
 Implement deterministic evaluator-side observed-input views:
@@ -203,4 +207,3 @@ Goal: make the representation usable beyond the controlled prototype.
 
 Exit gate: tradeoffs are reported explicitly; no simulator-only result is
 presented as real-world validation.
-

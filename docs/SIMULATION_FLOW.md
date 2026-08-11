@@ -140,6 +140,7 @@ experiments/kanto_single_vector/
 │   ├── best_model.pt
 │   └── training_report.json
 ├── embeddings.npz
+├── dense_embeddings.npz
 ├── statistical_baseline.npz
 ├── evaluation.json
 └── baseline_evaluation.json
@@ -156,6 +157,12 @@ and location accuracy. `object_id` is disabled by default to reduce memorization
 The baseline represents each user history with normalized categorical
 histograms and continuous-feature means and standard deviations. The learned
 encoder uses a GRU and emits a 128-dimensional history vector.
+
+In addition to the backward-compatible three-cutoff `embeddings.npz`, the
+`export-dense` command can write `dense_embeddings.npz` after every Nth observed
+event. Its schema contains public user IDs, observed timestamps, cutoff kind,
+history counts, and embeddings only. Protected episode labels are joined later
+by evaluator code, never by the exporter or model.
 
 ## Training objective
 

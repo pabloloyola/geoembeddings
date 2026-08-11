@@ -549,7 +549,7 @@ def _requirement_status() -> dict[str, Any]:
         },
         "R4_episode_coherence": {
             "status": "not_measurable_from_three_global_cutoffs",
-            "missing": "episode-boundary embedding exports",
+            "missing": "protected episode-boundary joins and response metrics over dense exports",
         },
         "R5_preference_opportunity_separation": {
             "status": "partial",

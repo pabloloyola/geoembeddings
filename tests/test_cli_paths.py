@@ -34,3 +34,20 @@ def test_compare_accepts_shared_experiment_directory() -> None:
     )
     assert str(args.run_dir) == "runs/pilot"
     assert str(args.experiment_dir) == "experiments/single_vector"
+
+
+def test_dense_export_accepts_observed_event_stride() -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "export-dense",
+            "--run-dir",
+            "runs/pilot",
+            "--experiment-dir",
+            "experiments/single_vector",
+            "--event-stride",
+            "5",
+        ]
+    )
+    assert args.event_stride == 5
+    assert not hasattr(args, "truth_dir")

@@ -54,6 +54,7 @@ EXPERIMENT_DIR/
 │   ├── best_model.pt
 │   └── training_report.json
 ├── embeddings.npz
+├── dense_embeddings.npz
 ├── statistical_baseline.npz
 ├── evaluation.json
 ├── baseline_evaluation.json
@@ -363,6 +364,48 @@ one vector.
 
 No.
 
+## `export-dense`
+
+### Purpose
+
+Export learned histories after observed events so a protected evaluator can
+later align them to episode boundaries and change points. This command reads
+only `observed/`; it never reads or writes episode identifiers or other truth
+labels.
+
+### Command
+
+```bash
+uv run geoembed export-dense \
+  --run-dir runs/kanto_pilot \
+  --experiment-dir experiments/kanto_single_vector \
+  --event-stride 1
+```
+
+`--event-stride N` retains the first event, every Nth event thereafter, and the
+last event for each user. It defaults to `1`. Each embedding uses at most the
+configured `max_sequence_length` most recent events, while
+`history_event_count` records the total observed history available at that
+timestamp.
+
+### Output
+
+`EXPERIMENT_DIR/dense_embeddings.npz` contains row-aligned arrays:
+
+- `user_id`: public user identifier;
+- `timestamp`: ISO timestamp of the latest included observed event;
+- `cutoff_kind`: currently the constant `observed_event`;
+- `embedding`: learned frozen vector;
+- `history_event_count`: total observed events available for that user.
+
+It also stores `categorical_fields` and `continuous_fields` metadata arrays in
+the checkpoint's explicit model-input order. These metadata arrays describe the
+schema and are not row-aligned.
+
+The export intentionally contains no episode IDs or protected labels. A later
+evaluator may join these timestamps to `truth/` without changing the model
+input boundary.
+
 ## `evaluate`
 
 ### Purpose
@@ -573,4 +616,3 @@ PY
 Use individual commands during development. Reserve `pipeline` for clean smoke
 or reference runs. Individual commands make stage boundaries, inputs, outputs,
 and rerun decisions visible and reduce accidental regeneration.
-
