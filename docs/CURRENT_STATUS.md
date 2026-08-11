@@ -17,49 +17,79 @@
 - Statistical history-vector baseline
 - MPS-safe single-vector GRU training
 - Learned embedding export at three cutoffs
-- Observed-only dense timestamped embedding export with configurable event
-  stride and no protected truth labels
-- Protected latent probes and next-event evaluation
-- Fair frozen baseline-versus-learned comparison
+- Observed-only dense timestamped export for both the statistical baseline and
+  learned encoder, with configurable event stride, history counts, explicit
+  field-order metadata, and no protected truth labels
+- Protected episode evaluation that joins dense timestamps to half-open truth
+  intervals and reports within/adjacent-episode coherence, boundary change,
+  response curves, drift/recovery, a held-out intent probe, and collapse checks
+- Deterministic event-removal robustness curves with matched baseline/learned
+  masks, coverage, cosine drift, realized removal, and frozen-probe degradation
+- Protected latent probes, next-event evaluation, and fair frozen
+  baseline-versus-learned comparison
 
 The historical release verification recorded in `docs/VERIFICATION.md` reports
 13 passing tests and a 50-user, 7-day learned pipeline plus baseline comparison
 completed end to end. That is a dated verification record, not the current test
-inventory: the repository now contains 24 test functions across seven test
-modules, including dense-export coverage added after that record.
+inventory.
+
+## Requirement status
+
+Status describes evaluation coverage, not whether a model has satisfied the
+scientific requirement. `partial` means at least one required axis is
+executable while other named axes remain absent. Artifacts are relative to
+`EXPERIMENT_DIR` unless stated otherwise.
+
+| ID | Status | Responsible command | Artifact or present limitation |
+|---|---|---|---|
+| R1 | partial | `evaluate`; `evaluate --episodes`; `compare` | `evaluation.json`, `episode_response.json`, and `comparison/embedding_comparison.json`; factorized persistent/context outputs and matched change scenarios pending |
+| R2 | partial | `train`; `evaluate` | `model/training_report.json` and `evaluation.json` contain next-geohash metrics; distance retrieval and boundary-pair evaluation pending |
+| R3 | partial | `train`; `evaluate` | `model/training_report.json` and `evaluation.json` cover future-time next-event prediction; routine, periodicity, and duration probes pending |
+| R4 | partial | `export-dense`; `evaluate --episodes`; `compare` | `dense_embeddings.npz`, `episode_response.json`, and matched episode deltas in `comparison/embedding_comparison.json`; factorized persistent/context separation and matched change scenarios pending |
+| R5 | pending | — | Matched counterfactual exposure/opportunity evaluator and artifacts pending |
+| R6 | pending | — | Leave-one-service-out views and cross-service evaluator pending |
+| R7 | partial | `robustness`; `compare` | `robustness/{kind}_event_removal.json` and matched R7 comparison axes; GPS, timestamp-jitter, and service-removal views pending |
+| R8 | partial | `prepare`; `evaluate` | Chronological split metadata in `prepared/prepared_metadata.json` and future-time metrics in `evaluation.json`; explicit geographic/POI holdouts pending |
+| R9 | blocked | — | Observable recommendation request, candidate, impression, and interaction contract is absent |
+| R10 | pending | — | Uncertainty evaluator and artifact pending |
+| R11 | pending | — | Matched transient/sustained change scenarios and adaptation evaluator pending |
+| R12 | pending | — | Privacy audit harness and artifact pending |
+| R13 | pending | — | Efficiency benchmark harness and artifact pending |
+
+The base `evaluate` command writes the backward-compatible three-cutoff report
+and does not run the R4 or R7 supplemental evaluators. Run `export-dense`
+followed by `evaluate --episodes` for episode evidence, and run `robustness` for
+event-removal evidence. The base report names these supplemental commands and
+artifacts rather than incorrectly marking their implemented axes as pending.
 
 ## Pending scientific capabilities
 
-- T1.2 protected evaluator alignment of dense timestamps to episode boundaries
-  and direct episode-response evidence
-- Direct persistent/context and routine/context metrics
-- Controlled corruption and missing-service robustness
+- Factorized persistent/context and routine/context representation and metrics
+- Matched temporary-versus-sustained change scenarios
+- GPS noise, timestamp jitter, and missing-service robustness
 - Explicit geographic holdout experiments
 - Matched counterfactual exposure/opportunity invariance
-- Factorized encoder
 - Recommendation request/impression/interaction data contract
 - Candidate-aware ranking and Tokyo-to-Hakone evaluation
 - Representation uncertainty, nonstationarity, privacy, and efficiency audits
 
-## Immediate instruction
+## Evidence limitations
 
-Run the comparison on the same 500-user dataset already used for learned
-training. Preserve `embedding_comparison.json` and `.md` as the pre-factorization
-reference. Then begin Phase 1 of `docs/ROADMAP.md`.
-
-## T1.1 dense export and remaining T1.2 work (R1, R4)
-
-The observed-only dense timestamped export is implemented. Statistical and
-learned exports contain public user IDs, observed timestamps, cutoff kinds,
-history counts, and embeddings, with no episode IDs or other protected truth
-labels. T1.2 remains the protected evaluator work that aligns those timestamps
-to truth episode boundaries and produces direct episode-response evidence.
-
-No episode-coherence or persistent/context-disentanglement claim follows from
-the dense export alone. Those claims must remain pending until T1.2 provides
-direct protected evidence and the relevant baseline-versus-learned diagnostics.
+Episode response, drift, recovery, intent prediction, or coherence from a
+single vector is **not evidence of persistent/context disentanglement**. R4 is
+partial because its episode metrics are executable, not because the current GRU
+has separated persistent preference from episode state. Matched baseline and
+learned reports, collapse diagnostics, and future factorized outputs are still
+required for that claim.
 
 The historical 50-user, 7-day smoke comparison remains an execution and
 contract check only. Its small held-out sample and incomplete fine-geohash
-coverage support no scientific model-quality, episode-coherence, or
-disentanglement claim.
+coverage support no scientific model-quality, episode-coherence, robustness,
+or disentanglement claim.
+
+## Immediate instruction
+
+Preserve same-run baseline and learned episode/robustness reports alongside
+`embedding_comparison.json` and `.md` as pre-factorization references. Continue
+the remaining Phase 1 evaluator work in `docs/ROADMAP.md` before introducing a
+factorized model.
