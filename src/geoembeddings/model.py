@@ -111,6 +111,9 @@ class SingleVectorEncoder(nn.Module):
         )
         self.heads = nn.ModuleDict()
         self.output_adapter = SingleVectorOutputAdapter()
+        self.loss_routes = {
+            objective: "combined" for objective in config.get("objectives", {})
+        }
         for objective, field in TARGET_FIELDS.items():
             if objective in config["objectives"] and field in vocabularies:
                 self.heads[objective] = nn.Linear(output_dim, len(vocabularies[field]))
@@ -199,6 +202,117 @@ class SingleVectorEncoder(nn.Module):
         )
 
 
+class FactorizedPCEncoder(SingleVectorEncoder):
+    """Shared-event persistent/context encoder with explicit gated fusion.
+
+    Both recurrent branches intentionally execute on padded tensors and use the
+    same floating-mask selector as the legacy encoder.  ``lengths`` remains CPU
+    control metadata; no packed sequence or integer accelerator gather is used.
+    """
+
+    def __init__(self, vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+                 config: dict[str, Any], categorical_fields: list[str] | None = None) -> None:
+        super().__init__(vocabularies, continuous_dim, config, categorical_fields)
+        model_config = config["model"]
+        hidden_dim = int(model_config["hidden_dim"])
+        output_dim = int(model_config["user_embedding_dim"])
+        layers = int(model_config["gru_layers"])
+        dropout = float(model_config["dropout"]) if layers > 1 else 0.0
+        # ``self.gru`` is the long-history branch inherited from the baseline.
+        self.context_gru = nn.GRU(int(model_config["event_dim"]), hidden_dim,
+                                  num_layers=layers, batch_first=True, dropout=dropout)
+        self.context_projection = nn.Sequential(nn.Linear(hidden_dim, output_dim), nn.GELU(),
+                                                 nn.LayerNorm(output_dim))
+        self.persistent_update_rate = float(model_config.get("persistent_update_rate", 0.1))
+        if not 0.0 < self.persistent_update_rate <= 1.0:
+            raise ValueError("persistent_update_rate must be in (0, 1]")
+        self.recent_history_events = int(model_config.get("recent_history_events", 16))
+        if self.recent_history_events <= 0:
+            raise ValueError("recent_history_events must be positive")
+        self.persistent_anchor = nn.Linear(int(model_config["event_dim"]), output_dim)
+        self.fusion_gate = nn.Linear(output_dim * 2, output_dim)
+        self.fusion_projection = nn.Sequential(nn.Linear(output_dim * 2, output_dim),
+                                               nn.GELU(), nn.LayerNorm(output_dim))
+        ablation = str(model_config.get("ablation", "fusion"))
+        allowed = {"fusion", "persistent_only", "context_only"}
+        if ablation not in allowed:
+            raise ValueError(f"Unknown factorized ablation {ablation!r}; expected {sorted(allowed)}")
+        self.ablation = ablation
+        routes = model_config.get("loss_routing", {})
+        self.loss_routes = {
+            objective: str(routes.get(objective, "combined"))
+            for objective in self.heads
+        }
+        invalid = {name: route for name, route in self.loss_routes.items()
+                   if route not in {"persistent", "context", "combined"}}
+        if invalid:
+            raise ValueError(f"Invalid loss routing: {invalid}")
+
+    def _event_tensor(self, categorical: torch.Tensor, continuous: torch.Tensor,
+                      *, augment: bool) -> torch.Tensor:
+        category_sum = None
+        for index, field in enumerate(self.categorical_fields):
+            value = self.categorical_embeddings[field](categorical[:, :, index])
+            category_sum = value if category_sum is None else category_sum + value
+        event = self.event_normalization(
+            self.categorical_projection(category_sum) + self.continuous_projection(continuous)
+        )
+        if augment and self.training and self.event_dropout > 0:
+            keep = torch.rand(event.shape[:2], device=event.device) >= self.event_dropout
+            keep[:, 0] = True
+            event = event * keep.unsqueeze(-1)
+        return event
+
+    @staticmethod
+    def _floating_final(sequence: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
+        positions = torch.arange(sequence.shape[1], device="cpu").unsqueeze(0)
+        final_positions = (lengths.detach().cpu() - 1).unsqueeze(1)
+        mask = (positions == final_positions).to(device=sequence.device, dtype=sequence.dtype)
+        return (sequence * mask.unsqueeze(-1)).sum(dim=1)
+
+    def encode_components(self, categorical: torch.Tensor, continuous: torch.Tensor,
+                          lengths: torch.Tensor, augment: bool = False) -> EncoderOutput:
+        self._validate_batch(categorical, continuous, lengths)
+        event = self._event_tensor(categorical, continuous, augment=augment)
+        persistent_sequence, _ = self.gru(event)
+        persistent_last = self._floating_final(persistent_sequence, lengths)
+
+        positions = torch.arange(event.shape[1], device="cpu").unsqueeze(0)
+        starts = (lengths.detach().cpu() - self.recent_history_events).clamp_min(0).unsqueeze(1)
+        valid = positions < lengths.detach().cpu().unsqueeze(1)
+        recent = (valid & (positions >= starts)).to(device=event.device, dtype=event.dtype)
+        context_sequence, _ = self.context_gru(event * recent.unsqueeze(-1))
+        context = self.context_projection(self._floating_final(context_sequence, lengths))
+
+        valid_float = valid.to(device=event.device, dtype=event.dtype)
+        history_mean = (event * valid_float.unsqueeze(-1)).sum(1) / lengths.to(
+            device=event.device, dtype=event.dtype).unsqueeze(1)
+        anchor = self.persistent_anchor(history_mean)
+        persistent = self.output_projection(persistent_last)
+        rate = self.persistent_update_rate
+        persistent = (1.0 - rate) * anchor + rate * persistent
+        pair = torch.cat((persistent, context), dim=1)
+        candidate = self.fusion_projection(pair)
+        gate = torch.sigmoid(self.fusion_gate(pair))
+        combined = gate * candidate + (1.0 - gate) * persistent
+        if self.ablation == "persistent_only":
+            context, combined = torch.zeros_like(context), persistent
+        elif self.ablation == "context_only":
+            persistent, combined = torch.zeros_like(persistent), context
+        return EncoderOutput(persistent=persistent, context=context, combined=combined)
+
+    def encode(self, categorical: torch.Tensor, continuous: torch.Tensor,
+               lengths: torch.Tensor, augment: bool = False) -> torch.Tensor:
+        return self.encode_components(categorical, continuous, lengths, augment).combined
+
+    def forward(self, categorical: torch.Tensor, continuous: torch.Tensor,
+                lengths: torch.Tensor) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+        output = self.encode_components(categorical, continuous, lengths, augment=True)
+        logits = {name: head(getattr(output, self.loss_routes[name]))
+                  for name, head in self.heads.items()}
+        return output.combined, logits
+
+
 ModelFactory = Callable[
     [dict[str, dict[str, int]], int, dict[str, Any], list[str] | None],
     SingleVectorEncoder,
@@ -241,6 +355,60 @@ def _build_single_vector(
         config,
         categorical_fields=categorical_fields,
     )
+
+
+@register_model("factorized_pc")
+def _build_factorized_pc(vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+                         config: dict[str, Any], categorical_fields: list[str] | None = None
+                         ) -> SingleVectorEncoder:
+    return FactorizedPCEncoder(vocabularies, continuous_dim, config, categorical_fields)
+
+
+@register_model("capacity_matched_single")
+def _build_capacity_matched_single(vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+                                   config: dict[str, Any], categorical_fields: list[str] | None = None
+                                   ) -> SingleVectorEncoder:
+    """Build the closest single-GRU control to the factorized parameter budget."""
+    target_config = {**config, "model": {**config["model"], "variant": "factorized_pc",
+                                          "user_embedding_dim": int(config["model"].get(
+                                              "matched_output_dim", 128))}}
+    target = FactorizedPCEncoder(vocabularies, continuous_dim, target_config, categorical_fields)
+    target_count = sum(parameter.numel() for parameter in target.parameters())
+    del target
+    output_dim = int(target_config["model"]["user_embedding_dim"])
+    low, high = 1, max(2, int(config["model"].get("capacity_search_max_hidden_dim", 512)))
+    best: tuple[int, SingleVectorEncoder] | None = None
+    while low <= high:
+        hidden = (low + high) // 2
+        candidate_config = {**config, "model": {**config["model"], "variant": "single_vector",
+                                                  "hidden_dim": hidden,
+                                                  "user_embedding_dim": output_dim}}
+        candidate = SingleVectorEncoder(vocabularies, continuous_dim, candidate_config,
+                                        categorical_fields)
+        count = sum(parameter.numel() for parameter in candidate.parameters())
+        if best is None or abs(count - target_count) < abs(best[0] - target_count):
+            best = (count, candidate)
+        if count < target_count:
+            low = hidden + 1
+        else:
+            high = hidden - 1
+    assert best is not None
+    best[1].capacity_match = {"target_parameters": target_count,
+                              "actual_parameters": best[0],
+                              "relative_error": abs(best[0] - target_count) / target_count}
+    return best[1]
+
+
+# Stable names let ablation experiments differ in one configuration field while
+# retaining the same architecture and artifact contract.
+for _variant, _ablation in (("persistent_only", "persistent_only"),
+                            ("context_only", "context_only")):
+    def _factory(vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+                 config: dict[str, Any], categorical_fields: list[str] | None = None,
+                 *, ablation: str = _ablation) -> SingleVectorEncoder:
+        copied = {**config, "model": {**config["model"], "ablation": ablation}}
+        return FactorizedPCEncoder(vocabularies, continuous_dim, copied, categorical_fields)
+    register_model(_variant)(_factory)
 
 
 def build_model(
