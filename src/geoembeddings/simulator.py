@@ -907,8 +907,13 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
     interactions: list[dict[str, Any]] = []
     hakone = regions_by_id["hakone"]
     hakone_pois = [p for p in pois if p["region_id"] == "hakone" and p["category"] in {"onsen", "restaurant", "cafe", "shop", "hotel", "attraction"}]
-    for user in users_observed:
-        timestamp = iso_at(start_day + timedelta(days=args.days - 1), 10.0)
+    # Spread the public request surface through the run so temporal training,
+    # validation, and test requests exist under the prepared cutoff contract.
+    # Cohort order is stable and this schedule uses no protected episode state.
+    request_day_span = max(1, args.days - 1)
+    for user_index, user in enumerate(users_observed):
+        request_day = 1 + (user_index % request_day_span) if args.days > 1 else 0
+        timestamp = iso_at(start_day + timedelta(days=request_day), 10.0)
         request_id = stable_identifier("request", user["user_id"], timestamp, "hakone_arrival")
         requests.append(dict(zip(REQUEST_FIELDS, (request_id, user["user_id"], timestamp, "hakone", hakone.lat, hakone.lon, "arrival_location"))))
         available_rows = []
@@ -923,7 +928,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
         if shown:
             selected = shown[0]
             interactions.append(dict(zip(INTERACTION_FIELDS, (stable_identifier("interaction", request_id, "click"), request_id,
-                selected["poi_id"], iso_at(start_day + timedelta(days=args.days - 1), 10.05), "click"))))
+                selected["poi_id"], iso_at(start_day + timedelta(days=request_day), 10.05), "click"))))
     recommendation_tables = {"poi_catalog": catalog, "recommendation_requests": requests, "impressions": impressions, "interactions": interactions}
     recommendation_validation = validate_recommendation_tables(recommendation_tables)
     recommendation_validation["naive_rankers"] = naive_ranker_diagnostics(recommendation_tables, observed_events)

@@ -1,0 +1,267 @@
+{
+  "schema_version": "geoembeddings-ranking-evidence-index/1.0",
+  "task_id": "T3.5",
+  "requirement_ids": [
+    "R9"
+  ],
+  "source_revision": "ed3a15e547d6beaba61f7f1e4073dad7f01f1cf9",
+  "run_dir": "runs/t3.5-evidence-20260812-s20260812",
+  "experiment_dir": "experiments/t3.5-evidence-20260812-factorized-pc",
+  "selected_embedding": {
+    "variant": "factorized_pc",
+    "component": "combined",
+    "selection_note": "diagnostic frozen combined export; T2.7 did not authorize encoder advancement"
+  },
+  "seeds": {
+    "simulation": 20260812,
+    "training": 20260806,
+    "frozen_head": 20260812
+  },
+  "commands": [
+    ".venv/bin/geoembed simulate --run-dir runs/t3.5-evidence-20260812-s20260812 --users 50 --days 14 --seed 20260812",
+    ".venv/bin/geoembed validate --run-dir runs/t3.5-evidence-20260812-s20260812",
+    ".venv/bin/geoembed prepare --config configs/embedding/factorized_pc.yaml --run-dir runs/t3.5-evidence-20260812-s20260812 --experiment-dir experiments/t3.5-evidence-20260812-factorized-pc",
+    ".venv/bin/geoembed train --config configs/embedding/factorized_pc.yaml --run-dir runs/t3.5-evidence-20260812-s20260812 --experiment-dir experiments/t3.5-evidence-20260812-factorized-pc",
+    ".venv/bin/geoembed export-dense --config configs/embedding/factorized_pc.yaml --run-dir runs/t3.5-evidence-20260812-s20260812 --experiment-dir experiments/t3.5-evidence-20260812-factorized-pc --kind learned --event-stride 1",
+    ".venv/bin/geoembed rank --run-dir runs/t3.5-evidence-20260812-s20260812 --experiment-dir experiments/t3.5-evidence-20260812-factorized-pc --model popularity",
+    ".venv/bin/geoembed rank --run-dir runs/t3.5-evidence-20260812-s20260812 --experiment-dir experiments/t3.5-evidence-20260812-factorized-pc --model nearest",
+    ".venv/bin/geoembed rank --run-dir runs/t3.5-evidence-20260812-s20260812 --experiment-dir experiments/t3.5-evidence-20260812-factorized-pc --model category_preference",
+    ".venv/bin/geoembed rank --run-dir runs/t3.5-evidence-20260812-s20260812 --experiment-dir experiments/t3.5-evidence-20260812-factorized-pc --model frozen_embedding"
+  ],
+  "common_contract": {
+    "request_hash": "ee894bf15de303e0705c4ee6e7cdb4ba133a43a60caaf7c14f79e53d1546fcb7",
+    "candidate_hash": "43fc4f02664bfd3ee544c960b079eb8290fe875199f4dfb3ae6b4ef4a9d94a9e",
+    "all_four_request_hashes_identical": true,
+    "all_four_candidate_hashes_identical": true,
+    "source_hashes": {
+      "events": "02097684a34030f1447b1721314f76fac5293b5228100fcf43b96611583b3df9",
+      "impressions": "9595074c12f95a8e45e15b75f1e14fd6b82a71b96e883d1ac839a2a07105e0a0",
+      "interactions": "f5a9579dfff1f877bedc0024e87a5f8e61ffd1f8b7ed745f9039a378074de821",
+      "poi_catalog": "24be84a4a5691fee21d09833346196f77055db9e099ae0d9b19c0b5220341f55",
+      "recommendation_requests": "d7af7d61a47bc95c147dfa83ca0e388ce9898055defd4f0a2d5cd1cd5fe39564",
+      "users": "4faa10947193d6cd49d01b9f8643672084462b0a9dd255b020b7f312d53619c5"
+    },
+    "cutoff_definitions": {
+      "availability": "is_available == 1 with availability_observed_at <= request_timestamp",
+      "labels": "all observable interactions associated with the request",
+      "statistics": "strictly interaction_timestamp/event timestamp < each request_timestamp"
+    }
+  },
+  "per_split_coverage": {
+    "test": {
+      "candidates": 118,
+      "positive": 5,
+      "requested": 6,
+      "scorable": 5,
+      "users_requested": 6,
+      "users_scorable": 5,
+      "request_coverage": 0.8333333333333334,
+      "user_coverage": 0.8333333333333334,
+      "candidate_coverage_note": "available candidates counted only for causally scorable requests",
+      "exclusions": {
+        "request_043696ab43366cba6030189f": "no_embedding_at_or_before_request_cutoff"
+      }
+    },
+    "training": {
+      "candidates": 891,
+      "positive": 36,
+      "requested": 36,
+      "scorable": 36,
+      "users_requested": 36,
+      "users_scorable": 36,
+      "request_coverage": 1.0,
+      "user_coverage": 1.0,
+      "candidate_coverage_note": "available candidates counted only for causally scorable requests",
+      "exclusions": {}
+    },
+    "validation": {
+      "candidates": 197,
+      "positive": 8,
+      "requested": 8,
+      "scorable": 8,
+      "users_requested": 8,
+      "users_scorable": 8,
+      "request_coverage": 1.0,
+      "user_coverage": 1.0,
+      "candidate_coverage_note": "available candidates counted only for causally scorable requests",
+      "exclusions": {}
+    }
+  },
+  "metrics": {
+    "popularity": {
+      "evaluated_requests": 50,
+      "mrr": 0.885895242154833,
+      "ndcg_at_k": {
+        "1": 0.88,
+        "10": 0.88,
+        "5": 0.88
+      },
+      "recall_at_k": {
+        "1": 0.88,
+        "10": 0.88,
+        "5": 0.88
+      }
+    },
+    "nearest": {
+      "evaluated_requests": 50,
+      "mrr": 0.12219968919968921,
+      "ndcg_at_k": {
+        "1": 0.0,
+        "10": 0.13407286856377906,
+        "5": 0.07
+      },
+      "recall_at_k": {
+        "1": 0.0,
+        "10": 0.36,
+        "5": 0.14
+      }
+    },
+    "category_preference": {
+      "evaluated_requests": 50,
+      "mrr": 0.1319122145753321,
+      "ndcg_at_k": {
+        "1": 0.0,
+        "10": 0.18016762768303318,
+        "5": 0.1524858989208373
+      },
+      "recall_at_k": {
+        "1": 0.0,
+        "10": 0.42,
+        "5": 0.34
+      }
+    },
+    "frozen_embedding": {
+      "evaluated_requests": 50,
+      "mrr": 0.9566666666666667,
+      "ndcg_at_k": {
+        "1": 0.94,
+        "10": 0.9626185950714291,
+        "5": 0.9626185950714291
+      },
+      "recall_at_k": {
+        "1": 0.94,
+        "10": 0.98,
+        "5": 0.98
+      }
+    }
+  },
+  "frozen_deltas": {
+    "category_preference": {
+      "mrr_delta": 0.8247544520913346,
+      "ndcg_at_k_delta": {
+        "1": 0.94,
+        "10": 0.7824509673883959,
+        "5": 0.8101326961505918
+      },
+      "recall_at_k_delta": {
+        "1": 0.94,
+        "10": 0.56,
+        "5": 0.6399999999999999
+      }
+    },
+    "nearest": {
+      "mrr_delta": 0.8344669774669775,
+      "ndcg_at_k_delta": {
+        "1": 0.94,
+        "10": 0.82854572650765,
+        "5": 0.8926185950714292
+      },
+      "recall_at_k_delta": {
+        "1": 0.94,
+        "10": 0.62,
+        "5": 0.84
+      }
+    },
+    "popularity": {
+      "mrr_delta": 0.07077142451183371,
+      "ndcg_at_k_delta": {
+        "1": 0.05999999999999994,
+        "10": 0.0826185950714291,
+        "5": 0.0826185950714291
+      },
+      "recall_at_k_delta": {
+        "1": 0.05999999999999994,
+        "10": 0.09999999999999998,
+        "5": 0.09999999999999998
+      }
+    }
+  },
+  "artifacts": {
+    "runs/t3.5-evidence-20260812-s20260812/manifest.json": {
+      "sha256": "419ca66fb45fdf2e7835eb272157250709e746a6f2f74606cbaefd13636d9c87",
+      "bytes": 4765
+    },
+    "runs/t3.5-evidence-20260812-s20260812/config.resolved.yaml": {
+      "sha256": "85f3403e5abafadbe85b9445a1d758e9e041a495d2fb8183a82bb56b0eafdc0f",
+      "bytes": 12649
+    },
+    "runs/t3.5-evidence-20260812-s20260812/validation_report.json": {
+      "sha256": "e69c352ccb393f0f8c7e4f3d825623e29affb5ae15b01ab78b3ec879b9e60ceb",
+      "bytes": 1045
+    },
+    "runs/t3.5-evidence-20260812-s20260812/deep_validation_report.json": {
+      "sha256": "da73a7dccd966845604f63d2e23c2c50ed37a5d0889cbe9a91f6371dcb700c15",
+      "bytes": 7053
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/prepared/config.resolved.yaml": {
+      "sha256": "15af2c13aece89cc3a8bbd5f8cfe1c400716ffbf1336e70173caada123b9da39",
+      "bytes": 2860
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/prepared/prepared_metadata.json": {
+      "sha256": "406677ec3d296516204cd145d29739bf05f442495fb8ac7b36e3a002904a55fb",
+      "bytes": 2338
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/prepared/vocabularies.json": {
+      "sha256": "ee4bee67b21ad87eb0f1b27e9bcf7a627fc6d6b7aebbbb980d123cd420b45243",
+      "bytes": 25533
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/model/best_model.pt": {
+      "sha256": "4511a809dce21f88e25b5d92eb11f938c9b975f750e1803a262576a3d99424a7",
+      "bytes": 2175797
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/model/training_report.json": {
+      "sha256": "18437a68cf4c59f27be9850d153382770a9aa2ac15ee45b39bda47c8eb82abc1",
+      "bytes": 17384
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/dense_embeddings.npz": {
+      "sha256": "032692936171d3fe9668fbe189fb08bfff1519079a1838b3b936f73a81ddd740",
+      "bytes": 4466909
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/ranking/frozen_embedding_checkpoint.npz": {
+      "sha256": "7118260662de1455cfacfbb6f0806c75635c382c1ce865c9d74fb51d77176ca7",
+      "bytes": 20053
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/ranking/popularity.npz": {
+      "sha256": "b39532189c8308d9bc263ae6331c4ea8b37dd9bea106e44085edfb0dd1083f3c",
+      "bytes": 6427
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/ranking/popularity.json": {
+      "sha256": "111fd6b84d47f935a186f6e2e13f0f3085ab14cf7cc7bb36d9ffdd76feef4a67",
+      "bytes": 3791
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/ranking/nearest.npz": {
+      "sha256": "9bf212998c24e06a07921bc10fe4ff9f00e09ef7dec5763ee5f1ef2adeeb0d86",
+      "bytes": 6663
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/ranking/nearest.json": {
+      "sha256": "df4d25948b34588251bbe4f218202971fc40490883ae69ffa9b9968823b872ba",
+      "bytes": 3797
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/ranking/category_preference.npz": {
+      "sha256": "f9eb66d0aebc78d58a1268c071718587c64a9b94fe1d7ea5ccc2a932ad098428",
+      "bytes": 6622
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/ranking/category_preference.json": {
+      "sha256": "c363ea23e84940b4dc1b8119b172f8db3879a804ffc35083873447955e2ca021",
+      "bytes": 3846
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/ranking/frozen_embedding.npz": {
+      "sha256": "74b72db63c025b5cb17502a237dc134ae9e63e8b79caaee71d239f579b27370b",
+      "bytes": 16138
+    },
+    "experiments/t3.5-evidence-20260812-factorized-pc/ranking/frozen_embedding.json": {
+      "sha256": "84bdcf89fbba73e66bb19d1cbe1a1f9bcb8f42041fa6fd5f8eadae2fe0406dc4",
+      "bytes": 9286
+    }
+  }
+}

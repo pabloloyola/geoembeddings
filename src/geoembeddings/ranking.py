@@ -309,7 +309,8 @@ def run_ranking(
     if any(not math.isfinite(row.travel_time_minutes) or row.travel_time_minutes < 0 for row in candidates):
         raise ValueError("candidate travel_time_minutes must be finite and non-negative")
     source_hashes = {name: sha256_file(observed_dir / OBSERVED_FILES[name])
-                     for name in ("events", "poi_catalog", "recommendation_requests", "impressions", "interactions")}
+                     for name in ("users", "events", "poi_catalog", "recommendation_requests",
+                                  "impressions", "interactions")}
     frozen_lineage: dict[str, Any] | None = None
     unscorable: dict[str, str] = {}
     split_counts: dict[str, dict[str, int]] | None = None

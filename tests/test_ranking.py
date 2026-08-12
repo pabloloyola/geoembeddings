@@ -128,9 +128,9 @@ def test_frozen_head_is_deterministic_and_preserves_typed_identity_order() -> No
 def _simulate(root: Path) -> None:
     config_path = Path("configs/simulation/kanto_v1.yaml")
     config = simulator.load_config(config_path)
-    config["run"].update(users=10, days=2, seed=20260812, output=str(root))
+    config["run"].update(users=10, days=4, seed=20260812, output=str(root))
     simulator.activate_config(config)
-    simulator.simulate(argparse.Namespace(output=str(root), overwrite=False, seed=20260812, users=10, days=2,
+    simulator.simulate(argparse.Namespace(output=str(root), overwrite=False, seed=20260812, users=10, days=4,
         start_date=config["run"]["start_date"], scenario=config["run"]["scenario"], full_kanto=False, config=str(config_path)))
 
 
@@ -158,6 +158,7 @@ def test_rankers_share_sets_reject_v1_and_never_open_truth(tmp_path, monkeypatch
     # Complete the observed-only cross-stage path with the canonical timestamped dense schema.
     request_rows = __import__("pandas").read_csv(run / "observed" / "recommendation_requests.csv.gz")
     timestamps = sorted(request_rows["request_timestamp"].astype(str))
+    assert len(set(timestamps)) == 3  # public requests span temporal cutoffs, not only the final day
     train_end = timestamps[max(0, len(timestamps) // 2)]
     prepared = experiment / "prepared"
     prepared.mkdir(parents=True)
