@@ -30,9 +30,28 @@ Otherwise record **do not advance** with per-axis deltas and coverage. There is
 no aggregate score and no routine branch may be added following a failed or
 unmeasurable decision.
 
-## Current decision
+## Current decision (2026-08-12 replacement identity)
 
-**Unmeasurable; do not advance to the routine branch.** No new matched experiment
-artifacts were generated in this source change, and the historical T0.2 artifact
-bytes are unavailable. This is an implementation and executable-contract
-change, not scientific evidence of factorization.
+**Do not advance to the routine branch.** A new immutable 50-user, 14-day
+replacement run (`t2.7-factorization-20260812-s20260812-u50-d14`, simulation
+seed 20260812) prepared the observed data once and trained all six matrix
+variants with training seed 20260806. The comparison authenticated source hash,
+preparation definition, three cutoffs, export keys, and the 49-user mask.
+
+The factorized model had 531,779 trainable parameters versus 530,899 for the
+capacity-matched single control (0.165% difference). Its persistent branch mean
+held-out probe R2 was -0.651 versus -0.538 for the capacity control (delta
+-0.113), while centered effective rank was 5.37 versus 9.92 and
+same/different-user separation was 0.437 versus 0.707. Its combined mean probe
+R2 was -0.957 versus -0.538 (delta -0.419), despite temporal retrieval of 0.929
+versus 0.908. The context branch retained non-collapsed signal (effective rank
+6.82, retrieval 0.684), but this cannot rescue failed persistent and combined
+gates and is not evidence of semantic disentanglement.
+
+Cutoff/dense exports and base, episode, robustness, and temporal-routine reports
+exist for every control under `experiments/t2.7-factorization-20260812/`.
+Matched paired/change evaluation was not needed to overturn the decision after
+mandatory task-information and collapse gates failed; consequently no causal
+invariance claim is made. This pilot has only seven held-out probe users and
+sparse travel observations, so its estimates are coverage-qualified. Routine
+work remains closed.

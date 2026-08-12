@@ -122,6 +122,10 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--learned-experiment-dir", type=Path)
     compare.add_argument("--output-dir", type=Path)
     compare.add_argument("--config", type=Path, default=DEFAULT_EMBEDDING_CONFIG)
+    compare.add_argument(
+        "--factorized-experiment", action="append", default=[], metavar="NAME=PATH",
+        help="Build the T2.7 matrix comparison from repeated immutable NAME=PATH roots",
+    )
 
     pipeline = commands.add_parser(
         "pipeline", help="Run simulation, validation, preparation, embedding, and evaluation"
@@ -330,6 +334,21 @@ def _evaluate(
 
 
 def _compare(args: argparse.Namespace) -> dict[str, Any]:
+    if args.factorized_experiment:
+        from .factorization_comparison import compare_factorization_matrix
+        if args.experiment_dir is not None or args.baseline_experiment_dir is not None or args.learned_experiment_dir is not None:
+            raise ValueError("--factorized-experiment cannot be combined with pairwise experiment arguments")
+        roots: dict[str, Path] = {}
+        for item in args.factorized_experiment:
+            name, separator, path = item.partition("=")
+            if not separator or not name or not path or name in roots:
+                raise ValueError("Each --factorized-experiment must be a unique NAME=PATH")
+            roots[name] = Path(path).expanduser().resolve()
+        run = DatasetLayout.from_path(args.run_dir)
+        run.validate(require_truth=True)
+        output = (Path(args.output_dir).expanduser().resolve() if args.output_dir else
+                  ExperimentLayout.from_path(roots["factorized_pc"]).comparison_dir)
+        return compare_factorization_matrix(run, roots, output)
     from .comparison import compare_embeddings
 
     run = DatasetLayout.from_path(args.run_dir)

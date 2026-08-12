@@ -226,6 +226,14 @@ class ExperimentLayout:
         return self.comparison_dir / "embedding_comparison.md"
 
     @property
+    def factorized_comparison_json(self) -> Path:
+        return self.comparison_dir / "factorized_comparison.json"
+
+    @property
+    def factorized_comparison_markdown(self) -> Path:
+        return self.comparison_dir / "factorized_comparison.md"
+
+    @property
     def robustness_dir(self) -> Path:
         return self.root / "robustness"
 

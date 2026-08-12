@@ -462,7 +462,7 @@ gated by T1.6.
     versioned components, ordered fields, hashes, cutoffs, variant, and compatibility
     metadata. Readers explicitly migrate legacy vectors and reject malformed schemas.
 
-- [ ] **T2.4 — Capacity-matched persistent/context encoder.**
+- [x] **T2.4 — Capacity-matched persistent/context encoder.**
   - **Requirement IDs:** R1, R4.
   - **Prerequisites:** T2.1–T2.3 and approved hypothesis/evaluator set.
   - **Affected layer:** model.
@@ -478,7 +478,7 @@ gated by T1.6.
     gated fusion, and component exports. Scientific completion remains gated on
     a matched run because no current baseline artifact is available.
 
-- [ ] **T2.5 — Capacity controls and ablations.**
+- [x] **T2.5 — Capacity controls and ablations.**
   - **Requirement IDs:** R1, R4.
   - **Prerequisites:** T2.4.
   - **Affected layer:** model, evaluator.
@@ -494,7 +494,7 @@ gated by T1.6.
     parameter-matched single GRU, persistent-only, context-only, fusion, and both
     loss-routing removals. No performance claim is recorded without artifacts.
 
-- [ ] **T2.6 — Branch-specific objectives and reports.**
+- [x] **T2.6 — Branch-specific objectives and reports.**
   - **Requirement IDs:** R1, R4, R5, R6, R7.
   - **Prerequisites:** T2.4–T2.5 and relevant executable evaluators.
   - **Affected layer:** model, evaluator.
@@ -511,7 +511,7 @@ gated by T1.6.
     are observed-only; base evaluation reports every component with persistent
     probes, stability, separation, retrieval, and centered effective rank.
 
-- [ ] **T2.7 — Matched factorization decision.**
+- [x] **T2.7 — Matched factorization decision.**
   - **Requirement IDs:** R1, R4, R5, R6, R7.
   - **Prerequisites:** T2.5–T2.6.
   - **Affected layer:** evaluator, documentation.
@@ -529,6 +529,12 @@ gated by T1.6.
   - **Decision note (2026-08-11):** currently unmeasurable and therefore **do
     not advance**. `docs/FACTORIZATION_DECISION.md` defines the per-axis gate;
     matched immutable control artifacts have not yet been generated.
+  - **Completion note (2026-08-12):** the new immutable 50-user/14-day seed
+    20260812 lineage trained all six controls from one preparation and produced
+    matched cutoff/dense/base/episode/robustness/temporal reports plus the
+    strict factorized comparison. Persistent and combined task-information and
+    collapse gates failed versus the capacity control, so the evidence-backed
+    decision is **do not advance** and routine work remains closed.
 
 ## P3 — Recommendation contract and ranking
 

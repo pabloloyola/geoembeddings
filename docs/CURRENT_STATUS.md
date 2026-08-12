@@ -81,14 +81,13 @@ requirement, and no simulator-only result establishes real-world validity.
 
 ## Current gate and next implementation option
 
-The immediate scientific instruction is the **T2.7 matched-factorization
-gate**. Generate immutable, identical-data/cutoff artifacts for the statistical
-baseline, `capacity_matched_single`, `factorized_pc`, and required branch/loss
-ablations; run the selected R1/R4/R5/R6/R7 surfaces; then produce the separate
-per-axis factorization comparison and decision defined in
-`docs/FACTORIZATION_DECISION.md`. Until those artifacts exist, the decision is
-**unmeasurable — do not advance to a routine branch**. Component names,
-next-event accuracy, and covariance diagnostics are not evidence of semantics.
+The T2.7 matched-factorization gate is complete on the new immutable 50-user,
+14-day, seed-20260812 pilot. All six variants share one preparation, population,
+and cutoff identity. The persistent and combined task-information/collapse
+gates failed against the capacity-matched control, so the decision is **do not
+advance to a routine branch**. See `docs/FACTORIZATION_DECISION.md` and the
+registered T2.7 evidence index. Component names, next-event accuracy, and
+covariance diagnostics remain insufficient evidence of semantics.
 
 If the matched factorization run is not the next work item, the next independent
 implementation option is **T3.4 observable naive rankers** over the completed
