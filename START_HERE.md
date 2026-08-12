@@ -10,6 +10,10 @@ by a versioned observed/truth contract.
 fresh 50-user smoke workflow, artifact inspection, ranking controls, optional
 learned comparison, and troubleshooting.
 
+Read **[external-validity and evidence boundaries](docs/EXTERNAL_VALIDITY.md)**
+before interpreting any simulator or indexed result as evidence about real
+people, places, services, or deployments.
+
 ## For a Codex agent
 
 Read these files in order before editing code:
@@ -79,6 +83,7 @@ causal evidence nor external-validity evidence.
 
 T2.7 completed on matched immutable artifacts with a **do not advance**
 decision because persistent and combined gates failed; do not open a routine
-branch. Continue with the prioritized P4 sequence in `TASKS.md`: T4.1
-uncertainty calibration, T4.2 adaptation/forgetting audit, T4.3 privacy audits,
-T4.4 online-update benchmarks, then T4.5 external-validity limits.
+branch. T4.5 external-validity limits are complete; continue with the remaining
+P4 work in `TASKS.md`: T4.1 uncertainty calibration, T4.2
+adaptation/forgetting audit, T4.3 privacy audits, and T4.4 online-update
+benchmarks.

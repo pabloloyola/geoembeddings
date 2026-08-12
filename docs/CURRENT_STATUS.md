@@ -1,5 +1,9 @@
 # Current status
 
+External-validity claim boundaries, accepted/unavailable evidence distinctions,
+and the evidence needed to change every requirement status are maintained in
+[`EXTERNAL_VALIDITY.md`](EXTERNAL_VALIDITY.md).
+
 ## Release and contracts
 
 - Package/repository version: `0.5.0`
@@ -99,10 +103,10 @@ frozen-embedding candidate head; T3.6 supplies observed-only exposure-aware
 training and a separately integrity-gated protected evaluator; T3.7 supplies
 observed-only frozen transfer slices and therefore no utility regret.
 
-The prioritized sequence is now P4: **T4.1 uncertainty calibration**, **T4.2
-adaptation and forgetting audit**, **T4.3 privacy audits**, **T4.4 online
-incremental-update benchmarks**, then **T4.5 calibration and external-validity
-limits**. This ordering does not relax the negative T2.7 routine-branch gate.
+T4.5 now supplies the external-validity claim boundary. The remaining P4 work
+is **T4.1 uncertainty calibration**, **T4.2 adaptation and forgetting audit**,
+**T4.3 privacy audits**, and **T4.4 online incremental-update benchmarks**.
+This does not relax the negative T2.7 routine-branch gate.
 
 ## Evidence limitations
 
