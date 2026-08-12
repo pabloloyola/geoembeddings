@@ -214,6 +214,16 @@ class ExperimentLayout:
         return self.benchmarks_dir / "offline.json"
 
     @property
+    def ranking_dir(self) -> Path:
+        return self.root / "ranking"
+
+    def ranking_predictions(self, model: str) -> Path:
+        return self.ranking_dir / f"{model}.npz"
+
+    def ranking_report(self, model: str) -> Path:
+        return self.ranking_dir / f"{model}.json"
+
+    @property
     def comparison_dir(self) -> Path:
         return self.root / "comparison"
 
