@@ -78,9 +78,8 @@ Important limitations:
   estimates;
 - recommendation attributes and intervention mechanisms are synthetic
   hypotheses, not calibrated facts or external causal evidence;
-- the observed-only popularity, nearest-POI, and category-preference controls
-  are implemented, but embedding-aware and protected counterfactual
-  recommendation evaluation are not.
+- T3.4--T3.7 ranking surfaces are implemented, but all results remain synthetic
+  and provide neither real-world causal nor external-validity evidence.
 
 ## Current implemented model
 
@@ -168,9 +167,9 @@ It still cannot establish:
 
 - persistent/routine/context separation;
 - causal invariance or calibration to real GPS/timestamp/missingness processes;
-- unseen-POI or candidate-aware geographic transfer;
+- externally valid unseen-POI or candidate-aware geographic transfer;
 - calibrated uncertainty, privacy, or online/training efficiency;
-- candidate-aware new-context recommendation.
+- real-world candidate-aware new-context recommendation utility.
 
 Matched exposure/opportunity/observation and temporary/sustained/schedule
 changes are executable simulator diagnostics. They establish internal paired
@@ -181,9 +180,10 @@ integrity and metrics, not real-world causal validity or scientific success.
 Preserve the completed T2.7 **do not advance** decision. The immutable matched
 matrix compared `capacity_matched_single`, `factorized_pc`, and the required
 branch/loss ablations on identical data and cutoffs; failed persistent and
-combined task-information/collapse gates keep the routine branch closed. T3.4
-observable naive rankers are also complete, making T3.5 the next recommendation
-implementation option.
+combined task-information/collapse gates keep the routine branch closed.
+T3.4--T3.7 are complete. Follow the P4 priority order in `TASKS.md`: T4.1
+uncertainty calibration, T4.2 adaptation/forgetting, T4.3 privacy, T4.4 online
+benchmarking, and T4.5 external-validity limits.
 
 ## Recommendation data contract
 
@@ -200,12 +200,15 @@ observed/
 Public request-time features include category, coordinates, travel time,
 opening hours, price level, family suitability, indoor/outdoor state, local
 popularity, and availability. True utility, latent preference, true episode,
-and counterfactual choice probabilities remain under `truth/`. The
-`geoembed rank` command now writes versioned predictions and reports for
-popularity, nearest, and category-preference controls using only these observed
-tables and observed event history. Reports include Recall@K, NDCG@K, MRR,
-coverage, and shared request/candidate hashes; embedding-aware ranking remains
-pending.
+and counterfactual choice probabilities remain under `truth/`. The `geoembed rank` command writes versioned controls and the T3.5
+frozen-embedding candidate ranker using only observed inputs. T3.6 adds
+observed-only exposure-aware training. Its separate protected paired evaluator
+may open simulator utility and probability truth only after current
+pair-integrity, source, schema, and request/candidate identities authenticate;
+only that gated surface reports protected regret and probability recovery.
+T3.7 stays observed-only and reports frozen seen/unseen region/POI and
+early/late slices, with utility regret explicitly unavailable. None of these
+surfaces establishes real-world causality or external validity.
 
 ## Handoff success criterion
 

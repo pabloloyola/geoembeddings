@@ -36,6 +36,10 @@ the old modeling path, but recommendation consumers must require 2.0 tables.
   catalog, requests, availability/impressions, interactions, and request-time
   attributes, plus observed-only popularity, nearest-POI, and
   category-preference rankers with versioned predictions and metric reports.
+- T3.5 frozen-embedding candidate ranking, T3.6 observed-only exposure-aware
+  training with integrity-gated protected regret/probability-recovery
+  evaluation, and T3.7 observed-only frozen seen/unseen region/POI and
+  early/late slices. T3.7 has no truth input and cannot report utility regret.
 - Seeded three-cutoff reliability/repeatability evaluation and an observed-only
   frozen-export/offline-evaluation benchmark. These are not calibrated
   uncertainty or hardware-normalized online/training benchmarks.
@@ -66,11 +70,11 @@ accepted matched evidence, or external validity remain absent.
 | R2 | partial | `train`; `evaluate`; `evaluate --transfer`; `compare` | T0.4 durably authenticates coverage-aware learned-versus-naive diagnostics and synthetic transfer slices. Fine-local coverage is weak and real geographic calibration/external validity are absent. |
 | R3 | partial | `evaluate --temporal-routine`; `simulate-pair --intervention schedule-shift`; `evaluate-pair` | Observational temporal/routine axes and controlled simulator schedule response are executable. There is no accepted routine component or real-world schedule-shift evidence. |
 | R4 | partial | `evaluate --episodes`; `evaluate --temporal-routine`; `evaluate-change`; component reports | Episode response, repeated-versus-one-off behavior, change curves, and branch outputs are measurable. Branch semantics and routine/context separation have not passed T2.7. |
-| R5 | partial | `simulate-pair`; `validate-pair`; `evaluate-pair` | Exposure/opportunity pairs have strict identity/integrity gates and separate representation metrics. No complete reference-scale paired artifact is archived, and simulator control does not establish external causal invariance. |
+| R5 | partial | `simulate-pair`; `validate-pair`; `evaluate-pair`; exposure-aware `rank` | Exposure/opportunity pairs and T3.6 protected ranking metrics have strict integrity and identity gates. Regret/probability recovery are available only after authentication. No complete reference-scale paired artifact is archived, and simulator control does not establish external causal invariance. |
 | R6 | partial | `robustness`; component evaluation; `compare` | Leave-one-service-out drift/degradation and per-component diagnostics are executable. Semantic cross-service recommendation transfer remains pending. |
 | R7 | partial | `robustness`; `simulate-pair --intervention observation`; `evaluate-pair` | Deterministic corruptions and controlled observation pairs are executable. They are not calibration to real GPS, timestamp, or missingness processes. |
-| R8 | partial | `evaluate --transfer`; recommendation contract | Held-out-region and seen/unseen-geohash slices report coverage; the POI contract now removes the schema blocker. Unseen-POI ranking evaluation (T3.7) is still unimplemented and synthetic geography is not external validity. |
-| R9 | partial | dataset 2.0 simulation/validation; `rank` | Public POI/request/impression/interaction tables and Hakone request-time attributes are implemented and leakage-tested. Observed-only naive ranking predictions, Recall@K, NDCG@K, MRR, coverage, and shared set hashes are executable; embedding-aware ranking remains pending. |
+| R8 | partial | `evaluate --transfer`; `evaluate-ranking` | Held-out-region/geohash diagnostics and T3.7 frozen seen/unseen region/POI plus early/late observed slices report explicit coverage. T3.7 cannot report utility regret, and reference-scale and external geographic evidence remain absent. |
+| R9 | partial | dataset 2.0 simulation/validation; `rank`; `evaluate-ranking`; protected `evaluate-pair` | T3.4 controls, T3.5 frozen ranking, T3.6 exposure-aware training/protected evaluation, and T3.7 observed transfer slices are executable. Protected regret/probability recovery require pair authentication; T3.7 cannot report regret. One small synthetic T3.5 lineage is archived, but reference-scale, real-world causal, and external-validity evidence are absent. |
 | R10 | partial | `evaluate --reliability` | Seeded cutoff-bootstrap variance, reliability-error bins, and coverage-risk diagnostics are executable. This is repeatability over three cutoffs, not calibrated uncertainty; T4.1 remains pending. |
 | R11 | partial | `simulate-pair --intervention {temporary-trip,sustained-preference}`; `evaluate-change` | Matched-control adaptation, recovery, forgetting, permanent drift, coverage, and censoring are executable in the simulator. No external nonstationarity claim follows. |
 | R12 | pending | — | Membership and sensitive-attribute/privacy audit harnesses remain unimplemented. |
@@ -80,7 +84,7 @@ No row above is an aggregate model verdict. In particular, a simulator metric
 becoming executable does not show that a representation satisfies the
 requirement, and no simulator-only result establishes real-world validity.
 
-## Current gate and next implementation task
+## Current gate and prioritized implementation sequence
 
 The T2.7 matched-factorization gate is complete on the new immutable 50-user,
 14-day, seed-20260812 pilot. All six variants share one preparation, population,
@@ -90,11 +94,15 @@ advance to a routine branch**. See `docs/FACTORIZATION_DECISION.md` and the
 registered T2.7 evidence index. Component names, next-event accuracy, and
 covariance diagnostics remain insufficient evidence of semantics.
 
-T3.4 observable naive rankers are complete over the 2.0 recommendation
-contract. Popularity, nearest, and category-preference controls consume only
-observed data and authenticate shared immutable request and available-candidate
-sets. **T3.5 frozen-embedding candidate ranking** is the next recommendation
-implementation task; it must retain those causal and identity contracts.
+T3.4--T3.7 are complete over the 2.0 recommendation contract. T3.5 supplies the
+frozen-embedding candidate head; T3.6 supplies observed-only exposure-aware
+training and a separately integrity-gated protected evaluator; T3.7 supplies
+observed-only frozen transfer slices and therefore no utility regret.
+
+The prioritized sequence is now P4: **T4.1 uncertainty calibration**, **T4.2
+adaptation and forgetting audit**, **T4.3 privacy audits**, **T4.4 online
+incremental-update benchmarks**, then **T4.5 calibration and external-validity
+limits**. This ordering does not relax the negative T2.7 routine-branch gate.
 
 ## Evidence limitations
 

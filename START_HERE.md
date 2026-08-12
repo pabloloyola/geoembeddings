@@ -68,9 +68,17 @@ remain explicitly readable by the legacy modeling path; readers never fabricate
 missing 2.0 recommendation tables.
 
 Evaluator foundations, paired interventions/change evaluation, component
-exports, the persistent/context implementation, and the T3.4 observed-only
-naive ranking controls now exist. T2.7 completed on matched immutable artifacts
-with a **do not advance** decision because persistent and combined gates failed;
-do not open a routine branch. Recommendation work should build on the shared
-request/candidate identities emitted by `geoembed rank`, with T3.5 as the next
-candidate-aware implementation task.
+exports, the persistent/context implementation, and T3.4--T3.7 recommendation
+work now exist. T3.5 provides the observed-only frozen-embedding candidate
+ranker. T3.6 adds observed-only exposure-aware training; only its protected
+paired evaluator may report utility regret and probability recovery, and only
+after pair-integrity and ranking-identity authentication. T3.7 provides frozen
+seen/unseen region and POI plus early/late slices from observed data alone, so
+it cannot report utility regret. These synthetic results are neither real-world
+causal evidence nor external-validity evidence.
+
+T2.7 completed on matched immutable artifacts with a **do not advance**
+decision because persistent and combined gates failed; do not open a routine
+branch. Continue with the prioritized P4 sequence in `TASKS.md`: T4.1
+uncertainty calibration, T4.2 adaptation/forgetting audit, T4.3 privacy audits,
+T4.4 online-update benchmarks, then T4.5 external-validity limits.
