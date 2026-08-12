@@ -776,6 +776,10 @@ gated by T1.6.
 
 - [ ] **T4.4 — Online incremental-update benchmarks.**
   - **Requirement IDs:** R13.
+  - **Design contract:** [`docs/INCREMENTAL_UPDATE_CONTRACT.md`](docs/INCREMENTAL_UPDATE_CONTRACT.md)
+    fixes atomic batch-append semantics, per-component mutation, edge-case and
+    recomputation requirements, immutable workloads, measurement provenance,
+    and Apple MPS constraints before implementation.
   - **Prerequisites:** stable update/export API and T0.3 metadata schema.
   - **Affected layer:** model, evaluator.
   - **Baseline artifact required:** T1.7 offline benchmark and selected checkpoint.
@@ -783,8 +787,10 @@ gated by T1.6.
     `benchmarks/online.json` (proposed).
   - **Minimum coverage:** warmup/iteration/statistics unit tests; CPU integration
     plus optional CUDA/MPS regression with identical workload metadata.
-  - **Completion evidence:** p50/p95 update latency, throughput, peak memory,
-    batch size, device/software metadata, and artifact size.
+  - **Completion evidence:** cold-start, steady single-event, frozen batched,
+    and export-serialization workloads report p50/p95 update latency,
+    throughput, peak memory, batch size, device/software metadata, hashes,
+    artifact size, and passing full-recomputation correctness checks.
   - **Known limitation/blocker:** hardware-specific results require comparable environments.
 
 - [x] **T4.5 — Calibration and external-validity limits.**
