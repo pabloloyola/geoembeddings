@@ -1114,3 +1114,21 @@ relative-day matched-control drift curves, adaptation, recovery, forgetting,
 permanent drift, coverage, exclusions, and right-censoring separately for the
 statistical and learned representations. `--overwrite` is required to replace
 both existing regular outputs.
+
+## `audit-nonstationarity` (T4.2; R11)
+
+```bash
+uv run geoembed audit-nonstationarity \
+  --no-change-report pairs/no-change/change_evaluation.json \
+  --temporary-report pairs/temporary/change_evaluation.json \
+  --sustained-report pairs/sustained/change_evaluation.json \
+  --output-dir experiments/r11-audit
+```
+
+The command consumes three authenticated `geoembeddings-change-evaluation/2.0`
+reports and writes canonical `audits/nonstationarity.json` and `.md` outputs.
+It rejects any difference in users, cutoffs, preparation contract, source
+lineage, component schema, relative-day definition, or censoring rules. Metrics,
+matched controls, confidence intervals, censoring, exclusions, and coverage stay
+separate by representation and component; the report never selects an aggregate
+winner. Existing outputs require `--overwrite`.

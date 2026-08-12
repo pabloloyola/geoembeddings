@@ -119,6 +119,18 @@ class PairLayout:
     def exposure_counterfactual_json(self) -> Path:
         return self.root / "ranking" / "exposure_counterfactual.json"
 
+    @property
+    def audits_dir(self) -> Path:
+        return self.root / "audits"
+
+    @property
+    def nonstationarity_audit_json(self) -> Path:
+        return self.audits_dir / "nonstationarity.json"
+
+    @property
+    def nonstationarity_audit_markdown(self) -> Path:
+        return self.audits_dir / "nonstationarity.md"
+
 
 @dataclass(frozen=True)
 class ExperimentLayout:

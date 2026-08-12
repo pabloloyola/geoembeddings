@@ -717,7 +717,7 @@ gated by T1.6.
     audit the statistical baseline, capacity-matched single vector, and
     factorized diagnostic variants under the protocol's provenance rules.
 
-- [ ] **T4.2 — Adaptation and forgetting audit.**
+- [x] **T4.2 — Adaptation and forgetting audit.**
   - **Requirement IDs:** R11.
   - **Prerequisites:** T1.15 and a `selected_candidate` under the
     representation-selection policy in `docs/EXPERIMENT_PROTOCOL.md`.
@@ -735,6 +735,22 @@ gated by T1.6.
     conclusions are unavailable. The protocol still permits explicitly labeled
     `diagnostic_control` comparisons of the statistical baseline,
     capacity-matched single vector, and factorized diagnostic variants.
+  - **Completion note (2026-08-12):** `audit-nonstationarity` writes the
+    versioned canonical `audits/nonstationarity.{json,md}` artifacts only after
+    authenticating no-change, temporary-trip, and sustained-preference report
+    schemas and exact user, cutoff, preparation, source-lineage, component,
+    relative-day, and censoring identities. It reports matched-control
+    time-to-adaptation, recovery, temporary forgetting, sustained permanent
+    drift, confidence intervals, censoring, exclusions, and coverage separately
+    for the statistical baseline, capacity-matched single vector, and each
+    factorized diagnostic component; it explicitly emits no aggregate winner.
+    The current role is `diagnostic_control`, so the selection-dependent R11
+    conclusion remains unavailable. Simulator-defined change semantics,
+    thresholds, sparse post-change observations, and unestablished factorized
+    branch semantics remain limitations. **Next decision:** preserve the T2.7
+    do-not-advance decision and proceed to T4.3 without selecting a least-bad
+    representation; rerun this audit only when immutable, indexed three-scenario
+    reports for a gate-passing candidate exist.
 
 - [ ] **T4.3 — Privacy audits.**
   - **Requirement IDs:** R12.
