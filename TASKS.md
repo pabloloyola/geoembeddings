@@ -717,6 +717,38 @@ gated by T1.6.
     audit the statistical baseline, capacity-matched single vector, and
     factorized diagnostic variants under the protocol's provenance rules.
 
+  - [ ] **T4.1a — Diagnostic-control uncertainty calibration (non-selection
+    evidence).**
+    - **Scope:** calibrate on held-out users for the statistical baseline, the
+      capacity-matched single-vector control, and each factorized diagnostic
+      variant. Every representation remains immutably labeled
+      `diagnostic_control`; this subtask must neither select a candidate nor
+      establish the hypothesized semantics of a factorized branch.
+    - **Split and uncertainty protocol:** calibration users and test users must
+      be disjoint, frozen before fitting, and shared across controls. Estimate
+      uncertainty with a seeded event- or window-bootstrap whose sampling unit,
+      replicate count, replacement policy, and sparse-history handling are
+      explicit. Do not reuse T1.7's three-cutoff temporal-repeatability estimate
+      as though it were calibrated uncertainty.
+    - **Artifact contract:** `reliability/calibration.json` must record the
+      immutable representation role and identity for every control, all input
+      source hashes, preparation identity, calibration-user and test-user
+      hashes, resampling method and seed, and every fitted calibration parameter.
+      Reject role changes, preparation/source mismatches, split overlap, or
+      post-hoc user-set changes.
+    - **Required reporting:** report raw and calibrated reliability-error bins
+      separately, and raw and calibrated coverage-risk curves separately, for
+      every diagnostic control; include bin/coverage counts and exclusions and
+      emit no aggregate winner.
+    - **Minimum coverage:** unit tests for bootstrap determinism, calibration
+      fitting, sparse bins, and coverage-risk; integration tests for held-out-
+      user isolation plus role, source, preparation, and split-hash mismatch
+      rejection.
+    - **Completion boundary:** completing this diagnostic subtask does not
+      complete T4.1. Only a future gate-passing representation with the
+      immutable `selected_candidate` role can provide T4.1's
+      selection-dependent completion evidence.
+
 - [x] **T4.2 — Adaptation and forgetting audit.**
   - **Requirement IDs:** R11.
   - **Prerequisites:** T1.15 and a `selected_candidate` under the
