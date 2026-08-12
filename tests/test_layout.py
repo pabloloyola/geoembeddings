@@ -23,6 +23,8 @@ def test_layout_resolves_all_paths(tmp_path) -> None:
     assert experiment.reliability_evaluation("baseline") == experiment.root / "baseline_reliability.json"
     assert experiment.reliability_evaluation("learned") == experiment.root / "reliability.json"
     assert experiment.offline_benchmark == experiment.root / "benchmarks" / "offline.json"
+    assert experiment.online_benchmark == experiment.root / "benchmarks" / "online.json"
+    assert experiment.online_workload == experiment.root / "benchmarks" / "online_workload.json"
     pair = PairLayout.from_path(tmp_path / "pair")
     assert pair.manifest == pair.root / "pair_manifest.json"
     assert pair.integrity_report == pair.root / "pair_integrity.json"

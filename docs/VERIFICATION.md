@@ -343,6 +343,18 @@ coverage-risk behavior differs, while timing on this warm filesystem happened
 to be lower. These hardware-specific smoke measurements do not measure training
 or online incremental updates and are not calibrated real-world uncertainty.
 
+## T4.4 online incremental-update verification
+
+Run `uv run geoembed benchmark --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+--warmup 10 --iterations 100`. In addition to the retained offline report, this
+creates immutable `benchmarks/online_workload.json` and canonical
+`benchmarks/online.json`. The CPU acceptance path covers both baseline and
+learned diagnostic controls, atomic rollback, workload determinism, deterministic
+quantiles, immutable vectors, and mandatory full-recomputation checks. CUDA/MPS
+are optional and must reuse identical workload metadata; device fallback is not
+an accelerator result. Training and hardware-normalized winner claims remain
+excluded.
+
 ## T1.11f matched-evaluator verification (2026-08-11)
 
 Requirement IDs: R5 and R7. This is an evaluator-only change; the observed

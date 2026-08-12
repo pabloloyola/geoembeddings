@@ -813,7 +813,7 @@ gated by T1.6.
     factorized variants only when each is labeled `diagnostic_control` and its
     required audit provenance is recorded.
 
-- [ ] **T4.4 — Online incremental-update benchmarks.**
+- [x] **T4.4 — Online incremental-update benchmarks.**
   - **Requirement IDs:** R13.
   - **Design contract:** [`docs/INCREMENTAL_UPDATE_CONTRACT.md`](docs/INCREMENTAL_UPDATE_CONTRACT.md)
     fixes atomic batch-append semantics, per-component mutation, edge-case and
@@ -822,8 +822,13 @@ gated by T1.6.
   - **Prerequisites:** stable update/export API and T0.3 metadata schema.
   - **Affected layer:** model, evaluator.
   - **Baseline artifact required:** T1.7 offline benchmark and selected checkpoint.
-  - **Command → expected artifact:** `uv run geoembed benchmark --online ...` →
-    `benchmarks/online.json` (proposed).
+  - **Command → expected artifact:** `uv run geoembed benchmark ...` → immutable
+    `benchmarks/online_workload.json` and canonical `benchmarks/online.json`.
+  - **Implemented evidence:** typed atomic state/result/workload boundaries,
+    deterministic frozen cold/steady/batched workloads, baseline and learned
+    diagnostic controls, full-recomputation gating, rollback/idempotency tests,
+    tail latency, throughput, memory, lineage, runtime metadata, and exclusions.
+    CPU is required; CUDA/MPS remain optional and must reuse workload identity.
   - **Minimum coverage:** warmup/iteration/statistics unit tests; CPU integration
     plus optional CUDA/MPS regression with identical workload metadata.
   - **Completion evidence:** cold-start, steady single-event, frozen batched,

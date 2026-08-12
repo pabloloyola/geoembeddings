@@ -127,6 +127,7 @@ def build_artifact_index(
         ],
         "benchmarks": [
             ("offline_benchmark", experiment.offline_benchmark),
+            ("online_benchmark", experiment.online_benchmark),
         ],
     }
     missing = [str(path) for entries in groups.values() for _, path in entries if not path.is_file()]

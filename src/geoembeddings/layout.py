@@ -230,6 +230,15 @@ class ExperimentLayout:
         return self.benchmarks_dir / "offline.json"
 
     @property
+    def online_benchmark(self) -> Path:
+        """Canonical immutable online-update benchmark report."""
+        return self.benchmarks_dir / "online.json"
+
+    @property
+    def online_workload(self) -> Path:
+        return self.benchmarks_dir / "online_workload.json"
+
+    @property
     def ranking_dir(self) -> Path:
         return self.root / "ranking"
 
