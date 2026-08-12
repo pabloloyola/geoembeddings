@@ -723,8 +723,11 @@ gated by T1.6.
     representation-selection policy in `docs/EXPERIMENT_PROTOCOL.md`.
   - **Affected layer:** evaluator.
   - **Baseline artifact required:** no-change, temporary, and sustained paired reports.
-  - **Command → expected artifact:** `uv run geoembed evaluate-change ...` →
-    `audits/nonstationarity.{json,md}` (proposed).
+  - Run `evaluate-change` separately to generate each authenticated no-change,
+    temporary, and sustained scenario input report.
+  - **Command → expected artifact:**
+    `uv run geoembed audit-nonstationarity --no-change-report pairs/no-change/change_evaluation.json --temporary-report pairs/temporary/change_evaluation.json --sustained-report pairs/sustained/change_evaluation.json --output-dir experiments/r11-audit`
+    → `audits/nonstationarity.{json,md}`.
   - **Minimum coverage:** time-to-threshold/censoring unit tests; matched-scenario
     integration for adaptation, forgetting, drift, and regret.
   - **Completion evidence:** temporary decay and sustained update are compared
