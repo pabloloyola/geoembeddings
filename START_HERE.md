@@ -83,7 +83,8 @@ causal evidence nor external-validity evidence.
 
 T2.7 completed on matched immutable artifacts with a **do not advance**
 decision because persistent and combined gates failed; do not open a routine
-branch. T4.5 external-validity limits are complete; continue with the remaining
-P4 work in `TASKS.md`: T4.1 uncertainty calibration, T4.2
-adaptation/forgetting audit, T4.3 privacy audits, and T4.4 online-update
-benchmarks.
+branch. T4.2 adaptation/forgetting auditing and T4.5 external-validity limits
+are complete. Because no representation has the `selected_candidate` role,
+T4.2 currently provides diagnostic-control evidence only, not a
+selection-dependent R11 conclusion. The remaining open tasks are T4.1
+uncertainty calibration, T4.3 privacy audits, and T4.4 online-update benchmarks.
