@@ -22,6 +22,15 @@ def load_config(path: str | Path) -> dict[str, Any]:
     return config
 
 
+def load_mapping_config(path: str | Path) -> dict[str, Any]:
+    """Load a versioned auxiliary YAML without imposing embedding sections."""
+    with Path(path).open("r", encoding="utf-8") as handle:
+        config = yaml.safe_load(handle)
+    if not isinstance(config, dict) or not isinstance(config.get("schema_version"), str):
+        raise ValueError(f"Auxiliary configuration must be a versioned mapping: {path}")
+    return config
+
+
 def _validate_config(config: dict[str, Any]) -> None:
     data = config["data"]
     train_fraction = float(data["train_fraction"])
@@ -47,4 +56,3 @@ def dump_config(config: dict[str, Any], path: str | Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
         yaml.safe_dump(config, handle, sort_keys=False)
-
