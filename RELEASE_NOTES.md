@@ -41,8 +41,17 @@ Implemented since the initial handoff:
   capacity-matched control, and branch/loss ablation configurations;
 - dataset contract 2.0 public POI, request, impression, and interaction tables,
   including synthetic Hakone request-time attributes and explicit 1.0 reading;
-- seeded reliability/repeatability reports and observed-only offline benchmarks.
+- seeded reliability/repeatability reports and observed-only offline benchmarks;
+- T3.5 observed-only frozen-embedding candidate ranking;
+- T3.6 observed-only exposure-aware training and protected regret/probability
+  recovery that execute only after pair-integrity and ranking authentication;
+- T3.7 observed-only frozen seen/unseen region/POI and early/late slices, with
+  utility regret explicitly unavailable because truth is not an input.
 
-The current gate is T2.7: factorization remains unmeasurable until matched
-immutable control/factorized artifacts are compared. T3.4 observable naive
-rankers are the next independent implementation option.
+T2.7 is complete with a **do not advance** decision: its matched persistent and
+combined gates failed, so the routine branch remains closed. T3.4--T3.7 are
+implemented, but their synthetic results are not real-world causal or
+external-validity evidence and do not make R5, R8, or R9 scientifically
+complete. Work now follows P4 priority order: T4.1 uncertainty calibration,
+T4.2 adaptation/forgetting, T4.3 privacy, T4.4 online benchmarks, and T4.5
+external-validity limits.

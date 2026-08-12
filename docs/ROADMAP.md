@@ -214,12 +214,9 @@ Add opening hours, family suitability, indoor/outdoor, price, popularity,
 capacity, temporary availability, coordinates, and travel time. Begin with a
 formal onsen/restaurant/cafe/shop/hotel/attraction catalog around Hakone.
 
-Status: the public schemas and synthetic Hakone request-time attributes are
-implemented, with explicit event-only dataset/1.0 compatibility. T3.4 also
-implements observed-only popularity, nearest-POI, and category-preference
-rankers, versioned prediction/report schemas, standard ranking metrics, and
-shared request/candidate hashes. The Phase 4 exit gate is met; embedding-aware
-ranking remains Phase 5 work.
+Status: complete. The public schemas, synthetic Hakone request-time attributes,
+T3.4 observed controls, and their shared request/candidate identities are
+implemented, with explicit event-only dataset/1.0 compatibility.
 
 ## Phase 5 — Candidate-aware recommendation
 
@@ -248,6 +245,15 @@ context adaptation delay, and persistent drift after return.
 Exit gate: frozen embeddings improve over non-personalized and statistical
 baselines; end-to-end tuning is reported separately.
 
+Status: T3.5 implements the frozen-embedding candidate ranker and has one small
+synthetic fixed-seed comparison. T3.6 implements observed-only exposure-aware
+training; protected utility regret and probability recovery are available only
+through the paired evaluator after integrity and identity authentication. T3.7
+implements observed-only frozen seen/unseen region/POI and early/late slices,
+so utility regret is unavailable there. These complete the implementation
+surface, not reference-scale scientific acceptance, real-world causality, or
+external validity.
+
 ## Phase 6 — Reliability, privacy, efficiency, and external validity
 
 Goal: make the representation usable beyond the controlled prototype.
@@ -267,6 +273,10 @@ Status: seeded three-cutoff reliability/repeatability and an observed-only
 offline frozen-export/evaluation benchmark are implemented. Calibrated
 uncertainty, privacy audits, training/online-update benchmarks, and external
 validation remain pending.
+
+Prioritized P4 sequence: T4.1 uncertainty calibration, T4.2 adaptation and
+forgetting audit, T4.3 privacy audits, T4.4 online incremental-update
+benchmarks, then T4.5 calibration and external-validity limits.
 
 ## T1.2 implementation note (R1, R4)
 

@@ -593,3 +593,17 @@ identical prediction/candidate surfaces. Focused unit regressions cover cutoff
 equality, unknown POIs, empty slices, duplicate prediction identities, hash
 mismatch, and train/test identity leakage. These tests validate the contract,
 not external geographic validity or causal recommendation quality.
+
+## Documentation status consistency
+
+`TASKS.md` is the authoritative completion ledger. Run:
+
+```bash
+uv run python scripts/check_status_consistency.py
+```
+
+The static check compares checked task identifiers with `next task`, `pending`,
+and `unimplemented` declarations in `docs/CURRENT_STATUS.md` and
+`docs/AGENT_HANDOFF.md`. Its regression fixture specifically rejects the stale
+claims that completed T3.5 is next or completed T3.7 is unimplemented. This is
+a documentation-integrity check, not experimental evidence for R5, R8, or R9.
