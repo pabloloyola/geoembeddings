@@ -813,14 +813,19 @@ protected utility, true intent, or unexposed alternatives and therefore do not
 establish causal recommendation quality.
 
 The `frozen_embedding` variant additionally requires the existing learned
-`EXPERIMENT_DIR/embeddings.npz` and preparation metadata. It causally selects
-the latest named export cutoff no later than each request, fits categorical
-vocabularies, numeric normalization, and a logistic candidate-interaction head
-on requests at or before `train_end`, and never updates the encoder. It writes
+`EXPERIMENT_DIR/dense_embeddings.npz` from `export-dense` and preparation
+metadata. It authenticates the versioned component schema, preparation and
+observed-source hashes, component identity, and timestamp field, then selects
+the latest user export timestamp no later than each request. It never reuses a
+split-end vector for an earlier request. It fits categorical vocabularies,
+numeric normalization, and a logistic candidate-interaction head only on
+scorable requests at or before `train_end`, and never updates the encoder. It writes
 `ranking/frozen_embedding_checkpoint.npz`, predictions, and a report. The
 report records ordered features, component and dimension, cutoff/split/seed and
-all input/checkpoint hashes, explicit unscorable requests, plus separate deltas
-against each available popularity, nearest, and category-preference report.
+all input/checkpoint hashes, disjoint training/validation/test request
+identities, per-split requested/scorable/positive/candidate counts, explicit
+unscorable requests, plus separate deltas against each available popularity,
+nearest, and category-preference report.
 Missing controls are reported as missing rather than aggregated.
 
 ## `pipeline`

@@ -628,11 +628,15 @@ gated by T1.6.
     contextualize naive baselines with coverage and no end-to-end tuning.
   - **Known limitation/blocker:** stochastic-choice accuracy alone is insufficient.
   - **Implementation record (2026-08-12):** the existing `rank` command now
-    selects causal frozen exports, rejects invalid lineage/identity/value/shape
-    inputs, fits preprocessing and only a deterministic candidate interaction
-    head on training requests, and writes the centralized checkpoint plus
+    consumes the canonical timestamped `export-dense` artifact, authenticates
+    its schema, source/preparation hashes, component identity, and timestamps,
+    and selects the latest user vector no later than each request. It rejects
+    empty scorable training data before preprocessing, fits preprocessing and
+    only a deterministic candidate interaction head on explicitly disjoint
+    training requests, and writes the centralized checkpoint plus
     versioned prediction/report artifacts. Reports preserve T3.4 candidate
-    identity and give separate control deltas and explicit coverage/exclusions.
+    identity and give separate control deltas, per-split requested/scorable/
+    positive/candidate counts, request identities, and explicit exclusions.
     Seed is `20260812`. No immutable same-run baseline/export artifacts are
     present in this checkout, so baseline metrics, deltas, and coverage remain
     explicitly unmeasured; the reproducible evidence command and limitations
