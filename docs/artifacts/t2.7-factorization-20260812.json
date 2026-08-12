@@ -1,0 +1,267 @@
+{
+  "artifacts": {
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/capacity_matched_single/dense_embeddings.npz": {
+      "bytes": 3348226,
+      "sha256": "cdbe80b3fe29e87b22291b18afc27220ffedbd32046b4a32dee35ed88c3a7b92"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/capacity_matched_single/embeddings.npz": {
+      "bytes": 209875,
+      "sha256": "f3fe031bef9d9d29ce1738c53ba961bac6084d6973581cd39a2d290fd9339ebb"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/capacity_matched_single/episode_response.json": {
+      "bytes": 6632,
+      "sha256": "5a706fcde1fac542903c26cef7ccda5bc135135ad97322e661dc46c88e0bf28e"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/capacity_matched_single/evaluation.json": {
+      "bytes": 372252,
+      "sha256": "956653264b03d3bec487b078aa0800b700233419bec8aaddbf6af3e17a18809e"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/capacity_matched_single/learned_temporal_routine.json": {
+      "bytes": 324280,
+      "sha256": "270fae39047deaa8d1918855f001b39d292412b6bfa3b518d26b41aeca57925f"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/capacity_matched_single/model/best_model.pt": {
+      "bytes": 2166773,
+      "sha256": "db533190c92a159395be51c4e41f4d047280adfdda74b2ea6325c5abd462131b"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/capacity_matched_single/model/training_report.json": {
+      "bytes": 17421,
+      "sha256": "fff8fd408f89c64ba5a61e55fa4dea53f486653522eef2dfe66968fe15aa6fd8"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/capacity_matched_single/prepared/prepared_metadata.json": {
+      "bytes": 2364,
+      "sha256": "96dcddb8c9e8ef0fde8cbeebf146a9ac49456fd4da00bfa39a0d28f84dff53a6"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/capacity_matched_single/robustness/learned_robustness.json": {
+      "bytes": 149128,
+      "sha256": "67272f33c8350fa4262e8700eb71f420729c35e5f1118d877182259f25b51cbf"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/context_only/dense_embeddings.npz": {
+      "bytes": 3351916,
+      "sha256": "cce83518447688181e44f0a7c0ce8b3db7f96164f1554990abe81f5657a22abe"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/context_only/embeddings.npz": {
+      "bytes": 210085,
+      "sha256": "ccf03585fc487f7587b7b041a59de315661d096d82f575fa0655f3cb4719c92b"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/context_only/episode_response.json": {
+      "bytes": 6631,
+      "sha256": "6cf8cbd4585958362fb6919ee45b6ab7340b3c95f2c364019b729b53184faf2b"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/context_only/evaluation.json": {
+      "bytes": 372378,
+      "sha256": "ae8b15c1d5d43fb27ddec52f5e00fc73d18744728288eae4471aafce41057fb2"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/context_only/learned_temporal_routine.json": {
+      "bytes": 324277,
+      "sha256": "1df3066667801d621945aad3a9a76d7ac0bf9fdb2e89e449424375b95353bba6"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/context_only/model/best_model.pt": {
+      "bytes": 2175797,
+      "sha256": "c9d63ea2dd5af558a04d4cf53281d8c667f9c73dd7eceb4e414496870909cb15"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/context_only/model/training_report.json": {
+      "bytes": 17449,
+      "sha256": "26de1cdcb41f382ed96edde266823bcf28096f48d1e385fe6e39567414713bd9"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/context_only/prepared/prepared_metadata.json": {
+      "bytes": 2364,
+      "sha256": "96dcddb8c9e8ef0fde8cbeebf146a9ac49456fd4da00bfa39a0d28f84dff53a6"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/context_only/robustness/learned_robustness.json": {
+      "bytes": 149042,
+      "sha256": "e1f4ad728900d62985db731925c19c40f09a0fe0c960c83280471e31eb69d229"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_context_loss/dense_embeddings.npz": {
+      "bytes": 4475189,
+      "sha256": "c09000c854d4838440be50d0b1aabb2a39cbcd41e243f3aa9c10a680a417a26a"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_context_loss/embeddings.npz": {
+      "bytes": 279048,
+      "sha256": "f41bcf1598f473bb79d8f1d8639db0ef21d56e70f8cab51d15983eb44b9d4fe3"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_context_loss/episode_response.json": {
+      "bytes": 6637,
+      "sha256": "48cece5ded703863b9f645473a8dc7edd343f9e331fde9504a03eac6237ac751"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_context_loss/evaluation.json": {
+      "bytes": 372204,
+      "sha256": "ad9118f009ac53266abfc21a47ee2d7a3ae7a39ebbdf45850d73d28b1250f6de"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_context_loss/learned_temporal_routine.json": {
+      "bytes": 324283,
+      "sha256": "afff20ebffaf23f06afae67578878445c4407bfe192e3fcc6cd49609bca5c0df"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_context_loss/model/best_model.pt": {
+      "bytes": 2175797,
+      "sha256": "1254560579261639c37f366ef35e932a636104a664db8a3a861c77f0989d8e11"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_context_loss/model/training_report.json": {
+      "bytes": 17511,
+      "sha256": "bd7f5c3b348980d7c44eecd6ffc7dceb301327e5829e69af89b92087913d4432"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_context_loss/prepared/prepared_metadata.json": {
+      "bytes": 2364,
+      "sha256": "96dcddb8c9e8ef0fde8cbeebf146a9ac49456fd4da00bfa39a0d28f84dff53a6"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_context_loss/robustness/learned_robustness.json": {
+      "bytes": 149136,
+      "sha256": "b5e68137470458a06796c7b4958fed8fa23da183923f8d93acd5b677185ab1b3"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_persistent_loss/dense_embeddings.npz": {
+      "bytes": 4481656,
+      "sha256": "23c49a096403b2acdb1dd7431f9860c7d687a16e5d3f1cc5314e40fb49dbed70"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_persistent_loss/embeddings.npz": {
+      "bytes": 279317,
+      "sha256": "cc74c8028b35310924c98399a107d6b3dd72e30cd76c9c264a154b32f46edde3"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_persistent_loss/episode_response.json": {
+      "bytes": 6620,
+      "sha256": "1175f0acc85ba2aae024eb2483bf9f86546a1c425f248ec53d81ba20c04c9ccb"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_persistent_loss/evaluation.json": {
+      "bytes": 372512,
+      "sha256": "f85c04dc3b169997c6431bf89701524fe2185df0484eacd622aee13eac246231"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_persistent_loss/learned_temporal_routine.json": {
+      "bytes": 324285,
+      "sha256": "5a22f68cffd256af4a0057f196c8de57b2fe4c7d61da8a3ae9f50f5dbc07c773"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_persistent_loss/model/best_model.pt": {
+      "bytes": 2175797,
+      "sha256": "8435ba9c4d99e7ebc3907667c758a521a5cbaf8e3cef7dff4418051189648540"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_persistent_loss/model/training_report.json": {
+      "bytes": 17485,
+      "sha256": "c87a926fa67ce4bcb36e8f70daa7e8b0eab0e5e77c4802827106ba5e19dd2de4"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_persistent_loss/prepared/prepared_metadata.json": {
+      "bytes": 2364,
+      "sha256": "96dcddb8c9e8ef0fde8cbeebf146a9ac49456fd4da00bfa39a0d28f84dff53a6"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_no_persistent_loss/robustness/learned_robustness.json": {
+      "bytes": 149179,
+      "sha256": "69e15c463d2b7446d2d9eaaf7c5b3519be791bb1cba76b2db0806e167c36dfcc"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_pc/comparison/factorized_comparison.json": {
+      "bytes": 3839810,
+      "sha256": "ec6b2d2eb7648d7c5db78b8da9f2b08c16bb76ed88d6d3582215dde83ff0fa63"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_pc/comparison/factorized_comparison.md": {
+      "bytes": 1358,
+      "sha256": "85c9e286c5f38f5c764e86c55ec0d60316cc2553ef9e055715437e092592849b"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_pc/dense_embeddings.npz": {
+      "bytes": 4466908,
+      "sha256": "f164dddc25096ba5dd796501c64b9005e89a8c203aedf1bd1b686a17c2c81c29"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_pc/embeddings.npz": {
+      "bytes": 278731,
+      "sha256": "5c59c98a3e1c2158959dec696502a39d55b98ff66282e2d94a1b5cf44ecbc07c"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_pc/episode_response.json": {
+      "bytes": 6634,
+      "sha256": "db6adab7b6615af5b6f9628ddabd06e79e2c49dc93f3405e2d900446fc036043"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_pc/evaluation.json": {
+      "bytes": 372421,
+      "sha256": "f0b2e7501475d3fa87c4c9841d597c746ac8386b972bd30de80839e2ce9785cb"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_pc/learned_temporal_routine.json": {
+      "bytes": 324286,
+      "sha256": "401832bcbad6bea7533f8c3a3ae65f65a1423feaff4bb18df53a1b3780ef165b"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_pc/model/best_model.pt": {
+      "bytes": 2175797,
+      "sha256": "f22c3cb984c970d6598ff7a4eb62985d59cd0c843f05df1051c1ffa5677e31b4"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_pc/model/training_report.json": {
+      "bytes": 17395,
+      "sha256": "7b257bb30020fe406910f04e7e12e468d083e9bb24fee360146a5a416d6f225f"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_pc/prepared/prepared_metadata.json": {
+      "bytes": 2364,
+      "sha256": "96dcddb8c9e8ef0fde8cbeebf146a9ac49456fd4da00bfa39a0d28f84dff53a6"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/factorized_pc/robustness/learned_robustness.json": {
+      "bytes": 149017,
+      "sha256": "6e0c613101ac78ec39f9efadb2ed0f32c5af23abbed308dd4b2074f1dfa33b5b"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/persistent_only/dense_embeddings.npz": {
+      "bytes": 3364332,
+      "sha256": "d10d80a95666c8c199e57935b0306b573011c244548af578c57ad34ad6625da1"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/persistent_only/embeddings.npz": {
+      "bytes": 211056,
+      "sha256": "b19b23b674ef13dad18dcd86a8fd1daa36248a05fe82adcc982f1729e488f077"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/persistent_only/episode_response.json": {
+      "bytes": 6644,
+      "sha256": "58bc72592ae79ac92e7d17dcfdf709b458eab96c458b395e1e67524a0f0b0f6f"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/persistent_only/evaluation.json": {
+      "bytes": 371792,
+      "sha256": "2e1b40560021675645189c18bcaaebffe801b192a3d08bf3f2faf1404d09269d"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/persistent_only/learned_temporal_routine.json": {
+      "bytes": 324288,
+      "sha256": "b9c77cdae0fdf3f43f8644e504646e922ad26580cbff95db755e14199be02c17"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/persistent_only/model/best_model.pt": {
+      "bytes": 2175797,
+      "sha256": "500ebbd44c0e891ce21af1cf09a610ab8a35bc62981a595d223e9d33911d773d"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/persistent_only/model/training_report.json": {
+      "bytes": 17661,
+      "sha256": "745cd261b597364308f45cb3262251aec0a1164d98a72904601dec257ba1b626"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/persistent_only/prepared/prepared_metadata.json": {
+      "bytes": 2364,
+      "sha256": "96dcddb8c9e8ef0fde8cbeebf146a9ac49456fd4da00bfa39a0d28f84dff53a6"
+    },
+    "/workspace/geoembeddings/experiments/t2.7-factorization-20260812/persistent_only/robustness/learned_robustness.json": {
+      "bytes": 149079,
+      "sha256": "7373dbe0d4e49c7c0f596dda092308a401f752f7525d8e2dd7079fdd522e0fc6"
+    }
+  },
+  "decision": "do not advance",
+  "matched_identity": {
+    "cutoffs": [
+      "test",
+      "train",
+      "validation"
+    ],
+    "export_keys_sha256": "c60d5bad5aa669aea2473b46b1e192ceb604a2c866d86a80bc9e7590dda2dd70",
+    "preparation_definition": {
+      "categorical_fields": [
+        "service_id",
+        "action_type",
+        "observation_mode",
+        "object_category",
+        "region_id",
+        "geohash_5",
+        "geohash_7"
+      ],
+      "continuous_fields": [
+        "latitude",
+        "longitude",
+        "log_delta_minutes",
+        "hour_sin",
+        "hour_cos",
+        "dow_sin",
+        "dow_cos",
+        "log_location_accuracy_m"
+      ],
+      "train_end": "2026-04-10T12:39:00+00:00",
+      "validation_end": "2026-04-12T23:24:00+00:00"
+    },
+    "source_files": {
+      "observed_events.csv.gz": "02097684a34030f1447b1721314f76fac5293b5228100fcf43b96611583b3df9",
+      "users_observed.csv.gz": "4faa10947193d6cd49d01b9f8643672084462b0a9dd255b020b7f312d53619c5"
+    },
+    "user_mask_sha256": "d1e138ec3003b3ada01f0d8aecc1bc98bbbc1875fcc8a7ed8f2ebb86aa647e23"
+  },
+  "schema_version": "geoembeddings-factorization-evidence-index/1.0",
+  "task_id": "T2.4-T2.7"
+}

@@ -357,3 +357,29 @@ Reported curves are matched-control representation drift, not causal evidence
 outside the simulator and not proof of factorized disentanglement. Sparse event
 histories cause explicit missing-bin exclusions; sustained runs are explicitly
 right-censored and therefore cannot report recovery.
+
+## T2.4--T2.7 factorization gate (2026-08-12)
+
+Requirements R1, R4, R5, R6, and R7 affect the observed-only model/export path
+and protected evaluators; the observed contract is unchanged. The immutable
+replacement identity is `t2.7-factorization-20260812-s20260812-u50-d14`
+(50 users, 14 days, simulation seed 20260812). Preparation ran once and its
+bytes were copied unchanged into the six immutable experiment roots.
+
+```bash
+uv run geoembed compare --run-dir runs/t2.7-factorization-20260812-s20260812-u50-d14 \
+  --factorized-experiment factorized_pc=experiments/t2.7-factorization-20260812/factorized_pc \
+  --factorized-experiment capacity_matched_single=experiments/t2.7-factorization-20260812/capacity_matched_single \
+  --factorized-experiment persistent_only=experiments/t2.7-factorization-20260812/persistent_only \
+  --factorized-experiment context_only=experiments/t2.7-factorization-20260812/context_only \
+  --factorized-experiment factorized_no_persistent_loss=experiments/t2.7-factorization-20260812/factorized_no_persistent_loss \
+  --factorized-experiment factorized_no_context_loss=experiments/t2.7-factorization-20260812/factorized_no_context_loss
+uv run python scripts/index_artifacts.py --factorized-comparison \
+  experiments/t2.7-factorization-20260812/factorized_pc/comparison/factorized_comparison.json \
+  --output docs/artifacts/t2.7-factorization-20260812.json --task-id T2.4-T2.7
+```
+
+The comparison rejects source, preparation-definition, cutoff, export-key,
+user-mask, and supplemental-definition mismatches. Coverage is 49 export users
+and seven held-out probe users. Persistent and combined gates fail; paired
+causal claims are deliberately not made after the mandatory rejection gate.
