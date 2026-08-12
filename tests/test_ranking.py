@@ -16,6 +16,8 @@ from geoembeddings.ranking import (RankingCandidate, RankingPrediction, RankingR
     FrozenEmbeddingRows, RankingTrainingBatch, compute_ranking_metrics, rank_candidates,
     select_causal_embeddings, train_frozen_head, _candidate_matrix)
 from geoembeddings.representation_schema import COMPONENT_NAMES, EXPORT_SCHEMA_VERSION
+from geoembeddings.ranking_evaluation import (RANKING_PREDICTION_SCHEMA,
+    _load_predictions, classify_transfer_slices)
 
 
 def request(request_id: str = "r", user_id: str = "u") -> RankingRequest:
@@ -125,6 +127,56 @@ def test_frozen_head_is_deterministic_and_preserves_typed_identity_order() -> No
     assert float(batch.features[1] @ first) > float(batch.features[0] @ first)
 
 
+def _transfer_rows():
+    requests = [
+        {"request_id": "train-equal", "user_id": "u", "request_timestamp": "2026-01-02T10:00:00", "region_id": "home"},
+        {"request_id": "early-a", "user_id": "u", "request_timestamp": "2026-01-03T10:00:00", "region_id": "away"},
+        {"request_id": "early-tie", "user_id": "u", "request_timestamp": "2026-01-03T10:00:00", "region_id": "away"},
+        {"request_id": "late", "user_id": "u", "request_timestamp": "2026-01-04T10:00:00", "region_id": "away"},
+    ]
+    catalog = [{"poi_id": "old", "region_id": "home"}, {"poi_id": "future", "region_id": "away"}]
+    impressions = [{"request_id": "train-equal", "poi_id": "old", "is_available": 1},
+                   {"request_id": "early-a", "poi_id": "future", "is_available": 1},
+                   {"request_id": "early-tie", "poi_id": "future", "is_available": 1},
+                   {"request_id": "late", "poi_id": "old", "is_available": 1}]
+    return requests, impressions, [], catalog
+
+
+def test_transfer_cutoff_equality_stage_empty_and_train_test_identity_leakage() -> None:
+    requests, impressions, interactions, catalog = _transfer_rows()
+    flags, definitions = classify_transfer_slices(requests, impressions, interactions, catalog,
+        train_end=datetime.fromisoformat("2026-01-02T10:00:00"))
+    assert definitions["counts"]["training_requests"] == 1  # equality is training
+    assert flags["unseen_poi"] == {"early-a", "early-tie"}  # future catalog presence did not leak
+    assert flags["early_trip"] == {"early-a", "early-tie"}
+    assert flags["late_trip"] == {"late"}
+    assert flags.get("seen_region_unseen_poi", set()) == set()  # empty intersections remain representable
+
+
+def test_transfer_rejects_unknown_poi() -> None:
+    requests, impressions, interactions, catalog = _transfer_rows()
+    impressions.append({"request_id": "late", "poi_id": "not-in-catalog", "is_available": 1})
+    with pytest.raises(ValueError, match="unknown POIs"):
+        classify_transfer_slices(requests, impressions, interactions, catalog,
+            train_end=datetime.fromisoformat("2026-01-02T10:00:00"))
+
+
+def test_transfer_prediction_duplicate_and_hash_mismatch(tmp_path) -> None:
+    path = tmp_path / "predictions.npz"
+    def save(request_hash="requests", pois=("p", "p")):
+        np.savez_compressed(path, schema_version=np.asarray(RANKING_PREDICTION_SCHEMA),
+            request_id=np.asarray(["r"] * len(pois)), poi_id=np.asarray(pois),
+            rank=np.arange(1, len(pois) + 1), score=np.ones(len(pois)),
+            request_hash=np.asarray(request_hash), candidate_hash=np.asarray("candidates"))
+    report = {"request_hash": "requests", "candidate_hash": "candidates"}
+    save(request_hash="wrong", pois=("p",))
+    with pytest.raises(ValueError, match="hashes do not match"):
+        _load_predictions(path, report)
+    save()
+    with pytest.raises(ValueError, match="duplicate predictions"):
+        _load_predictions(path, report)
+
+
 def _simulate(root: Path) -> None:
     config_path = Path("configs/simulation/kanto_v1.yaml")
     config = simulator.load_config(config_path)
@@ -190,6 +242,21 @@ def test_rankers_share_sets_reject_v1_and_never_open_truth(tmp_path, monkeypatch
     assert frozen_report["split_counts"]["training"]["scorable"] > 1
     assert set(frozen_report["split_counts"]) == {"training", "validation", "test"}
     assert (experiment / "ranking" / "frozen_embedding_checkpoint.npz").is_file()
+
+    # T3.7 consumes the exact four immutable T3.4/T3.5 prediction surfaces.
+    monkeypatch.setattr("sys.argv", ["geoembed", "evaluate-ranking", "--run-dir", str(run),
+        "--experiment-dir", str(experiment)])
+    main()
+    transfer = json.loads((experiment / "ranking" / "transfer_slices.json").read_text())
+    assert transfer["request_hash"] == reports[0]["request_hash"]
+    assert transfer["candidate_hash"] == reports[0]["candidate_hash"]
+    assert set(transfer["source_ranking_reports"]) == {
+        "popularity", "nearest", "category_preference", "frozen_embedding"}
+    assert transfer["utility_regret"]["status"] == "unavailable"
+    for sliced in transfer["metrics"].values():
+        assert set(sliced["models"]) == set(transfer["source_ranking_reports"])
+        for evaluated in sliced["models"].values():
+            assert set(evaluated["coverage"]) == {"requests", "users", "positive_labels", "candidates"}
 
     manifest_path = run / "manifest.json"
     manifest = json.loads(manifest_path.read_text())

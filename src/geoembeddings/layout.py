@@ -228,6 +228,10 @@ class ExperimentLayout:
         return self.ranking_dir / "frozen_embedding_checkpoint.npz"
 
     @property
+    def ranking_transfer_slices(self) -> Path:
+        return self.ranking_dir / "transfer_slices.json"
+
+    @property
     def comparison_dir(self) -> Path:
         return self.root / "comparison"
 

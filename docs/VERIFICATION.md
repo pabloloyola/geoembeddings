@@ -540,3 +540,29 @@ generalization evidence. The gate is satisfied for T3.5 because every requested
 axis beats every same-contract control with explicit coverage and exclusions;
 no encoder tuning was performed or is implied.
 
+## T3.7 frozen ranking-transfer verification
+
+T3.7 affects R8/R9 and only the observed evaluator layer. Its required baseline
+is the identical T3.4 controls and corrected T3.5 frozen ranker in one experiment.
+After generating those four reports and prediction files, run:
+
+```bash
+uv run geoembed evaluate-ranking --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+```
+
+Verify `ranking/transfer_slices.json` authenticates the four reports and NPZ
+files, records one shared request hash and candidate hash, and reports request,
+user, positive-label, and candidate coverage in every slice. The frozen split
+must classify cutoff equality as training; post-cutoff POI/catalog identities
+must not enter its fitted seen sets. Empty intersections are retained. The
+observable early-stage rule uses every request tied at the first post-training
+user/region timestamp, with strictly later requests classified late. Utility
+regret must remain `unavailable` unless a separate protected evaluator is built
+with an explicit truth input.
+
+The integration regression is `tests/test_ranking.py::test_rankers_share_sets_reject_v1_and_never_open_truth`.
+It creates all T3.4/T3.5 artifacts on one fixed-seed run and evaluates their
+identical prediction/candidate surfaces. Focused unit regressions cover cutoff
+equality, unknown POIs, empty slices, duplicate prediction identities, hash
+mismatch, and train/test identity leakage. These tests validate the contract,
+not external geographic validity or causal recommendation quality.
