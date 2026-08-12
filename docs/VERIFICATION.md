@@ -540,6 +540,33 @@ generalization evidence. The gate is satisfied for T3.5 because every requested
 axis beats every same-contract control with explicit coverage and exclusions;
 no encoder tuning was performed or is implied.
 
+## T3.6 exposure-aware ranking verification
+
+T3.6 affects R5/R9 across the observed ranking trainer and protected paired
+evaluator. Its prerequisite baseline is the immutable T3.5 lineage indexed at
+`docs/artifacts/t3.5-ranking-20260812.json`; the T3.7 transfer evaluator is also
+executable. Training receives only observed impressions, interactions, requests,
+catalog, events, and frozen embeddings. The only fitted propensity is the public
+logging-policy quantity `P(is_shown | candidate_position)` on training requests.
+Protected utility and choice probability remain in truth and are opened only
+after a current passing pair-integrity report and ranking identities authenticate.
+
+Run the three T3.4 controls and unweighted T3.5 ranker unchanged, then:
+
+```bash
+uv run geoembed rank --run-dir RUN --experiment-dir EXP \
+  --model exposure_aware --ranking-config configs/ranking/exposure_v1.yaml
+uv run geoembed evaluate-pair --pair-manifest PAIR/pair_manifest.json \
+  --baseline-experiment-dir REF_BASE INT_BASE \
+  --learned-experiment-dir REF_LEARNED INT_LEARNED \
+  --ranking-predictions REF_PRED INT_PRED --ranking-reports REF_REPORT INT_REPORT
+```
+
+Interpret ESS, weight distribution, clipping, every configured threshold,
+observed ranking performance, protected regret/probability recovery, and
+coverage separately. These results depend on synthetic exposure and utility
+assumptions and are not real-world causal evidence.
+
 ## T3.7 frozen ranking-transfer verification
 
 T3.7 affects R8/R9 and only the observed evaluator layer. Its required baseline

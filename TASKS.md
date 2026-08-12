@@ -648,7 +648,7 @@ gated by T1.6.
     lineage only; it is not causal or utility evidence and does not authorize
     end-to-end encoder tuning.
 
-- [ ] **T3.6 — Exposure-aware ranking and counterfactual evaluation.**
+- [x] **T3.6 — Exposure-aware ranking and counterfactual evaluation.**
   - **Requirement IDs:** R5, R9.
   - **Prerequisites:** T1.11f, T3.5.
   - **Affected layer:** model, evaluator.
@@ -661,6 +661,19 @@ gated by T1.6.
     probability recovery are separated with sensitivity diagnostics.
   - **Known limitation/blocker:** exposure adjustment depends on simulator
     identification assumptions and must not imply real-world causality.
+  - **Implementation record (2026-08-12):** after the indexed T3.5 evidence and
+    executable T3.7 transfer slices became available, the frozen candidate head
+    gained an observed-only exposure-aware variant. It estimates the logging
+    propensity as a Laplace-smoothed shown rate by public candidate position,
+    fitted exclusively on training requests, with clipping and threshold
+    sensitivity configured by `configs/ranking/exposure_v1.yaml`. Reports expose
+    ESS, weight quantiles, clipping rate, threshold sensitivity, coverage, and
+    observed ranking metrics while retaining all T3.4 controls and the unweighted
+    T3.5 head. The protected paired evaluator first re-authenticates a current
+    passing `pair_integrity.json`, prediction schemas, source hashes, and exact
+    request/candidate identities before opening evaluator-only recommendation
+    utility and choice probabilities. Its regret and probability-recovery output
+    is simulator-identification evidence only, never real-world causal evidence.
 
 - [x] **T3.7 — Unseen-region and unseen-POI ranking slices.**
   - **Requirement IDs:** R8, R9.

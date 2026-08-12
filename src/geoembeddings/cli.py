@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
-from .config import load_config
+from .config import load_config, load_mapping_config
 from .io import write_json
-from .layout import DatasetLayout, ExperimentLayout
+from .layout import DatasetLayout, ExperimentLayout, PairLayout
 
 
 DEFAULT_SIMULATION_CONFIG = Path("configs/simulation/kanto_v1.yaml")
@@ -57,6 +57,8 @@ def build_parser() -> argparse.ArgumentParser:
         metavar=("REFERENCE", "INTERVENTION"))
     evaluate_pair.add_argument("--config", type=Path, default=DEFAULT_EMBEDDING_CONFIG)
     evaluate_pair.add_argument("--overwrite", action="store_true")
+    evaluate_pair.add_argument("--ranking-predictions", type=Path, nargs=2, metavar=("REFERENCE", "INTERVENTION"))
+    evaluate_pair.add_argument("--ranking-reports", type=Path, nargs=2, metavar=("REFERENCE", "INTERVENTION"))
 
     evaluate_change = commands.add_parser("evaluate-change", help="Evaluate R1/R11 adaptation on a protected change pair")
     evaluate_change.add_argument("--pair-manifest", required=True, type=Path)
@@ -106,7 +108,8 @@ def build_parser() -> argparse.ArgumentParser:
     rank = commands.add_parser("rank", help="Run an observable dataset-2.0 recommendation baseline")
     rank.add_argument("--run-dir", required=True, type=Path)
     rank.add_argument("--experiment-dir", required=True, type=Path)
-    rank.add_argument("--model", required=True, choices=("popularity", "nearest", "category_preference", "frozen_embedding"))
+    rank.add_argument("--model", required=True, choices=("popularity", "nearest", "category_preference", "frozen_embedding", "exposure_aware"))
+    rank.add_argument("--ranking-config", type=Path, default=Path("configs/ranking/exposure_v1.yaml"))
     rank.add_argument("--k", type=int, nargs="+", default=[1, 5, 10])
     rank.add_argument("--overwrite", action="store_true")
 
@@ -480,6 +483,13 @@ def main() -> None:
         result = evaluate_pair(args.pair_manifest, args.baseline_experiment_dir,
             args.learned_experiment_dir, load_config(Path(args.config).expanduser().resolve()),
             overwrite=args.overwrite)
+        if (args.ranking_predictions is None) != (args.ranking_reports is None):
+            raise ValueError("--ranking-predictions and --ranking-reports must be supplied together")
+        if args.ranking_predictions is not None:
+            from .ranking_pair_evaluation import evaluate_ranking_pair
+            pair_layout = PairLayout.from_manifest_path(args.pair_manifest)
+            result["ranking"] = evaluate_ranking_pair(args.pair_manifest, args.ranking_predictions,
+                args.ranking_reports, pair_layout.exposure_counterfactual_json, overwrite=args.overwrite)
     elif args.command == "evaluate-change":
         from .evaluation import evaluate_change
         result = evaluate_change(args.pair_manifest, args.baseline_experiment_dir,
@@ -516,7 +526,9 @@ def main() -> None:
                              experiment.ranking_report(args.model), model=args.model,
                              ks=args.k, overwrite=args.overwrite,
                              embedding_path=experiment.dense_embeddings,
-                             checkpoint_path=experiment.frozen_ranking_checkpoint,
+                             checkpoint_path=(experiment.exposure_ranking_checkpoint if args.model == "exposure_aware"
+                                              else experiment.frozen_ranking_checkpoint),
+                             exposure_config=(load_mapping_config(args.ranking_config) if args.model == "exposure_aware" else None),
                              baseline_report_paths={name: experiment.ranking_report(name) for name in
                                  ("popularity", "nearest", "category_preference")})
     elif args.command == "evaluate-ranking":

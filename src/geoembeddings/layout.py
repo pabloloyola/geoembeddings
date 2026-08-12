@@ -115,6 +115,10 @@ class PairLayout:
     def change_evaluation_markdown(self) -> Path:
         return self.root / "change_evaluation.md"
 
+    @property
+    def exposure_counterfactual_json(self) -> Path:
+        return self.root / "ranking" / "exposure_counterfactual.json"
+
 
 @dataclass(frozen=True)
 class ExperimentLayout:
@@ -226,6 +230,10 @@ class ExperimentLayout:
     @property
     def frozen_ranking_checkpoint(self) -> Path:
         return self.ranking_dir / "frozen_embedding_checkpoint.npz"
+
+    @property
+    def exposure_ranking_checkpoint(self) -> Path:
+        return self.ranking_dir / "exposure_aware_checkpoint.npz"
 
     @property
     def ranking_transfer_slices(self) -> Path:

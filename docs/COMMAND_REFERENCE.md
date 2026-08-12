@@ -103,6 +103,21 @@ versioned `counterfactual_comparison` reports. Existing reports require explicit
 `--overwrite`. The command is evaluator-only and is the only stage that joins
 protected invariant/intervention labels to frozen representation keys.
 
+For T3.6, pass matching `--ranking-predictions REF INT` and
+`--ranking-reports REF INT`. The command first completes the ordinary
+`validate-pair` authentication gate, then authenticates ranking schemas, all
+observed source hashes, and exact request/candidate identities before reading
+`truth/recommendation_counterfactuals.csv.gz`. It writes
+`PAIR_DIR/ranking/exposure_counterfactual.json`, with observed metrics,
+protected utility regret and probability recovery, coverage, sensitivity, and
+simulator-identification limitations kept as separate sections.
+
+`geoembed rank --model exposure_aware --ranking-config
+configs/ranking/exposure_v1.yaml` fits only an observed candidate-position shown
+rate on training requests. The YAML controls Laplace smoothing, propensity
+floor, maximum weight, and sensitivity thresholds. This is a synthetic
+logging-policy adjustment, not a latent choice probability or causal claim.
+
 ## `pair-manifest`
 
 ### Purpose

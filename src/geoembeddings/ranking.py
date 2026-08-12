@@ -18,10 +18,11 @@ from .contract import DATASET_CONTRACT_NAME, DATASET_CONTRACT_VERSION, OBSERVED_
 from .io import sha256_file, write_json
 from .recommendation import validate_recommendation_tables
 from .representation_schema import COMPONENT_NAMES, EXPORT_SCHEMA_VERSION, load_embedding_export
+from .propensity import fit_position_propensities, clipped_inverse_propensity_weights
 
 RANKING_PREDICTION_SCHEMA = "geoembeddings-ranking-predictions/1.0"
 RANKING_REPORT_SCHEMA = "geoembeddings-ranking-report/1.0"
-RANKING_MODELS = ("popularity", "nearest", "category_preference", "frozen_embedding")
+RANKING_MODELS = ("popularity", "nearest", "category_preference", "frozen_embedding", "exposure_aware")
 FROZEN_CHECKPOINT_SCHEMA = "geoembeddings-frozen-ranking-checkpoint/1.0"
 FROZEN_FEATURES = ("travel_time_minutes", "request_latitude", "request_longitude", "poi_latitude",
                    "poi_longitude", "price_level", "family_suitability", "local_popularity",
@@ -269,17 +270,21 @@ def compute_ranking_metrics(
 
 
 def train_frozen_head(batch: RankingTrainingBatch, *, seed: int = 20260812,
-                      iterations: int = 300, learning_rate: float = .05) -> np.ndarray:
+                      iterations: int = 300, learning_rate: float = .05,
+                      sample_weights: np.ndarray | None = None) -> np.ndarray:
     """Fit only a deterministic logistic candidate head; embedding values are immutable inputs."""
     if not len(batch.features): raise ValueError("no training candidates")
     if batch.features.ndim != 2 or batch.labels.shape != (len(batch.features),):
         raise ValueError("invalid typed ranking training batch")
+    weights_by_row = np.ones(len(batch.labels)) if sample_weights is None else np.asarray(sample_weights, dtype=float)
+    if weights_by_row.shape != batch.labels.shape or not np.isfinite(weights_by_row).all() or np.any(weights_by_row <= 0):
+        raise ValueError("sample weights must be positive, finite, and row-aligned")
     rng = np.random.default_rng(seed)
     weights = rng.normal(0, 1e-4, batch.features.shape[1])
     for _ in range(iterations):
         logits = np.clip(batch.features @ weights, -30, 30)
         probabilities = 1 / (1 + np.exp(-logits))
-        weights -= learning_rate * ((batch.features.T @ (probabilities - batch.labels)) / len(batch.labels)
+        weights -= learning_rate * ((batch.features.T @ (weights_by_row * (probabilities - batch.labels))) / weights_by_row.sum()
                                     + 1e-4 * weights)
     return weights
 
@@ -289,6 +294,7 @@ def run_ranking(
     *, model: str, ks: Sequence[int] = (1, 5, 10), overwrite: bool = False,
     embedding_path: Path | None = None, checkpoint_path: Path | None = None,
     baseline_report_paths: Mapping[str, Path] | None = None,
+    exposure_config: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if manifest.get("dataset_contract") != {"name": DATASET_CONTRACT_NAME, "version": DATASET_CONTRACT_VERSION}:
         raise ValueError("rank requires dataset contract 2.0 recommendation tables")
@@ -314,7 +320,8 @@ def run_ranking(
     frozen_lineage: dict[str, Any] | None = None
     unscorable: dict[str, str] = {}
     split_counts: dict[str, dict[str, int]] | None = None
-    if model == "frozen_embedding":
+    propensity_diagnostics: dict[str, Any] | None = None
+    if model in {"frozen_embedding", "exposure_aware"}:
         if embedding_path is None or checkpoint_path is None:
             raise ValueError("frozen_embedding requires canonical embedding and checkpoint paths")
         prepared_path = embedding_path.parent / "prepared" / "prepared_metadata.json"
@@ -351,12 +358,40 @@ def run_ranking(
                                                        fit_ids=train_ids, fit=True)
         positive_pairs = {(str(row["request_id"]), str(row["poi_id"])) for row in tables["interactions"]
                           if str(row["request_id"]) in train_ids}
-        train_indices = [i for i, rid in enumerate(all_batch.request_ids) if rid in train_ids]
+        shown_pairs = {(str(row["request_id"]), str(row["poi_id"])) for row in tables["impressions"]
+                       if int(row["is_shown"]) == 1}
+        train_indices = [i for i, rid in enumerate(all_batch.request_ids) if rid in train_ids and
+                         (model != "exposure_aware" or (rid, all_batch.poi_ids[i]) in shown_pairs)]
+        if not train_indices:
+            raise ValueError("empty observed exposure-aware training surface")
         labels = np.asarray([float((all_batch.request_ids[i], all_batch.poi_ids[i]) in positive_pairs)
                              for i in train_indices])
         training = RankingTrainingBatch(tuple(all_batch.request_ids[i] for i in train_indices),
             tuple(all_batch.poi_ids[i] for i in train_indices), all_batch.features[train_indices], labels)
-        weights = train_frozen_head(training)
+        sample_weights = None
+        if model == "exposure_aware":
+            if not exposure_config or exposure_config.get("schema_version") != "geoembeddings-exposure-ranking-config/1.0":
+                raise ValueError("exposure_aware requires the versioned exposure ranking configuration")
+            prop_cfg, weight_cfg = exposure_config["propensity"], exposure_config["weighting"]
+            estimates = fit_position_propensities(tables["impressions"], train_ids,
+                smoothing=float(prop_cfg["smoothing"]))
+            positions = {(str(row["request_id"]), str(row["poi_id"])): int(row["candidate_position"])
+                         for row in tables["impressions"]}
+            probabilities = [estimates.get(positions[(rid, poi)], min(estimates.values()))
+                             for rid, poi in zip(training.request_ids, training.poi_ids, strict=True)]
+            sample_weights, primary = clipped_inverse_propensity_weights(probabilities,
+                minimum=float(weight_cfg["minimum_probability"]), maximum_weight=float(weight_cfg["maximum_weight"]))
+            sensitivity = {}
+            for threshold in weight_cfg["sensitivity_minimum_probabilities"]:
+                _, diag = clipped_inverse_propensity_weights(probabilities, minimum=float(threshold),
+                    maximum_weight=float(weight_cfg["maximum_weight"]))
+                sensitivity[str(threshold)] = diag
+            propensity_diagnostics = {"observable_definition":
+                "Laplace-smoothed P(is_shown=1 | candidate_position), fitted on training impressions only",
+                "estimator": prop_cfg["estimator"], "position_probabilities": {str(k): v for k, v in estimates.items()},
+                "primary": primary, "sensitivity": sensitivity,
+                "identification_limit": "A platform logging-policy estimate; not latent choice probability or real-world causal identification."}
+        weights = train_frozen_head(training, sample_weights=sample_weights)
         scores = all_batch.features @ weights
         grouped: dict[str, list[tuple[str, float]]] = defaultdict(list)
         for rid, poi, score in zip(all_batch.request_ids, all_batch.poi_ids, scores, strict=True):
@@ -437,6 +472,8 @@ def run_ranking(
     if frozen_lineage is not None:
         report["frozen_embedding_lineage"] = frozen_lineage
         report["split_counts"] = split_counts
+        if propensity_diagnostics is not None:
+            report["propensity_diagnostics"] = propensity_diagnostics
         comparisons = {}
         for name, path in (baseline_report_paths or {}).items():
             if path.is_file():

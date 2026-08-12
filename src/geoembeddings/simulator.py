@@ -932,6 +932,31 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
     recommendation_tables = {"poi_catalog": catalog, "recommendation_requests": requests, "impressions": impressions, "interactions": interactions}
     recommendation_validation = validate_recommendation_tables(recommendation_tables)
     recommendation_validation["naive_rankers"] = naive_ranker_diagnostics(recommendation_tables, observed_events)
+    # Evaluator-only ranking truth shares the public request/candidate keys but
+    # never enters the observed contract or any model API.
+    latent_by_user = {str(row["user_id"]): row for row in user_latents}
+    catalog_by_poi = {str(row["poi_id"]): row for row in catalog}
+    request_user = {str(row["request_id"]): str(row["user_id"]) for row in requests}
+    ranking_truth: list[dict[str, Any]] = []
+    for request_id in sorted(request_user):
+        scored_truth = []
+        for impression in (row for row in impressions if str(row["request_id"]) == request_id and int(row["is_available"])):
+            poi = catalog_by_poi[str(impression["poi_id"])]
+            user = latent_by_user[request_user[request_id]]
+            preference = float(user.get(f"pref_{poi['category']}", CONFIG["choice"]["default_category_preference"]))
+            utility = (float(CONFIG["choice"]["preference_weight"]) * preference
+                       + .25 * float(poi["local_popularity"])
+                       - .02 * float(impression["travel_time_minutes"])
+                       + float(SCENARIO_SETTINGS[args.scenario]["exposure_scale"])
+                       * (float(CONFIG["choice"]["exposure_positive"]) if int(impression["is_shown"])
+                          else float(CONFIG["choice"]["exposure_negative"])))
+            scored_truth.append((str(impression["poi_id"]), utility))
+        if scored_truth:
+            maximum = max(value for _, value in scored_truth)
+            normalizer = sum(math.exp(min(30.0, value - maximum)) for _, value in scored_truth)
+            ranking_truth.extend({"request_id": request_id, "poi_id": poi_id, "utility": round(utility, 6),
+                "choice_probability": math.exp(min(30.0, utility - maximum)) / normalizer}
+                for poi_id, utility in scored_truth)
     tables = {
         observed_dir / OBSERVED_FILES["events"]: observed_events,
         observed_dir / OBSERVED_FILES["users"]: users_observed,
@@ -945,6 +970,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
         truth_dir / TRUTH_FILES["choices"]: choices,
         truth_dir / TRUTH_FILES["trajectories"]: trajectories,
         truth_dir / TRUTH_FILES["observation_process"]: observation_process,
+        truth_dir / "recommendation_counterfactuals.csv.gz": ranking_truth,
     }
     for path, rows in tables.items():
         write_csv_gz(path, rows)
