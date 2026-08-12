@@ -110,6 +110,16 @@ def build_parser() -> argparse.ArgumentParser:
     rank.add_argument("--k", type=int, nargs="+", default=[1, 5, 10])
     rank.add_argument("--overwrite", action="store_true")
 
+    evaluate_ranking = commands.add_parser(
+        "evaluate-ranking", help="Evaluate frozen seen/unseen ranking transfer slices"
+    )
+    evaluate_ranking.add_argument("--run-dir", required=True, type=Path)
+    evaluate_ranking.add_argument("--experiment-dir", required=True, type=Path)
+    evaluate_ranking.add_argument("--models", nargs="+", default=[
+        "popularity", "nearest", "category_preference", "frozen_embedding"])
+    evaluate_ranking.add_argument("--k", type=int, nargs="+", default=[1, 5, 10])
+    evaluate_ranking.add_argument("--overwrite", action="store_true")
+
     robustness = commands.add_parser("robustness", help="Re-encode deterministic observed-data robustness views for R6/R7")
     _add_embedding_arguments(robustness)
     robustness.add_argument("--kind", choices=("learned", "baseline"), default="learned")
@@ -509,6 +519,17 @@ def main() -> None:
                              checkpoint_path=experiment.frozen_ranking_checkpoint,
                              baseline_report_paths={name: experiment.ranking_report(name) for name in
                                  ("popularity", "nearest", "category_preference")})
+    elif args.command == "evaluate-ranking":
+        from .ranking_evaluation import DEFAULT_MODELS, evaluate_ranking_transfer
+        run = DatasetLayout.from_path(args.run_dir)
+        experiment = ExperimentLayout.from_path(args.experiment_dir)
+        run.validate(require_truth=False)
+        unknown = sorted(set(args.models) - set(DEFAULT_MODELS))
+        if unknown:
+            raise ValueError(f"unsupported ranking models: {unknown}")
+        result = evaluate_ranking_transfer(run.observed, experiment.ranking_dir,
+            experiment.ranking_transfer_slices, models=args.models, ks=args.k,
+            overwrite=args.overwrite)
     elif args.command == "pipeline":
         result = _pipeline(args)
     else:

@@ -662,7 +662,7 @@ gated by T1.6.
   - **Known limitation/blocker:** exposure adjustment depends on simulator
     identification assumptions and must not imply real-world causality.
 
-- [ ] **T3.7 — Unseen-region and unseen-POI ranking slices.**
+- [x] **T3.7 — Unseen-region and unseen-POI ranking slices.**
   - **Requirement IDs:** R8, R9.
   - **Prerequisites:** T3.5 and explicit frozen split contract.
   - **Affected layer:** evaluator.
@@ -673,6 +673,15 @@ gated by T1.6.
   - **Completion evidence:** seen/unseen region and POI metrics, regret, coverage,
     and early/late trip results are reported separately.
   - **Known limitation/blocker:** synthetic transfer is not external validity.
+  - **Completion note (2026-08-12):** `evaluate-ranking` now authenticates all
+    four T3.4/T3.5 reports and prediction surfaces, fits a versioned identity
+    contract only from requests at or before the frozen ranker's `train_end`,
+    and writes separate seen/unseen region/POI intersections and observable
+    early/late-stage metrics with four-dimensional coverage. Utility regret is
+    explicitly unavailable because this evaluator never receives protected
+    truth. Unit and cross-stage integration tests cover equality, leakage,
+    unknown identities, empty slices, duplicates, and hash mismatch. Synthetic
+    geography and implicit interaction labels remain the principal limitations.
 
 ## P4 — Responsible deployment evidence
 

@@ -828,6 +828,31 @@ unscorable requests, plus separate deltas against each available popularity,
 nearest, and category-preference report.
 Missing controls are reported as missing rather than aggregated.
 
+## `evaluate-ranking`
+
+Evaluate the four immutable T3.4/T3.5 ranking surfaces on a frozen transfer
+contract without opening `truth/`:
+
+```bash
+uv run geoembed evaluate-ranking --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+```
+
+The command requires the popularity, nearest, category-preference, and corrected
+frozen-embedding reports and predictions to share request and available-candidate
+hashes. It re-authenticates their observed source hashes and writes
+`EXPERIMENT_DIR/ranking/transfer_slices.json`. Seen identities are fit only from
+requests whose timestamp is at or before the frozen ranker's training cutoff;
+catalog metadata may map an observed POI to a region but catalog membership alone
+does not make a POI seen. Cutoff equality is training, while evaluation is
+strictly later.
+
+Region and POI seen/unseen slices, their intersections, and early/late trip
+stage intersections report request, user, positive-label, and candidate coverage
+for every model. Early means the earliest post-training observable request
+timestamp for a user and request region (ties are early); late is strictly later.
+Empty slices remain explicit. Utility regret is marked unavailable because this
+observed-only evaluator has no protected-utility input.
+
 ## `pipeline`
 
 ### Purpose
