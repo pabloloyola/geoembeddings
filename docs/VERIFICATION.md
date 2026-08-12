@@ -1,6 +1,33 @@
 # Release verification
 
+This document is an evidence ledger, not a claim that the current checkout has
+been verified. Commands and results below are historical records for the source
+revision named by each entry. Where an entry does not name a revision, its
+source revision was not recorded and its results must not be attributed to the
+current checkout.
+
+The opening environment, package/test, learned-pipeline, and baseline/comparison
+records were captured on 2026-08-11 UTC for source commit
+`bbc44216c60d8790c2bb93fc5f0b052216f103df` (`init`). The `13 passed` result
+below applies only to that revision; it is not the result of the current test
+suite.
+
+For pipeline and ranking smoke commands, follow
+[`docs/LOCAL_EXPLORATION.md`](LOCAL_EXPLORATION.md).
+
+## Verify this checkout
+
+```bash
+uv sync --locked --extra dev
+uv lock --check
+uv run pytest
+uv run geoembed --version
+```
+
+## Historical evidence: initial release smoke
+
 Verification date: 2026-08-11 UTC.
+Source commit: `bbc44216c60d8790c2bb93fc5f0b052216f103df` (`init`).
 
 ## Environment
 
@@ -21,7 +48,7 @@ uv lock --check
 Result:
 
 ```text
-13 passed
+13 passed (historical result for bbc44216c60d8790c2bb93fc5f0b052216f103df)
 geoembed 0.5.0
 lock check passed
 ```
@@ -383,3 +410,61 @@ The comparison rejects source, preparation-definition, cutoff, export-key,
 user-mask, and supplemental-definition mismatches. Coverage is 49 export users
 and seven held-out probe users. Persistent and combined gates fail; paired
 causal claims are deliberately not made after the mandatory rejection gate.
+
+## T3.4 observable naive-ranker verification
+
+Requirement R9 is affected across the observed-only ranking and evaluator
+surface; the dataset contract and simulator are unchanged. The implementation
+was introduced at source commit
+`8215a86ab9cef7b52a2e50a086b65015ffc6aa24` (`Implement observable naive
+ranking baselines`). The commands below are a reproducible verification recipe,
+not executed evidence in this ledger.
+
+First run the focused ranking tests:
+
+```bash
+uv run pytest tests/test_ranking.py
+```
+
+Then run all three controls against the same existing immutable dataset and the
+same experiment root. Replace `RUN_DIR` with one complete, immutable dataset-2.0
+root and `EXPERIMENT_DIR` with its ranking experiment root. Do not use
+`--overwrite` when producing evidence for indexing.
+
+```bash
+uv run geoembed rank \
+  --run-dir RUN_DIR \
+  --experiment-dir EXPERIMENT_DIR \
+  --model popularity
+
+uv run geoembed rank \
+  --run-dir RUN_DIR \
+  --experiment-dir EXPERIMENT_DIR \
+  --model nearest
+
+uv run geoembed rank \
+  --run-dir RUN_DIR \
+  --experiment-dir EXPERIMENT_DIR \
+  --model category_preference
+```
+
+Expected artifacts (not evidence that the commands ran):
+
+```text
+EXPERIMENT_DIR/ranking/popularity.npz
+EXPERIMENT_DIR/ranking/popularity.json
+EXPERIMENT_DIR/ranking/nearest.npz
+EXPERIMENT_DIR/ranking/nearest.json
+EXPERIMENT_DIR/ranking/category_preference.npz
+EXPERIMENT_DIR/ranking/category_preference.json
+```
+
+The three reports must carry identical request and available-candidate hashes
+before their metrics are compared. Index the immutable dataset identity, source
+revision, exact commands, artifact hashes, runtime environment, and results
+together; expected paths or metrics must never be presented as executed
+evidence.
+
+### Runtime results
+
+<!-- Intentionally empty until immutable T3.4 artifacts are produced and indexed. -->
