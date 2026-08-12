@@ -239,7 +239,11 @@ evidence.
   - **Affected layers:** simulator and protected evaluator; the observed contract is unchanged.
   - **Baseline artifact:** the fixed-seed T1.11 paired-simulation smoke contract; no new model result is claimed.
   - **Completion note (2026-08-11):** `schedule-shift` moves only recurring routine clocks while preserving user latents, episode selection, and one-off timing. Pair integrity authenticates the allowed timestamp/trajectory/event changes. Temporal reports expose protected weekday/weekend, periodic retrieval, and repeated-routine-versus-one-off labels; paired reports expose schedule response beside persistent probes, retrieval, separation, and effective rank.
-  - **Routine-model gate:** **not opened.** The required statistical, capacity-matched single-vector, and accepted persistent/context control artifacts do not yet coexist; T2.7 still records persistent/context as unmeasurable. Post-trip recovery remains available through T1.15 and must be run on all three controls before a `persistent`/`routine`/`context` implementation task can open.
+  - **Routine-model gate:** **not opened.** The completed T2.7 matched gate
+    rejected routine expansion because the factorized persistent and combined
+    branches failed task-information and collapse checks against the
+    capacity-matched control. Post-trip recovery remains available through
+    T1.15, but it does not override that negative decision.
 
 - [x] **T1.7 (P1D) — Add reliability and offline-efficiency evaluation.**
   - **Requirement IDs:** R10, R13.
@@ -472,11 +476,13 @@ gated by T1.6.
     final-state behavior; learned pipeline integration without truth access.
   - **Completion evidence:** parameter budget is documented/matched and all
     branches train/export with finite outputs.
-  - **Known limitation/blocker:** scientific completion waits for T2.7 comparison.
+  - **Known limitation/blocker:** the completed T2.7 comparison failed the
+    scientific advancement gate; implementation completion is not evidence of
+    factorization.
   - **Implementation note (2026-08-11):** `factorized_pc` now provides shared
     event features, padded long/recent GRUs, conservative persistent updates,
-    gated fusion, and component exports. Scientific completion remains gated on
-    a matched run because no current baseline artifact is available.
+    gated fusion, and component exports. The later matched T2.7 run supplied the
+    capacity control and recorded the negative gate decision.
 
 - [x] **T2.5 — Capacity controls and ablations.**
   - **Requirement IDs:** R1, R4.
@@ -492,7 +498,8 @@ gated by T1.6.
     omissions must be explicit.
   - **Implementation note (2026-08-11):** versioned configs cover a dynamically
     parameter-matched single GRU, persistent-only, context-only, fusion, and both
-    loss-routing removals. No performance claim is recorded without artifacts.
+    loss-routing removals. The completed T2.7 matrix now authenticates their
+    matched artifacts; its failed gate supports no factorization claim.
 
 - [x] **T2.6 — Branch-specific objectives and reports.**
   - **Requirement IDs:** R1, R4, R5, R6, R7.
@@ -526,9 +533,10 @@ gated by T1.6.
     limitations are reported separately.
   - **Known limitation/blocker:** no aggregate winner; failure to beat controls
     blocks routine expansion rather than being hidden by next-event accuracy.
-  - **Decision note (2026-08-11):** currently unmeasurable and therefore **do
-    not advance**. `docs/FACTORIZATION_DECISION.md` defines the per-axis gate;
-    matched immutable control artifacts have not yet been generated.
+  - **Superseded planning note (2026-08-11):** the gate protocol was defined
+    before evidence generation. The completed replacement evidence and decision
+    below supersede that pre-run status without changing the required per-axis
+    protocol.
   - **Completion note (2026-08-12):** the new immutable 50-user/14-day seed
     20260812 lineage trained all six controls from one preparation and produced
     matched cutoff/dense/base/episode/robustness/temporal reports plus the
@@ -585,17 +593,28 @@ gated by T1.6.
   - **Completion note (2026-08-11):** fixed-seed runs populate all six target
     categories and record observed-only naive-ranker readiness diagnostics.
 
-- [ ] **T3.4 — Observable naive rankers.**
+- [x] **T3.4 — Observable naive rankers.**
   - **Requirement IDs:** R9.
   - **Prerequisites:** T3.1–T3.3.
   - **Affected layer:** model, evaluator.
   - **Baseline artifact required:** frozen request/candidate sets.
-  - **Command → expected artifact:** `uv run geoembed rank --model {popularity,nearest,category_preference} ...` → `ranking/{model}.{npz,json}` (proposed).
+  - **Command → expected artifact:** `uv run geoembed rank --model {popularity,nearest,category_preference} ...` → `ranking/{model}.{npz,json}`.
   - **Minimum coverage:** scoring/tie/availability unit tests; integration test
     proving rankers consume observed data only and share candidate sets.
   - **Completion evidence:** Recall/NDCG/MRR/coverage per naive ranker with
     immutable request/candidate hashes.
   - **Known limitation/blocker:** popularity and proximity are controls, not personalization.
+  - **Completion note (2026-08-12):** `src/geoembeddings/ranking.py` and the
+    `geoembed rank` command implement the `popularity`, `nearest`, and
+    `category_preference` controls. `tests/test_ranking.py` covers scoring,
+    deterministic ties, causal cutoffs, metrics, shared sets, dataset-version
+    rejection, and the observed-only boundary. Versioned
+    `geoembeddings-ranking-predictions/1.0` NPZ and
+    `geoembeddings-ranking-report/1.0` JSON schemas report Recall@K, NDCG@K,
+    MRR, and coverage, and carry identical canonical request and available-
+    candidate SHA-256 hashes across models. Ranking reads only the observed POI,
+    request, impression, interaction, and event tables; protected truth is not
+    an input.
 
 - [ ] **T3.5 — Frozen-embedding candidate ranker.**
   - **Requirement IDs:** R9.

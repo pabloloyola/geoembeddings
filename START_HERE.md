@@ -20,8 +20,8 @@ Read these files in order before editing code:
 
 Then inspect the implementation and tests associated with the first selected
 task. Do not start by replacing the model. The evaluator foundations are now
-implemented; follow the T2.7 matched-factorization gate described below before
-optimizing or adding a routine branch.
+implemented; preserve the completed negative T2.7 matched-factorization gate
+before optimizing or adding a routine branch.
 
 ## Reproduce the tested path
 
@@ -63,9 +63,9 @@ remain explicitly readable by the legacy modeling path; readers never fabricate
 missing 2.0 recommendation tables.
 
 Evaluator foundations, paired interventions/change evaluation, component
-exports, and the persistent/context implementation now exist. The immediate
-scientific task is the T2.7 matched-factorization gate in `TASKS.md`: generate
-immutable statistical, capacity-matched single-vector, factorized, and ablation
-artifacts on identical data/cutoffs and evaluate the required axes separately.
-Do not open a routine branch until that gate passes. If that matched run is not
-next, T3.4 observable naive rankers are the independent implementation option.
+exports, the persistent/context implementation, and the T3.4 observed-only
+naive ranking controls now exist. T2.7 completed on matched immutable artifacts
+with a **do not advance** decision because persistent and combined gates failed;
+do not open a routine branch. Recommendation work should build on the shared
+request/candidate identities emitted by `geoembed rank`, with T3.5 as the next
+candidate-aware implementation task.
