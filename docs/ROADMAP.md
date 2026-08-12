@@ -269,21 +269,23 @@ Goal: make the representation usable beyond the controlled prototype.
 Exit gate: tradeoffs are reported explicitly; no simulator-only result is
 presented as real-world validation.
 
-Status: seeded three-cutoff reliability/repeatability, an observed-only offline
-frozen-export/evaluation benchmark, the T4.2 adaptation/forgetting audit, and
-the T4.5 external-validity claim boundary are implemented. T4.2 currently
-provides diagnostic-control evidence only because no representation has the
-`selected_candidate` role; it does not provide a selection-dependent R11
-conclusion. The remaining open tasks are T4.1 uncertainty calibration, T4.3
-privacy audits, and T4.4 online incremental-update benchmarks. External
-validation remains absent, but T4.5's documentation and evidence boundary is
-complete.
+Status: seeded three-cutoff reliability/repeatability and an observed-only
+offline frozen-export/evaluation benchmark are implemented. T4.2 is complete as
+an authenticated diagnostic-control adaptation/forgetting audit, not as a
+successful selected-model conclusion: no representation has the
+`selected_candidate` role, so a selection-dependent R11 conclusion remains
+unavailable. T4.5 is complete as claim-boundary and evidence-validation work,
+not as external validation; external validation remains absent. The remaining
+tasks are T4.1 uncertainty calibration, T4.3 privacy audits, and T4.4 online
+incremental-update benchmarks.
 
-Historical prioritization: P4 was originally ordered as T4.1 uncertainty
-calibration, T4.2 adaptation and forgetting audit, T4.3 privacy audits, T4.4
-online incremental-update benchmarks, then T4.5 calibration and
-external-validity limits. This records the former plan, not the current
-execution order or task status.
+Historical plan: P4 was originally prioritized as T4.1 uncertainty calibration,
+T4.2 adaptation and forgetting audit, T4.3 privacy audits, T4.4 online
+incremental-update benchmarks, then T4.5 calibration and external-validity
+limits. This records the former sequence, not the current execution order or
+task status. The current next-task recommendation is T4.3 privacy audits,
+without selecting a least-bad representation; any comparative attacks must
+remain explicitly labeled as diagnostic controls under the selection policy.
 
 ## T1.2 implementation note (R1, R4)
 
