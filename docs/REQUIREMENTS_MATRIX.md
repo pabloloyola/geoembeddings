@@ -9,14 +9,14 @@ controlled evaluation and must be interpreted with adjacent failure checks.
 | ID | Requirement | Desired behavior | Required simulator/evaluation support | Primary metrics | Current status |
 |---|---|---|---|---|---|
 | R1 | Persistent/context separation | Temporary trips alter context without rewriting persistent preference | episode-aligned exports; matched temporary and sustained changes | persistent probe R2, context accuracy, persistent drift, adaptation delay | Partial |
-| R2 | Multi-scale spatial fidelity | Representations support region, city, and fine local distinctions without boundary brittleness | distance/boundary pair generator; held-out cells | region/geohash accuracy, distance retrieval, boundary-pair consistency | Partial: T0.4 train-only next-event majority/popularity and balance diagnostics are implemented, but no immutable reference-scale T0.4 acceptance lineage is indexed; transfer axes remain separate |
-| R3 | Multi-scale temporal fidelity | Capture elapsed time, daily/weekly periodicity, and duration | periodic/routine labels and time perturbations | hour/day probes, duration error, periodic retrieval | Partial: T0.4 train-only next-event majority/popularity and balance diagnostics and T1.6 observational probes are executable; reference-scale T0.4 acceptance evidence is missing and controlled schedule shift is blocked |
+| R2 | Multi-scale spatial fidelity | Representations support region, city, and fine local distinctions without boundary brittleness | distance/boundary pair generator; held-out cells | region/geohash accuracy, distance retrieval, boundary-pair consistency | Partial: the indexed T0.4 replacement provides accepted, coverage-qualified R2 diagnostic evidence, including train-only next-event controls and separate transfer axes; real spatial calibration, unseen-POI transfer, and robust fine-local fidelity remain unsupported |
+| R3 | Multi-scale temporal fidelity | Capture elapsed time, daily/weekly periodicity, and duration | periodic/routine labels and time perturbations | hour/day probes, duration error, periodic retrieval | Partial: the indexed T0.4 replacement provides accepted, coverage-qualified R3 diagnostic evidence, including train-only next-event controls and observational hour/day/duration and periodic/routine probes; controlled schedule-shift generalization and explicit routine state remain unsupported |
 | R4 | Episode coherence | Events within an episode share context; adjacent episodes separate | episode-boundary embeddings and protected episode labels | within/between retrieval, episode classification, boundary change | Partial: episode coherence metrics executable; factorized persistent/context separation and matched change scenarios pending |
 | R5 | Preference/opportunity separation | Same latent preference remains identifiable when candidate availability or exposure changes | matched-seed counterfactual scenarios with shared users/world | trait/preference invariance, representation drift, frozen-probe degradation | Executable when the versioned pair manifest, passing hash-current pair-integrity report, and matched baseline/learned exports from both runs pass `evaluate-pair`; no reference result is archived yet |
 | R6 | Cross-service alignment | One service history supports another without service identity dominating | leave-one-service-out views and targets | cross-service retrieval/prediction, missing-service degradation | Partial: deterministic leave-one-service-out evaluation is executable; candidate-aware transfer and archived T0.2 evidence remain pending |
 | R7 | Noise/sparsity robustness | Moderate GPS noise, missing events, and dropout cause graceful degradation | deterministic corruption operators | performance/deviation curves, worst-group degradation | Partial: deterministic views are executable; controlled observation pairs become executable only through the complete `evaluate-pair` integrity/export chain. GPS/missingness sensitivity remains distinct from exposure/opportunity invariance; real-noise calibration is pending |
 | R8 | Geographic/temporal transfer | Useful in later periods, unseen regions, and unseen POIs | explicit region/POI/time holdouts | frozen-probe/ranking deltas, cold-start coverage | Partial: held-out-region and seen/unseen-geohash slices executable; unseen-POI transfer pending |
-| R9 | New-context recommendation | Tokyo history improves ranking after Hakone arrival and contextual actions | public requests, catalog, candidates, impressions, interactions; protected utility | Recall/NDCG/MRR, regret, calibration, adaptation delay | Blocked by data contract |
+| R9 | New-context recommendation | Tokyo history improves ranking after Hakone arrival and contextual actions | public requests, catalog, candidates, impressions, interactions; protected utility | Recall/NDCG/MRR, regret, calibration, adaptation delay | Partial/executable: T3.1--T3.4 provide the public recommendation contract and observed-only popularity, nearest-POI, and category-preference controls with shared request/candidate identities and ranking metrics; T3.5 frozen-embedding candidate ranking is pending. These controls do not establish personalization, transfer, disentanglement, or causal validity |
 
 ## Operational requirements
 
@@ -92,16 +92,18 @@ fails R1.
   train-mean predictor on held-out users.
 - Top-5 accuracy is weak evidence when a field has few classes. The implemented
   next-event diagnostic reports train-only class counts and a train-fitted
-  majority/popularity baseline, but that executable surface is not
-  reference-scale acceptance evidence.
+  majority/popularity baseline. The indexed T0.4 replacement makes this
+  reference-scale diagnostic acceptance evidence only within its documented,
+  coverage-qualified R2/R3 scope.
 - Geohash metrics require known-label coverage because test cells can be unseen
   in the train vocabulary.
 - Classification accuracy alone is insufficient under imbalance. The
   implemented next-event diagnostic reports macro-F1 and balanced accuracy for
-  learned and naive predictions, plus known-label coverage; T0.4 remains
-  incomplete until a new immutable lineage is indexed at
-  `docs/artifacts/t0.4-r2-r3-reference-20260811.json` or a newly named
-  successor.
+  learned and naive predictions, plus known-label coverage. The immutable T0.4
+  replacement lineage is indexed at
+  `docs/artifacts/t0.4-r2-r3-reference-20260811.json`; its decision record
+  preserves sparse fine-local coverage, unsupported-claim boundaries, separate
+  axes, and no aggregate winner.
 - Simulator truth permits utility regret and probability recovery, which are
   more informative than reproducing one stochastic chosen item.
 - Never average R1--R13 into one score.
