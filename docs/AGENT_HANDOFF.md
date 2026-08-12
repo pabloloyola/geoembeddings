@@ -181,9 +181,9 @@ Preserve the completed T2.7 **do not advance** decision. The immutable matched
 matrix compared `capacity_matched_single`, `factorized_pc`, and the required
 branch/loss ablations on identical data and cutoffs; failed persistent and
 combined task-information/collapse gates keep the routine branch closed.
-T3.4--T3.7 are complete. Follow the P4 priority order in `TASKS.md`: T4.1
-uncertainty calibration, T4.2 adaptation/forgetting, T4.3 privacy, T4.4 online
-benchmarking, and T4.5 external-validity limits.
+T3.4--T3.7 and the T4.5 external-validity boundary are complete. Follow the
+remaining P4 work in `TASKS.md`: T4.1 uncertainty calibration, T4.2
+adaptation/forgetting, T4.3 privacy, and T4.4 online benchmarking.
 
 ## Recommendation data contract
 

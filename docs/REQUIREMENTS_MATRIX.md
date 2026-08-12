@@ -1,5 +1,9 @@
 # Requirements matrix
 
+The per-requirement real-world evidence gaps and status-change conditions are
+defined in [`EXTERNAL_VALIDITY.md`](EXTERNAL_VALIDITY.md); simulator completion
+must not be substituted for those conditions.
+
 This is the acceptance contract for GeoEmbeddings. A requirement is not
 considered satisfied because one proxy improves; it needs the specified
 controlled evaluation and must be interpreted with adjacent failure checks.

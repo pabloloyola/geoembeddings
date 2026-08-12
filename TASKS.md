@@ -751,7 +751,7 @@ gated by T1.6.
     batch size, device/software metadata, and artifact size.
   - **Known limitation/blocker:** hardware-specific results require comparable environments.
 
-- [ ] **T4.5 — Calibration and external-validity limits.**
+- [x] **T4.5 — Calibration and external-validity limits.**
   - **Requirement IDs:** R1–R13 (claim boundaries).
   - **Prerequisites:** current simulator/evaluator evidence inventory.
   - **Affected layer:** documentation.
@@ -764,6 +764,13 @@ gated by T1.6.
     representativeness, missing real-data tests, and prohibited claims are explicit.
   - **Known limitation/blocker:** without appropriate real de-identified data,
     external validity remains unmeasurable rather than proxied.
+  - **Completion note (2026-08-12):** `docs/EXTERNAL_VALIDITY.md` now separates
+    simulator assumptions, accepted indexed evidence, unsupported claims,
+    licensing/data constraints, synthetic Hakone/Kanto limits, and the evidence
+    needed to change each R1--R13 status. The static evidence registry and
+    `scripts/check_evidence_links.py` authenticate local paths and hashes,
+    validate claim metadata and identifiers, preserve T0.2 as unavailable
+    history, and distinguish T0.4's narrow acceptance from scientific success.
 
 ## Task/PR work-note template
 
