@@ -773,6 +773,8 @@ uv run geoembed rank --run-dir runs/kanto_pilot \
   --experiment-dir experiments/kanto_ranking --model nearest
 uv run geoembed rank --run-dir runs/kanto_pilot \
   --experiment-dir experiments/kanto_ranking --model category_preference
+uv run geoembed rank --run-dir runs/kanto_pilot \
+  --experiment-dir experiments/kanto_ranking --model frozen_embedding
 ```
 
 `--k 1 5 10` controls the reported cutoffs. Existing prediction or report
@@ -809,6 +811,17 @@ category counts treat unseen categories as zero; clicks are implicit observed
 relevance rather than utility or counterfactual relevance. Metrics do not use
 protected utility, true intent, or unexposed alternatives and therefore do not
 establish causal recommendation quality.
+
+The `frozen_embedding` variant additionally requires the existing learned
+`EXPERIMENT_DIR/embeddings.npz` and preparation metadata. It causally selects
+the latest named export cutoff no later than each request, fits categorical
+vocabularies, numeric normalization, and a logistic candidate-interaction head
+on requests at or before `train_end`, and never updates the encoder. It writes
+`ranking/frozen_embedding_checkpoint.npz`, predictions, and a report. The
+report records ordered features, component and dimension, cutoff/split/seed and
+all input/checkpoint hashes, explicit unscorable requests, plus separate deltas
+against each available popularity, nearest, and category-preference report.
+Missing controls are reported as missing rather than aggregated.
 
 ## `pipeline`
 

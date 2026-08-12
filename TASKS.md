@@ -616,7 +616,7 @@ gated by T1.6.
     request, impression, interaction, and event tables; protected truth is not
     an input.
 
-- [ ] **T3.5 — Frozen-embedding candidate ranker.**
+- [x] **T3.5 — Frozen-embedding candidate ranker.**
   - **Requirement IDs:** R9.
   - **Prerequisites:** T3.4 and a selected frozen embedding.
   - **Affected layer:** model, evaluator.
@@ -627,6 +627,16 @@ gated by T1.6.
   - **Completion evidence:** first-arrival/local-action ranking metrics beat or
     contextualize naive baselines with coverage and no end-to-end tuning.
   - **Known limitation/blocker:** stochastic-choice accuracy alone is insufficient.
+  - **Implementation record (2026-08-12):** the existing `rank` command now
+    selects causal frozen exports, rejects invalid lineage/identity/value/shape
+    inputs, fits preprocessing and only a deterministic candidate interaction
+    head on training requests, and writes the centralized checkpoint plus
+    versioned prediction/report artifacts. Reports preserve T3.4 candidate
+    identity and give separate control deltas and explicit coverage/exclusions.
+    Seed is `20260812`. No immutable same-run baseline/export artifacts are
+    present in this checkout, so baseline metrics, deltas, and coverage remain
+    explicitly unmeasured; the reproducible evidence command and limitations
+    are recorded in `docs/VERIFICATION.md` rather than fabricating a result.
 
 - [ ] **T3.6 — Exposure-aware ranking and counterfactual evaluation.**
   - **Requirement IDs:** R5, R9.

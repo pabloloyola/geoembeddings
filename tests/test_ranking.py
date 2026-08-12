@@ -11,8 +11,10 @@ import pytest
 
 from geoembeddings import simulator
 from geoembeddings.cli import main
+from geoembeddings.io import sha256_file
 from geoembeddings.ranking import (RankingCandidate, RankingPrediction, RankingRequest,
-    compute_ranking_metrics, rank_candidates)
+    FrozenEmbeddingRows, RankingTrainingBatch, compute_ranking_metrics, rank_candidates,
+    select_causal_embeddings, train_frozen_head)
 
 
 def request(request_id: str = "r", user_id: str = "u") -> RankingRequest:
@@ -57,6 +59,38 @@ def test_metric_edge_cases() -> None:
         compute_ranking_metrics([], [], {}, [0])
 
 
+def test_frozen_embedding_causal_selection_rejections_and_empty_history() -> None:
+    times = np.asarray([datetime.fromisoformat("2026-01-01T00:00:00"),
+                        datetime.fromisoformat("2026-01-03T00:00:00")], dtype=object)
+    rows = FrozenEmbeddingRows(np.asarray(["u", "u"]), np.asarray(["train", "test"]), times,
+                               np.asarray([[1., 2.], [9., 9.]]), "combined")
+    selected = select_causal_embeddings(rows, [request(), request("missing", "other")])
+    assert np.array_equal(selected["r"], [1., 2.])
+    assert "missing" not in selected  # empty history is explicit, never substituted
+    future = FrozenEmbeddingRows(np.asarray(["u"]), np.asarray(["test"]), times[1:],
+                                 np.asarray([[9., 9.]]), "combined")
+    assert select_causal_embeddings(future, [request()]) == {}
+    with pytest.raises(ValueError, match="non-finite"):
+        select_causal_embeddings(FrozenEmbeddingRows(np.asarray(["u"]), np.asarray(["train"]), times[:1],
+            np.asarray([[np.nan, 1.]]), "combined"), [request()])
+    with pytest.raises(ValueError, match="duplicate"):
+        select_causal_embeddings(FrozenEmbeddingRows(np.asarray(["u", "u"]), np.asarray(["train", "train"]),
+            times, np.ones((2, 2)), "combined"), [request()])
+    with pytest.raises(ValueError, match="dimensionally"):
+        select_causal_embeddings(FrozenEmbeddingRows(np.asarray(["u"]), np.asarray(["train"]), times,
+            np.ones((2, 2)), "combined"), [request()])
+
+
+def test_frozen_head_is_deterministic_and_preserves_typed_identity_order() -> None:
+    batch = RankingTrainingBatch(("r", "r"), ("poi-b", "poi-a"), np.asarray([[1., 0.], [1., 1.]]),
+                                 np.asarray([0., 1.]))
+    first = train_frozen_head(batch, seed=7)
+    second = train_frozen_head(batch, seed=7)
+    assert np.array_equal(first, second)
+    assert batch.poi_ids == ("poi-b", "poi-a")
+    assert float(batch.features[1] @ first) > float(batch.features[0] @ first)
+
+
 def _simulate(root: Path) -> None:
     config_path = Path("configs/simulation/kanto_v1.yaml")
     config = simulator.load_config(config_path)
@@ -86,6 +120,28 @@ def test_rankers_share_sets_reject_v1_and_never_open_truth(tmp_path, monkeypatch
         assert len(artifact["request_id"]) == reports[-1]["coverage"]["available_candidates"]
     assert len({report["request_hash"] for report in reports}) == 1
     assert len({report["candidate_hash"] for report in reports}) == 1
+
+    # Complete observed-only frozen path using a deliberately external frozen export.
+    request_rows = __import__("pandas").read_csv(run / "observed" / "recommendation_requests.csv.gz")
+    timestamps = sorted(request_rows["request_timestamp"].astype(str))
+    train_end = timestamps[max(0, len(timestamps) // 2)]
+    prepared = experiment / "prepared"
+    prepared.mkdir(parents=True)
+    (prepared / "prepared_metadata.json").write_text(json.dumps({"train_end": train_end,
+        "validation_end": train_end, "timestamp_max": timestamps[-1]}))
+    users = sorted(request_rows["user_id"].astype(str).unique())
+    np.savez_compressed(experiment / "embeddings.npz", user_id=np.asarray(users),
+        cutoff=np.asarray(["train"] * len(users)), embedding=np.ones((len(users), 2)),
+        source_file_names=np.asarray(["observed_events.csv.gz"]),
+        source_hashes=np.asarray([sha256_file(run / "observed" / "observed_events.csv.gz")]))
+    monkeypatch.setattr("sys.argv", ["geoembed", "rank", "--run-dir", str(run),
+        "--experiment-dir", str(experiment), "--model", "frozen_embedding"])
+    main()
+    frozen_report = json.loads((experiment / "ranking" / "frozen_embedding.json").read_text())
+    assert frozen_report["request_hash"] == reports[0]["request_hash"]
+    assert frozen_report["candidate_hash"] == reports[0]["candidate_hash"]
+    assert set(frozen_report["baseline_comparisons"]) == {"popularity", "nearest", "category_preference"}
+    assert (experiment / "ranking" / "frozen_embedding_checkpoint.npz").is_file()
 
     manifest_path = run / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
