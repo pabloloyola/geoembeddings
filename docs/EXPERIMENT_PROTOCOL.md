@@ -131,6 +131,66 @@ comparisons as approximate.
   evaluations. Reuse the same `prepared/` artifacts only when input fields and
   split/preprocessing settings are unchanged.
 
+### Representation-selection policy
+
+Selection is a recorded property of a particular export lineage, not an
+informal synonym for whichever representation an audit happens to load. Every
+representation used by a downstream audit must have exactly one of these
+roles:
+
+- **`diagnostic_control`**: an export that may be used in a clearly labeled
+  comparative or failure-analysis audit even though it did not pass, or was
+  never submitted to, the applicable scientific advancement gates. Results for
+  this role characterize the export; they cannot support selection-dependent
+  conclusions, deployment claims, or promotion of its component names to
+  established semantics.
+- **`selected_candidate`**: an export that passed all applicable matched
+  scientific gates for the conclusion being attempted, including the required
+  task-information, collapse, separation/retrieval, and targeted requirement
+  checks against the specified controls. Passing checkpoint selection on
+  validation loss, producing finite vectors, or winning one downstream metric
+  is not sufficient. The decision record and matched evidence index must name
+  the gates and authenticate the export lineage.
+
+The completed T2.7 decision is **do not advance**. Consequently, no current
+export qualifies as `selected_candidate`. The indexed T0.4 statistical history
+baseline exports, the T2.7 `capacity_matched_single` exports, and the T2.7
+`factorized_pc`, `persistent_only`, `context_only`,
+`factorized_no_persistent_loss`, and `factorized_no_context_loss` exports may
+qualify only as `diagnostic_control` for explicitly labeled comparative audits.
+This also applies to the later T3.5 `factorized_pc` combined export: its ranking
+result did not reverse or rerun the T2.7 representation gate. Qualification is
+conditional on authenticating the exact artifact against its immutable index;
+an unindexed or mismatched copy does not inherit a role from its branch name.
+
+Audit artifacts must record, for every representation input:
+
+- the exact model variant and exported component identifier;
+- the checkpoint SHA-256 (or an explicit `not_applicable` value and reason for
+  a non-checkpoint statistical baseline), together with the export hash;
+- preparation identity, including the preparation-definition/metadata hash;
+- observed source-file hashes and any evaluator-only source hashes opened by a
+  protected audit;
+- the complete cutoff set;
+- parameter count, including an explicit zero/non-parametric declaration for
+  the statistical baseline; and
+- `selection_role`, using one of the two values above, plus the evidence-index
+  and decision-record identities that justify it.
+
+Reports must treat `factorized_pc` and component names such as `persistent`,
+`context`, `p`, or `c` as configuration/branch identifiers with intended or
+hypothesized meanings. A report must state the failed gate and diagnostic role
+where those names first appear; it must not silently describe them as
+established persistent-preference or current-context semantics.
+
+When no `selected_candidate` exists, any conclusion whose prerequisite is a
+selected representation is **unavailable**; absence of a candidate must not be
+resolved by silently selecting the least-bad diagnostic. Work may still produce
+explicitly labeled comparative audits of the statistical baseline, the
+capacity-matched single vector, and factorized diagnostic variants, provided
+results remain per-representation and do not make the unavailable
+selection-dependent conclusion. T4.1, T4.2, and T4.3 apply this policy.
+
 ## Required baselines
 
 Keep at least:
@@ -195,4 +255,3 @@ Every result report should include:
   reproduce both representations under one preparation contract.
 - If a requirement cannot be measured from existing exports, extend exports or
   mark it unavailable. Do not infer it from unrelated metrics.
-

@@ -700,7 +700,8 @@ gated by T1.6.
 
 - [ ] **T4.1 — Calibrate representation uncertainty.**
   - **Requirement IDs:** R10.
-  - **Prerequisites:** T1.7 and selected representation.
+  - **Prerequisites:** T1.7 and a `selected_candidate` under the
+    representation-selection policy in `docs/EXPERIMENT_PROTOCOL.md`.
   - **Affected layer:** evaluator.
   - **Baseline artifact required:** T1.7 resampling/reliability reports.
   - **Command → expected artifact:** `evaluate --reliability --calibrate ...` →
@@ -710,10 +711,16 @@ gated by T1.6.
   - **Completion evidence:** reliability-error and coverage-risk improve over
     uncalibrated variance with uncertainty method/config recorded.
   - **Known limitation/blocker:** simulator calibration may not transfer to real users.
+  - **Selection status:** after the negative T2.7 decision, no current export is
+    a `selected_candidate`, so selection-dependent calibration conclusions are
+    unavailable. Explicitly labeled `diagnostic_control` comparisons may still
+    audit the statistical baseline, capacity-matched single vector, and
+    factorized diagnostic variants under the protocol's provenance rules.
 
 - [ ] **T4.2 — Adaptation and forgetting audit.**
   - **Requirement IDs:** R11.
-  - **Prerequisites:** T1.15 and selected representation.
+  - **Prerequisites:** T1.15 and a `selected_candidate` under the
+    representation-selection policy in `docs/EXPERIMENT_PROTOCOL.md`.
   - **Affected layer:** evaluator.
   - **Baseline artifact required:** no-change, temporary, and sustained paired reports.
   - **Command → expected artifact:** `uv run geoembed evaluate-change ...` →
@@ -723,10 +730,17 @@ gated by T1.6.
   - **Completion evidence:** temporary decay and sustained update are compared
     per component/control with coverage and uncertainty.
   - **Known limitation/blocker:** the simulator defines the change semantics.
+  - **Selection status:** after the negative T2.7 decision, no current export is
+    a `selected_candidate`, so selection-dependent adaptation/forgetting
+    conclusions are unavailable. The protocol still permits explicitly labeled
+    `diagnostic_control` comparisons of the statistical baseline,
+    capacity-matched single vector, and factorized diagnostic variants.
 
 - [ ] **T4.3 — Privacy audits.**
   - **Requirement IDs:** R12.
-  - **Prerequisites:** selected representation and threat-model document.
+  - **Prerequisites:** a `selected_candidate` under the
+    representation-selection policy in `docs/EXPERIMENT_PROTOCOL.md` and a
+    threat-model document.
   - **Affected layer:** evaluator, documentation.
   - **Baseline artifact required:** matched statistical/single/factorized exports
     and utility reports.
@@ -737,6 +751,12 @@ gated by T1.6.
   - **Completion evidence:** attack AUC, sensitive probes, utility/privacy curves,
     confidence intervals, and threat model are reported.
   - **Known limitation/blocker:** simulator privacy attacks do not certify real deployment.
+  - **Selection status:** after the negative T2.7 decision, no current export is
+    a `selected_candidate`, so selection-dependent privacy conclusions are
+    unavailable. Threat-model-scoped comparative attacks may still be reported
+    for the statistical baseline, capacity-matched single vector, and
+    factorized variants only when each is labeled `diagnostic_control` and its
+    required audit provenance is recorded.
 
 - [ ] **T4.4 — Online incremental-update benchmarks.**
   - **Requirement IDs:** R13.
