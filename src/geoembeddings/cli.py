@@ -66,6 +66,15 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_change.add_argument("--learned-experiment-dir", required=True, type=Path, nargs=2, metavar=("REFERENCE", "INTERVENTION"))
     evaluate_change.add_argument("--overwrite", action="store_true")
 
+    audit_change = commands.add_parser("audit-nonstationarity", help="Audit matched R11 adaptation and forgetting")
+    audit_change.add_argument("--no-change-report", required=True, type=Path)
+    audit_change.add_argument("--temporary-report", required=True, type=Path)
+    audit_change.add_argument("--sustained-report", required=True, type=Path)
+    audit_change.add_argument("--output-dir", required=True, type=Path)
+    audit_change.add_argument("--adaptation-threshold", type=float, default=0.1)
+    audit_change.add_argument("--recovery-threshold", type=float, default=0.05)
+    audit_change.add_argument("--overwrite", action="store_true")
+
     prepare = commands.add_parser("prepare", help="Fit leakage-safe preprocessing")
     _add_embedding_arguments(prepare)
 
@@ -494,6 +503,12 @@ def main() -> None:
         from .evaluation import evaluate_change
         result = evaluate_change(args.pair_manifest, args.baseline_experiment_dir,
                                  args.learned_experiment_dir, overwrite=args.overwrite)
+    elif args.command == "audit-nonstationarity":
+        from .nonstationarity import audit_nonstationarity
+        result = audit_nonstationarity(args.no_change_report, args.temporary_report,
+            args.sustained_report, args.output_dir,
+            adaptation_threshold=args.adaptation_threshold,
+            recovery_threshold=args.recovery_threshold, overwrite=args.overwrite)
     elif args.command in {"prepare", "train", "baseline", "export", "export-dense", "evaluate", "robustness", "benchmark"}:
         run = DatasetLayout.from_path(args.run_dir)
         experiment = ExperimentLayout.from_path(args.experiment_dir)

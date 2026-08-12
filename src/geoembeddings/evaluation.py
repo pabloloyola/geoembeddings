@@ -98,20 +98,26 @@ def _cosine(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / max(float(np.linalg.norm(a) * np.linalg.norm(b)), 1e-12))
 
 
-def _change_dense(path: Path) -> tuple[pd.DataFrame, np.ndarray]:
-    with np.load(path, allow_pickle=False) as payload:
-        required = {"user_id", "timestamp", "embedding"}
-        if not required.issubset(payload.files):
-            raise ValueError(f"Dense change export is incomplete: {path}")
-        vectors = np.asarray(payload["embedding"], dtype=float)
-        frame = pd.DataFrame({"user_id": payload["user_id"].astype(str),
-                              "timestamp": pd.to_datetime(payload["timestamp"].astype(str), utc=True)})
-    if vectors.ndim != 2 or len(frame) != len(vectors) or not np.isfinite(vectors).all():
+def _change_dense(path: Path) -> tuple[pd.DataFrame, dict[str, np.ndarray], dict[str, Any]]:
+    loaded = load_embedding_export(path, dense=True)
+    payload = loaded.arrays
+    frame = pd.DataFrame({"user_id": payload["user_id"].astype(str),
+                          "timestamp": pd.to_datetime(payload["timestamp"].astype(str), utc=True)})
+    vectors = {name: np.asarray(value, dtype=float) for name, value in loaded.components.items()}
+    if any(value.ndim != 2 or len(frame) != len(value) or not np.isfinite(value).all()
+           for value in vectors.values()):
         raise ValueError(f"Dense change export has invalid vectors: {path}")
     frame["row"] = np.arange(len(frame))
     if frame[["user_id", "timestamp"]].duplicated().any():
         raise ValueError("Dense change keys must be unique")
-    return frame, vectors
+    metadata = {"schema_version": loaded.schema_version,
+        "preparation_hash": str(np.asarray(payload.get("preparation_hash", "legacy-unversioned")).item()),
+        "source_lineage": dict(zip(payload.get("source_file_names", np.asarray([], dtype=str)).astype(str),
+                                    payload.get("source_hashes", np.asarray([], dtype=str)).astype(str))),
+        "cutoffs": sorted(set(payload.get("export_cutoffs",
+            payload.get("cutoff_kind", np.asarray(["observed_event"], dtype=str))).astype(str))),
+        "component_schema": {name: int(value.shape[1]) for name, value in vectors.items()}}
+    return frame, vectors, metadata
 
 
 def evaluate_change(pair_manifest_path: str | Path, baseline_experiment_dirs: list[Path],
@@ -149,8 +155,26 @@ def evaluate_change(pair_manifest_path: str | Path, baseline_experiment_dirs: li
             raise ValueError(f"{kind} requires reference and intervention experiment roots")
         layouts = [ExperimentLayout.from_path(root) for root in roots]
         paths = [layout.dense_baseline_embeddings if kind == "baseline" else layout.dense_embeddings for layout in layouts]
-        (ref, ref_v), (changed, changed_v) = [_change_dense(path) for path in paths]
-        samples: dict[int, list[float]] = {}
+        (ref, ref_v, ref_meta), (changed, changed_v, changed_meta) = [_change_dense(path) for path in paths]
+        for field in ("schema_version", "preparation_hash", "cutoffs", "component_schema"):
+            if ref_meta[field] != changed_meta[field]:
+                raise ValueError(f"{kind} reference/intervention export contracts differ in {field}")
+        component_reports = {}
+        for component_name in ref_v:
+            samples: dict[int, dict[str, float]] = {}
+            for point in points.itertuples(index=False):
+                r = ref[ref.user_id == point.user_id].copy(); c = changed[changed.user_id == point.user_id].copy()
+                if r.empty or c.empty:
+                    continue
+                r["bin"] = np.floor((r.timestamp - point.change_start_time).dt.total_seconds() / 86400).astype(int)
+                c["bin"] = np.floor((c.timestamp - point.change_start_time).dt.total_seconds() / 86400).astype(int)
+                for bin_id in sorted(set(r.bin) & set(c.bin)):
+                    ri = int(r[r.bin == bin_id].iloc[-1].row); ci = int(c[c.bin == bin_id].iloc[-1].row)
+                    samples.setdefault(int(bin_id), {})[str(point.user_id)] = 1.0 - _cosine(ref_v[component_name][ri], changed_v[component_name][ci])
+            component_reports[component_name] = {"curve": [{"relative_day": b,
+                "mean_matched_cosine_drift": float(np.mean(list(v.values()))), "users": len(v),
+                "matched_user_drift": v} for b, v in sorted(samples.items())]}
+        samples_list: dict[int, list[float]] = {}
         excluded = {"missing_reference_bin": 0, "missing_intervention_bin": 0}
         eligible_users = 0
         for point in points.itertuples(index=False):
@@ -162,21 +186,31 @@ def evaluate_change(pair_manifest_path: str | Path, baseline_experiment_dirs: li
             c["bin"] = np.floor((c.timestamp - point.change_start_time).dt.total_seconds() / 86400).astype(int)
             for bin_id in sorted(set(r.bin) & set(c.bin)):
                 ri = int(r[r.bin == bin_id].iloc[-1].row); ci = int(c[c.bin == bin_id].iloc[-1].row)
-                samples.setdefault(int(bin_id), []).append(1.0 - _cosine(ref_v[ri], changed_v[ci]))
-        curve = [{"relative_day": b, "mean_matched_cosine_drift": float(np.mean(v)), "users": len(v)} for b, v in sorted(samples.items())]
-        pre = [x for b, v in samples.items() if b < 0 for x in v]; during = [x for b, v in samples.items() if b >= 0 for x in v]
+                samples_list.setdefault(int(bin_id), []).append(1.0 - _cosine(ref_v["combined"][ri], changed_v["combined"][ci]))
+        curve = component_reports["combined"]["curve"]
+        pre = [x for b, v in samples_list.items() if b < 0 for x in v]; during = [x for b, v in samples_list.items() if b >= 0 for x in v]
         end = points.change_end_time.dropna()
         duration = int((end.iloc[0] - points.change_start_time.iloc[0]).total_seconds() // 86400) if len(end) else None
-        post = [x for b, v in samples.items() if duration is not None and b >= duration for x in v]
+        post = [x for b, v in samples_list.items() if duration is not None and b >= duration for x in v]
         peak = max(during) if during else None
-        reports[kind] = {"curve": curve, "adaptation": {"mean_drift_during_or_after_change": float(np.mean(during)) if during else None},
+        reports[kind] = {"selection_role": "diagnostic_control", "components": component_reports,
+            "curve": curve, "adaptation": {"mean_drift_during_or_after_change": float(np.mean(during)) if during else None},
             "recovery": {"mean_post_change_drift": float(np.mean(post)) if post else None},
             "forgetting": {"peak_minus_final_post_change_drift": float(peak - np.mean(post)) if peak is not None and post else None},
             "permanent_drift": {"final_drift": float(curve[-1]["mean_matched_cosine_drift"]) if curve else None},
             "no_change_control": {"pre_change_drift": float(np.mean(pre)) if pre else None},
-            "coverage": {"truth_users": len(points), "eligible_users": eligible_users, "relative_bins": len(samples), "excluded": excluded},
+            "coverage": {"truth_users": len(points), "eligible_users": eligible_users, "relative_bins": len(samples_list), "excluded": excluded},
             "censoring": {"right_censored": duration is None, "temporary_recovery_observed": bool(post)}}
-    report = {"schema_version": "geoembeddings-change-evaluation/1.0", "intervention": pair.intervention_type,
+    first_meta = ref_meta
+    comparison_identity = {"users": sorted(points.user_id.astype(str).unique()),
+        "cutoffs": first_meta["cutoffs"], "preparation_contract": {"preparation_hash": first_meta["preparation_hash"]},
+        "source_lineage": first_meta["source_lineage"], "component_schema": first_meta["component_schema"],
+        "relative_day_definition": "floor((timestamp-change_start_time)/86400)",
+        "censoring_rules": "first observed inclusive threshold crossing; absent crossing is right-censored; first crossing after an unobserved origin is left-censored"}
+    report = {"schema_version": "geoembeddings-change-evaluation/2.0", "intervention": pair.intervention_type,
+        "authentication": {"status": "passed", "pair_integrity_required": True},
+        "comparison_identity": comparison_identity,
+        "change_contract": {"temporary_duration_days": duration},
         "pair_manifest_sha256": sha256_file(pair_layout.manifest), "change_truth_sha256": sha256_file(truth_path),
         "representations": reports, "deltas": {axis: ((reports["learned"][axis].get(next(iter(reports["learned"][axis]))) or 0) - (reports["baseline"][axis].get(next(iter(reports["baseline"][axis]))) or 0)) for axis in ("adaptation", "recovery", "forgetting", "permanent_drift")},
         "limitations": ["Change semantics are synthetic and do not establish real-world causal validity.", "Single-vector drift cannot prove persistent/context disentanglement."]}
