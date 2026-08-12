@@ -47,6 +47,11 @@ the old modeling path, but recommendation consumers must require 2.0 tables.
 - Seeded three-cutoff reliability/repeatability evaluation and an observed-only
   frozen-export/offline-evaluation benchmark. These are not calibrated
   uncertainty or hardware-normalized online/training benchmarks.
+- The T4.2 nonstationarity audit authenticates matched no-change, temporary,
+  and sustained change reports and reports adaptation, recovery, forgetting,
+  permanent drift, uncertainty, censoring, exclusions, and coverage separately.
+  It currently provides diagnostic-control evidence only because no
+  representation has the `selected_candidate` role.
 
 The historical 50-user, 7-day verification in `docs/VERIFICATION.md` remains a
 dated execution smoke, not scientific evidence. Current authoritative
@@ -80,7 +85,7 @@ accepted matched evidence, or external validity remain absent.
 | R8 | partial | `evaluate --transfer`; `evaluate-ranking` | Held-out-region/geohash diagnostics and T3.7 frozen seen/unseen region/POI plus early/late observed slices report explicit coverage. T3.7 cannot report utility regret, and reference-scale and external geographic evidence remain absent. |
 | R9 | partial | dataset 2.0 simulation/validation; `rank`; `evaluate-ranking`; protected `evaluate-pair` | T3.4 controls, T3.5 frozen ranking, T3.6 exposure-aware training/protected evaluation, and T3.7 observed transfer slices are executable. Protected regret/probability recovery require pair authentication; T3.7 cannot report regret. One small synthetic T3.5 lineage is archived, but reference-scale, real-world causal, and external-validity evidence are absent. |
 | R10 | partial | `evaluate --reliability` | Seeded cutoff-bootstrap variance, reliability-error bins, and coverage-risk diagnostics are executable. This is repeatability over three cutoffs, not calibrated uncertainty; T4.1 remains pending. |
-| R11 | partial | `simulate-pair --intervention {temporary-trip,sustained-preference}`; `evaluate-change` | Matched-control adaptation, recovery, forgetting, permanent drift, coverage, and censoring are executable in the simulator. No external nonstationarity claim follows. |
+| R11 | partial | `simulate-pair --intervention {temporary-trip,sustained-preference}`; `evaluate-change`; `audit-nonstationarity` | T4.2 is complete: authenticated matched-control adaptation, recovery, forgetting, permanent drift, uncertainty, coverage, and censoring are executable in the simulator. Because no representation has the `selected_candidate` role, the audit currently provides diagnostic-control evidence only and no selection-dependent or external nonstationarity conclusion follows. |
 | R12 | pending | — | Membership and sensitive-attribute/privacy audit harnesses remain unimplemented. |
 | R13 | partial | `benchmark` | Frozen artifact load/export serialization and reliability-evaluation latency, throughput, allocation, and RSS are executable. Training, online update, and hardware-normalized benchmarks remain pending. |
 
@@ -88,7 +93,7 @@ No row above is an aggregate model verdict. In particular, a simulator metric
 becoming executable does not show that a representation satisfies the
 requirement, and no simulator-only result establishes real-world validity.
 
-## Current gate and prioritized implementation sequence
+## Current gate and open tasks
 
 The T2.7 matched-factorization gate is complete on the new immutable 50-user,
 14-day, seed-20260812 pilot. All six variants share one preparation, population,
@@ -103,10 +108,13 @@ frozen-embedding candidate head; T3.6 supplies observed-only exposure-aware
 training and a separately integrity-gated protected evaluator; T3.7 supplies
 observed-only frozen transfer slices and therefore no utility regret.
 
-T4.5 now supplies the external-validity claim boundary. The remaining P4 work
-is **T4.1 uncertainty calibration**, **T4.2 adaptation and forgetting audit**,
-**T4.3 privacy audits**, and **T4.4 online incremental-update benchmarks**.
-This does not relax the negative T2.7 routine-branch gate.
+T4.2 adaptation/forgetting auditing and T4.5 external-validity claim boundaries
+are complete. Because no representation has the `selected_candidate` role,
+T4.2 currently supplies diagnostic-control evidence only; the
+selection-dependent R11 conclusion remains unavailable. The remaining open
+tasks are **T4.1 uncertainty calibration**, **T4.3 privacy audits**, and **T4.4
+online incremental-update benchmarks**. This does not relax the negative T2.7
+routine-branch gate.
 
 ## Evidence limitations
 
