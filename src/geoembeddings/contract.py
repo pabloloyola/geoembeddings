@@ -136,6 +136,8 @@ def validate_identity_manifest(section: Any, *, stream_names: tuple[str, ...]) -
 
 RELIABILITY_REPORT_SCHEMA = "geoembeddings-reliability-report/1.0"
 OFFLINE_BENCHMARK_SCHEMA = "geoembeddings-offline-benchmark/1.0"
+ONLINE_WORKLOAD_SCHEMA = "geoembeddings-online-workload/1.0"
+ONLINE_BENCHMARK_SCHEMA = "geoembeddings-online-benchmark/1.0"
 
 OBSERVED_FILES = {
     "users": "users_observed.csv.gz",

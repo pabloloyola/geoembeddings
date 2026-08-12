@@ -87,7 +87,7 @@ accepted matched evidence, or external validity remain absent.
 | R10 | partial | `evaluate --reliability` | Seeded cutoff-bootstrap variance, reliability-error bins, and coverage-risk diagnostics are executable. This is repeatability over three cutoffs, not calibrated uncertainty; T4.1 remains pending. |
 | R11 | partial | `simulate-pair --intervention {temporary-trip,sustained-preference}`; `evaluate-change`; `audit-nonstationarity` | T4.2 is complete: authenticated matched-control adaptation, recovery, forgetting, permanent drift, uncertainty, coverage, and censoring are executable in the simulator. Because no representation has the `selected_candidate` role, the audit currently provides diagnostic-control evidence only and no selection-dependent or external nonstationarity conclusion follows. |
 | R12 | pending | — | Membership and sensitive-attribute/privacy audit harnesses remain unimplemented. |
-| R13 | partial | `benchmark` | Frozen artifact load/export serialization and reliability-evaluation latency, throughput, allocation, and RSS are executable. Training, online update, and hardware-normalized benchmarks remain pending. |
+| R13 | partial | `benchmark` | Frozen artifact work plus atomic cold-start, steady single-event, frozen batch, and serialization online workloads are executable for baseline and learned diagnostic controls with mandatory recomputation. Training and hardware-normalized benchmarks remain pending. |
 
 No row above is an aggregate model verdict. In particular, a simulator metric
 becoming executable does not show that a representation satisfies the
@@ -112,8 +112,9 @@ T4.2 adaptation/forgetting auditing and T4.5 external-validity claim boundaries
 are complete. Because no representation has the `selected_candidate` role,
 T4.2 currently supplies diagnostic-control evidence only; the
 selection-dependent R11 conclusion remains unavailable. The remaining open
-tasks are **T4.1 uncertainty calibration**, **T4.3 privacy audits**, and **T4.4
-online incremental-update benchmarks**. This does not relax the negative T2.7
+tasks are **T4.1 uncertainty calibration** and **T4.3 privacy audits**. T4.4
+online incremental-update benchmarking is implemented as diagnostic-control
+evidence and does not relax the negative T2.7
 routine-branch gate.
 
 ## Evidence limitations

@@ -1074,7 +1074,7 @@ cutoff-bootstrap embedding variance, reliability-error bins, and coverage-risk
 points. This is a repeatability diagnostic over the three frozen cutoffs, not
 calibrated real-world uncertainty; event/window bootstrap is future work.
 
-## Offline benchmark (`benchmark`)
+## Offline and online benchmarks (`benchmark`)
 
 ```bash
 uv run geoembed benchmark --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR \
@@ -1089,7 +1089,19 @@ latency (mean/p50/p95/min/max), throughput, Python peak allocation, process peak
 RSS, warmup/iteration counts, CPU/software metadata, and explicit missing
 artifact status. It rejects source/preparation mismatch and existing output
 unless `--overwrite` is passed. It never accepts a truth path and does not
-measure training, online update latency, or hardware-normalized performance.
+measure training or hardware-normalized performance.
+
+The same invocation also freezes `benchmarks/online_workload.json` and writes
+the canonical `benchmarks/online.json`. The online report benchmarks cold-start,
+single-event, frozen 8/32/128-event batch, and export-serialization workload
+boundaries for both the statistical baseline and learned diagnostic control.
+Every measured update runs the independent full-history oracle using
+`atol=1e-5, rtol=1e-4`; an identity, ordered-field, timestamp, schema,
+finiteness, or oracle failure aborts the report. Workload selection is immutable,
+seeded, source/preparation/checkpoint-bound, and never reads `truth/`. Defaults
+are 10 warmups and 100 measured iterations; use smaller explicit values only
+for smoke verification. Existing reports require `--overwrite`, while a changed
+named workload must be written to a new experiment rather than overwritten.
 
 ## `evaluate-change` (T1.15)
 

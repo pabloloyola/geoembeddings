@@ -108,10 +108,10 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--reliability", action="store_true", help="Evaluate seeded R10 representation reliability")
     evaluate.add_argument("--overwrite", action="store_true", help="Replace the selected supplemental report")
 
-    benchmark = commands.add_parser("benchmark", help="Benchmark frozen offline exports and evaluation on CPU")
+    benchmark = commands.add_parser("benchmark", help="Benchmark frozen exports and atomic online updates")
     _add_embedding_arguments(benchmark)
-    benchmark.add_argument("--warmup", type=int, default=1)
-    benchmark.add_argument("--iterations", type=int, default=5)
+    benchmark.add_argument("--warmup", type=int, default=10)
+    benchmark.add_argument("--iterations", type=int, default=100)
     benchmark.add_argument("--overwrite", action="store_true")
 
     rank = commands.add_parser("rank", help="Run an observable dataset-2.0 recommendation baseline")
@@ -461,12 +461,16 @@ def _pipeline(args: argparse.Namespace) -> dict[str, Any]:
 
 def _benchmark(run: DatasetLayout, experiment: ExperimentLayout, config_path: Path,
                warmup: int, iterations: int, overwrite: bool) -> dict[str, Any]:
-    from .benchmark import run_offline_benchmark
+    from .benchmark import run_offline_benchmark, run_online_benchmark
     run.validate(require_truth=False)
-    return run_offline_benchmark(run.observed, experiment.prepared,
+    offline = run_offline_benchmark(run.observed, experiment.prepared,
         {"baseline": experiment.baseline_embeddings, "learned": experiment.embeddings},
         experiment.offline_benchmark, load_config(config_path), warmup=warmup,
         iterations=iterations, overwrite=overwrite)
+    online = run_online_benchmark(run.observed, experiment.prepared, experiment.checkpoint,
+        experiment.online_workload, experiment.online_benchmark, load_config(config_path),
+        warmup=warmup, iterations=iterations, overwrite=overwrite)
+    return {"offline": offline, "online": online}
 
 
 def main() -> None:
