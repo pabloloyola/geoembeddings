@@ -505,7 +505,7 @@ def main() -> None:
         result = run_ranking(run.observed, manifest, experiment.ranking_predictions(args.model),
                              experiment.ranking_report(args.model), model=args.model,
                              ks=args.k, overwrite=args.overwrite,
-                             embedding_path=experiment.embeddings,
+                             embedding_path=experiment.dense_embeddings,
                              checkpoint_path=experiment.frozen_ranking_checkpoint,
                              baseline_report_paths={name: experiment.ranking_report(name) for name in
                                  ("popularity", "nearest", "category_preference")})

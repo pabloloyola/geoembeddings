@@ -17,6 +17,7 @@ import pandas as pd
 from .contract import DATASET_CONTRACT_NAME, DATASET_CONTRACT_VERSION, OBSERVED_FILES
 from .io import sha256_file, write_json
 from .recommendation import validate_recommendation_tables
+from .representation_schema import COMPONENT_NAMES, EXPORT_SCHEMA_VERSION, load_embedding_export
 
 RANKING_PREDICTION_SCHEMA = "geoembeddings-ranking-predictions/1.0"
 RANKING_REPORT_SCHEMA = "geoembeddings-ranking-report/1.0"
@@ -68,6 +69,7 @@ class FrozenEmbeddingRows:
     cutoff_times: np.ndarray
     values: np.ndarray
     component: str
+    schema_version: str = EXPORT_SCHEMA_VERSION
 
 
 @dataclass(frozen=True)
@@ -91,13 +93,16 @@ def _timestamp(value: Any) -> datetime:
 
 
 def select_causal_embeddings(rows: FrozenEmbeddingRows, requests: Sequence[RankingRequest]) -> dict[str, np.ndarray]:
-    if rows.values.ndim != 2 or len(rows.user_ids) != len(rows.cutoff_names) or len(rows.user_ids) != len(rows.values):
+    if (rows.values.ndim != 2 or len(rows.user_ids) != len(rows.cutoff_names)
+            or len(rows.user_ids) != len(rows.cutoff_times) or len(rows.user_ids) != len(rows.values)):
         raise ValueError("dimensionally inconsistent embedding export")
     if not np.isfinite(rows.values).all():
         raise ValueError("non-finite embedding export")
-    keys = list(zip(rows.user_ids.astype(str), rows.cutoff_names.astype(str), strict=True))
+    if any(not isinstance(value, datetime) for value in rows.cutoff_times):
+        raise ValueError("embedding timestamp field is malformed")
+    keys = list(zip(rows.user_ids.astype(str), rows.cutoff_times, strict=True))
     if len(keys) != len(set(keys)):
-        raise ValueError("duplicate user/cutoff embedding identity")
+        raise ValueError("duplicate user/timestamp embedding identity")
     output: dict[str, np.ndarray] = {}
     for request in requests:
         eligible = [(rows.cutoff_times[i], rows.values[i]) for i, user in enumerate(rows.user_ids.astype(str))
@@ -107,29 +112,42 @@ def select_causal_embeddings(rows: FrozenEmbeddingRows, requests: Sequence[Ranki
     return output
 
 
-def _load_frozen_embeddings(path: Path, prepared: Mapping[str, Any], events_hash: str) -> FrozenEmbeddingRows:
+def _load_frozen_embeddings(path: Path, prepared: Mapping[str, Any],
+                            observed_hashes: Mapping[str, str]) -> FrozenEmbeddingRows:
+    """Authenticate the canonical dense export used at request time."""
     if not path.is_file():
         raise FileNotFoundError(f"missing frozen embedding export: {path}")
-    with np.load(path, allow_pickle=False) as data:
-        required = {"user_id", "cutoff", "source_file_names", "source_hashes"}
-        if not required.issubset(data.files):
-            raise ValueError("embedding export lacks required lineage")
-        source = dict(zip(data["source_file_names"].astype(str), data["source_hashes"].astype(str), strict=True))
-        event_name = OBSERVED_FILES["events"]
-        if source.get(event_name) != events_hash:
-            raise ValueError("embedding source hashes mismatch observed events")
-        component = "combined"
-        key = "component_combined" if "component_combined" in data.files else "embedding"
-        values = np.asarray(data[key], dtype=np.float64)
-        names = data["cutoff"].astype(str)
-        cutoff_map = {"train": _timestamp(prepared["train_end"]),
-                      "validation": _timestamp(prepared["validation_end"]),
-                      "test": _timestamp(prepared["timestamp_max"])}
-        unknown = sorted(set(names) - set(cutoff_map))
-        if unknown:
-            raise ValueError(f"unknown cutoff identities: {unknown}")
-        return FrozenEmbeddingRows(data["user_id"].astype(str), names,
-            np.asarray([cutoff_map[name] for name in names], dtype=object), values, component)
+    loaded = load_embedding_export(path, dense=True)
+    arrays = loaded.arrays
+    if loaded.schema_version != EXPORT_SCHEMA_VERSION:
+        raise ValueError("frozen ranking requires the versioned canonical dense export schema")
+    if tuple(arrays["component_names"].astype(str)) != COMPONENT_NAMES:
+        raise ValueError("embedding component identity/order mismatch")
+    if str(np.asarray(arrays["preparation_hash"]).item()) != sha256_file(path.parent / "prepared" / "prepared_metadata.json"):
+        raise ValueError("embedding preparation identity mismatch")
+    for field in ("train_end", "validation_end"):
+        if str(np.asarray(arrays[field]).item()) != str(prepared[field]):
+            raise ValueError(f"embedding {field} identity mismatch")
+    source = dict(zip(arrays["source_file_names"].astype(str), arrays["source_hashes"].astype(str), strict=True))
+    for name, digest in source.items():
+        if observed_hashes.get(name) != digest:
+            raise ValueError(f"embedding source hash mismatch: {name}")
+    event_name = OBSERVED_FILES["events"]
+    if event_name not in source:
+        raise ValueError("embedding export does not authenticate observed events")
+    timestamps_raw = arrays.get("timestamp")
+    if timestamps_raw is None:
+        raise ValueError("dense embedding export lacks timestamp field")
+    try:
+        timestamps = np.asarray([_timestamp(value) for value in timestamps_raw.astype(str)], dtype=object)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("embedding timestamp field is malformed") from exc
+    cutoff_kinds = arrays.get("cutoff_kind")
+    if cutoff_kinds is None or len(cutoff_kinds) != len(timestamps):
+        raise ValueError("dense embedding cutoff identity is missing or row-misaligned")
+    return FrozenEmbeddingRows(arrays["user_id"].astype(str), cutoff_kinds.astype(str), timestamps,
+                               np.asarray(loaded.components["combined"], dtype=np.float64),
+                               "combined", loaded.schema_version)
 
 
 def _candidate_matrix(requests: Sequence[RankingRequest], candidates: Sequence[RankingCandidate],
@@ -139,8 +157,12 @@ def _candidate_matrix(requests: Sequence[RankingRequest], candidates: Sequence[R
     categorical = ("category", "environment", "context_source")
     numeric = FROZEN_FEATURES[:8]
     if fit:
+        fit_candidates = [c for c in candidates
+                          if c.is_available and c.request_id in fit_ids and c.request_id in embeddings]
+        if not fit_candidates:
+            raise ValueError("empty scorable training split: no available training candidates have a causal embedding")
         vocab = {field: sorted({str((catalog[c.poi_id] if field != "context_source" else request_rows[c.request_id])[field])
-                                for c in candidates if c.request_id in fit_ids}) for field in categorical}
+                                for c in fit_candidates}) for field in categorical}
     else:
         assert state is not None
         vocab = state["vocabularies"]
@@ -156,7 +178,7 @@ def _candidate_matrix(requests: Sequence[RankingRequest], candidates: Sequence[R
         vals += [float(str((poi if field != "context_source" else rr)[field]) == value)
                  for field in categorical for value in vocab[field]]
         raw.append(vals); ids.append(c.request_id); pois.append(c.poi_id)
-    x = np.asarray(raw, dtype=np.float64)
+    x = np.asarray(raw, dtype=np.float64).reshape(len(raw), len(order))
     if not np.isfinite(x).all(): raise ValueError("candidate features must be finite")
     if fit:
         train_mask = np.asarray([rid in fit_ids for rid in ids]); mean = x[train_mask].mean(0); scale = x[train_mask].std(0); scale[scale == 0] = 1
@@ -286,23 +308,44 @@ def run_ranking(
                     bool(int(row["is_available"]))) for row in tables["impressions"]]
     if any(not math.isfinite(row.travel_time_minutes) or row.travel_time_minutes < 0 for row in candidates):
         raise ValueError("candidate travel_time_minutes must be finite and non-negative")
+    source_hashes = {name: sha256_file(observed_dir / OBSERVED_FILES[name])
+                     for name in ("events", "poi_catalog", "recommendation_requests", "impressions", "interactions")}
     frozen_lineage: dict[str, Any] | None = None
     unscorable: dict[str, str] = {}
+    split_counts: dict[str, dict[str, int]] | None = None
     if model == "frozen_embedding":
         if embedding_path is None or checkpoint_path is None:
             raise ValueError("frozen_embedding requires canonical embedding and checkpoint paths")
         prepared_path = embedding_path.parent / "prepared" / "prepared_metadata.json"
         if not prepared_path.is_file(): raise FileNotFoundError("missing prepared metadata for frozen export")
         prepared = json.loads(prepared_path.read_text(encoding="utf-8"))
-        events_hash = sha256_file(observed_dir / OBSERVED_FILES["events"])
-        frozen = _load_frozen_embeddings(embedding_path, prepared, events_hash)
+        frozen = _load_frozen_embeddings(
+            embedding_path, prepared,
+            {OBSERVED_FILES[name]: digest for name, digest in source_hashes.items()},
+        )
         selected = select_causal_embeddings(frozen, requests)
         for request in requests:
             if request.request_id not in selected:
                 unscorable[request.request_id] = "no_embedding_at_or_before_request_cutoff"
         request_rows = {str(row["request_id"]): row for row in tables["recommendation_requests"]}
-        train_ids = {r.request_id for r in requests if r.timestamp <= _timestamp(prepared["train_end"])}
-        if not train_ids: raise ValueError("no training requests at or before train_end")
+        train_end = _timestamp(prepared["train_end"])
+        validation_end = _timestamp(prepared["validation_end"])
+        split_ids = {
+            "training": {r.request_id for r in requests if r.timestamp <= train_end},
+            "validation": {r.request_id for r in requests if train_end < r.timestamp <= validation_end},
+            "test": {r.request_id for r in requests if r.timestamp > validation_end},
+        }
+        if set().union(*split_ids.values()) != {r.request_id for r in requests} or any(
+                split_ids[left] & split_ids[right] for left, right in
+                (("training", "validation"), ("training", "test"), ("validation", "test"))):
+            raise ValueError("ranking request split identities are not disjoint and exhaustive")
+        train_ids = split_ids["training"]
+        if not train_ids:
+            raise ValueError("empty scorable training split: no requests at or before train_end")
+        available_by_request = Counter(c.request_id for c in candidates if c.is_available)
+        scorable_ids = {rid for rid in selected if available_by_request[rid] > 0}
+        if not (train_ids & scorable_ids):
+            raise ValueError("empty scorable training split: no training request has a causal embedding and available candidate")
         all_batch, preprocessing = _candidate_matrix(requests, candidates, request_rows, catalog, selected,
                                                        fit_ids=train_ids, fit=True)
         positive_pairs = {(str(row["request_id"]), str(row["poi_id"])) for row in tables["interactions"]
@@ -329,12 +372,27 @@ def run_ranking(
             scale=preprocessing["scale"], embedding_component=np.asarray(frozen.component),
             embedding_dimension=np.asarray(frozen.values.shape[1]), seed=np.asarray(20260812))
         checkpoint_hash = sha256_file(checkpoint_path)
+        positive_request_ids = {str(row["request_id"]) for row in tables["interactions"]}
+        split_counts = {name: {
+            "requested": len(ids),
+            "scorable": len(ids & scorable_ids),
+            "positive": len(ids & scorable_ids & positive_request_ids),
+            "candidates": sum(available_by_request[rid] for rid in ids & scorable_ids),
+        } for name, ids in split_ids.items()}
         frozen_lineage = {"checkpoint": checkpoint_path.name, "checkpoint_sha256": checkpoint_hash,
             "embedding_export": embedding_path.name, "embedding_export_sha256": sha256_file(embedding_path),
             "embedding_component": frozen.component, "embedding_dimension": int(frozen.values.shape[1]),
             "feature_order": preprocessing["feature_order"], "cutoffs": sorted(set(frozen.cutoff_names.astype(str))),
-            "split_definition": {"training": "request_timestamp <= prepared train_end", "train_end": prepared["train_end"]},
-            "seed": 20260812, "training_requests": len(train_ids), "training_candidates": len(training.labels)}
+            "split_definition": {
+                "training": "request_timestamp <= train_end",
+                "validation": "train_end < request_timestamp <= validation_end",
+                "test": "request_timestamp > validation_end",
+                "train_end": prepared["train_end"], "validation_end": prepared["validation_end"],
+            },
+            "request_identities": {name: sorted(ids) for name, ids in split_ids.items()},
+            "split_counts": split_counts,
+            "seed": 20260812, "training_requests": len(train_ids & scorable_ids),
+            "training_candidates": len(training.labels)}
     else:
         predictions = rank_candidates(model, requests, candidates, interactions=tables["interactions"],
                                       history_events=events.to_dict("records"))
@@ -352,8 +410,6 @@ def run_ranking(
         rank=np.array([row.rank for row in predictions], dtype=np.int64),
         score=np.array([row.score for row in predictions], dtype=np.float64),
         request_hash=np.array(request_hash), candidate_hash=np.array(candidate_hash))
-    source_hashes = {name: sha256_file(observed_dir / OBSERVED_FILES[name])
-                     for name in ("events", "poi_catalog", "recommendation_requests", "impressions", "interactions")}
     report = {
         "schema_version": RANKING_REPORT_SCHEMA, "prediction_schema_version": RANKING_PREDICTION_SCHEMA,
         "model": model, "request_hash": request_hash, "candidate_hash": candidate_hash,
@@ -379,6 +435,7 @@ def run_ranking(
     }
     if frozen_lineage is not None:
         report["frozen_embedding_lineage"] = frozen_lineage
+        report["split_counts"] = split_counts
         comparisons = {}
         for name, path in (baseline_report_paths or {}).items():
             if path.is_file():
