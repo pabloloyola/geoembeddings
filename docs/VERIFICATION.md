@@ -465,6 +465,28 @@ revision, exact commands, artifact hashes, runtime environment, and results
 together; expected paths or metrics must never be presented as executed
 evidence.
 
+## T3.5 frozen-embedding ranker verification
+
+T3.5 affects R9 and the observed-only ranking model/evaluator boundary; it does
+not change the dataset contract or frozen encoder. With seed `20260812`, first
+produce the three T3.4 controls above, then run on the same immutable roots:
+
+```bash
+uv run geoembed rank --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR \
+  --model frozen_embedding
+```
+
+Expected immutable artifacts are
+`EXPERIMENT_DIR/ranking/frozen_embedding_checkpoint.npz`,
+`frozen_embedding.npz`, and `frozen_embedding.json`. Run
+`uv run pytest tests/test_ranking.py` before the complete `uv run pytest`.
+Acceptance requires identical request/candidate hashes across all four reports,
+finite causal embeddings, reported request/user coverage, and separate deltas
+against every control. A non-positive delta is diagnostic evidence and must not
+trigger end-to-end encoder tuning. No T3.5 immutable reference result is
+archived in this repository yet, so metrics and per-axis deltas remain
+unmeasured rather than inferred from expected paths.
+
 ### Runtime results
 
 <!-- Intentionally empty until immutable T3.4 artifacts are produced and indexed. -->

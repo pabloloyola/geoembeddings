@@ -224,6 +224,10 @@ class ExperimentLayout:
         return self.ranking_dir / f"{model}.json"
 
     @property
+    def frozen_ranking_checkpoint(self) -> Path:
+        return self.ranking_dir / "frozen_embedding_checkpoint.npz"
+
+    @property
     def comparison_dir(self) -> Path:
         return self.root / "comparison"
 

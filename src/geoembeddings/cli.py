@@ -106,7 +106,7 @@ def build_parser() -> argparse.ArgumentParser:
     rank = commands.add_parser("rank", help="Run an observable dataset-2.0 recommendation baseline")
     rank.add_argument("--run-dir", required=True, type=Path)
     rank.add_argument("--experiment-dir", required=True, type=Path)
-    rank.add_argument("--model", required=True, choices=("popularity", "nearest", "category_preference"))
+    rank.add_argument("--model", required=True, choices=("popularity", "nearest", "category_preference", "frozen_embedding"))
     rank.add_argument("--k", type=int, nargs="+", default=[1, 5, 10])
     rank.add_argument("--overwrite", action="store_true")
 
@@ -504,7 +504,11 @@ def main() -> None:
         manifest = run.validate(require_truth=False)
         result = run_ranking(run.observed, manifest, experiment.ranking_predictions(args.model),
                              experiment.ranking_report(args.model), model=args.model,
-                             ks=args.k, overwrite=args.overwrite)
+                             ks=args.k, overwrite=args.overwrite,
+                             embedding_path=experiment.embeddings,
+                             checkpoint_path=experiment.frozen_ranking_checkpoint,
+                             baseline_report_paths={name: experiment.ranking_report(name) for name in
+                                 ("popularity", "nearest", "category_preference")})
     elif args.command == "pipeline":
         result = _pipeline(args)
     else:
