@@ -789,6 +789,10 @@ gated by T1.6.
 
 - [ ] **T4.3 — Privacy audits.**
   - **Requirement IDs:** R12.
+  - **Design contract:** [`docs/PRIVACY_THREAT_MODEL.md`](docs/PRIVACY_THREAT_MODEL.md)
+    fixes membership and sensitive-attribute units, attacker access, held-out
+    splits, imbalance/attack controls, uncertainty, immutable report provenance,
+    and prohibited interpretations before implementation.
   - **Prerequisites:** a `selected_candidate` under the
     representation-selection policy in `docs/EXPERIMENT_PROTOCOL.md` and a
     threat-model document.
