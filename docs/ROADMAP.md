@@ -151,8 +151,9 @@ separately and evaluate each on tasks it should and should not solve.
 
 Status: the typed interface, registry, component schema, `factorized_pc`,
 capacity-matched control, ablation configurations, observed-only loss routing,
-and component reports are implemented. The T2.7 matched artifact/decision gate
-is unmeasurable and blocks a routine branch.
+and component reports are implemented. The completed matched T2.7 matrix failed
+the persistent and combined task-information/collapse gates, producing a **do
+not advance** decision that blocks a routine branch.
 
 Exit gate: `persistent` improves invariance/persistent information, `context`
 improves episode response, and neither result is explained by collapse.
@@ -214,9 +215,11 @@ capacity, temporary availability, coordinates, and travel time. Begin with a
 formal onsen/restaurant/cafe/shop/hotel/attraction catalog around Hakone.
 
 Status: the public schemas and synthetic Hakone request-time attributes are
-implemented, with explicit event-only dataset/1.0 compatibility. The exit gate
-is not met because T3.4 popularity, nearest-POI, and category-preference
-rankers remain the next implementation option.
+implemented, with explicit event-only dataset/1.0 compatibility. T3.4 also
+implements observed-only popularity, nearest-POI, and category-preference
+rankers, versioned prediction/report schemas, standard ranking metrics, and
+shared request/candidate hashes. The Phase 4 exit gate is met; embedding-aware
+ranking remains Phase 5 work.
 
 ## Phase 5 — Candidate-aware recommendation
 

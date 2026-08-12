@@ -31,8 +31,9 @@ The final representation should expose three distinct but related components:
 The legacy `SingleVectorEncoder` compresses all three pressures into one vector
 and remains a failure-revealing baseline. A configuration-selected
 `factorized_pc` persistent/context encoder, capacity controls, ablations, and
-named component exports are implemented, but T2.7 lacks matched immutable
-artifacts; branch semantics and scientific factorization remain unmeasurable.
+named component exports are implemented. T2.7 completed on matched immutable
+artifacts with a **do not advance** decision: persistent and combined gates
+failed, so branch names do not establish semantics and routine work stays closed.
 
 ## Repository ownership map
 
@@ -77,8 +78,9 @@ Important limitations:
   estimates;
 - recommendation attributes and intervention mechanisms are synthetic
   hypotheses, not calibrated facts or external causal evidence;
-- observable rankers and candidate-aware recommendation evaluation are not yet
-  implemented.
+- the observed-only popularity, nearest-POI, and category-preference controls
+  are implemented, but embedding-aware and protected counterfactual
+  recommendation evaluation are not.
 
 ## Current implemented model
 
@@ -176,11 +178,12 @@ integrity and metrics, not real-world causal validity or scientific success.
 
 ## Near-term research decision
 
-Execute the T2.7 gate: compare the statistical baseline,
-`capacity_matched_single`, `factorized_pc`, and required branch/loss ablations
-on identical data, cutoffs, and selected R1/R4/R5/R6/R7 axes. The present
-decision is unmeasurable, so do not add a routine branch. Independently, T3.4
-observable naive rankers are the next recommendation implementation option.
+Preserve the completed T2.7 **do not advance** decision. The immutable matched
+matrix compared `capacity_matched_single`, `factorized_pc`, and the required
+branch/loss ablations on identical data and cutoffs; failed persistent and
+combined task-information/collapse gates keep the routine branch closed. T3.4
+observable naive rankers are also complete, making T3.5 the next recommendation
+implementation option.
 
 ## Recommendation data contract
 
@@ -197,9 +200,12 @@ observed/
 Public request-time features include category, coordinates, travel time,
 opening hours, price level, family suitability, indoor/outdoor state, local
 popularity, and availability. True utility, latent preference, true episode,
-and counterfactual choice probabilities remain under `truth/`. T3.4 rankers are
-still required before this contract constitutes an end-to-end recommendation
-baseline.
+and counterfactual choice probabilities remain under `truth/`. The
+`geoembed rank` command now writes versioned predictions and reports for
+popularity, nearest, and category-preference controls using only these observed
+tables and observed event history. Reports include Recall@K, NDCG@K, MRR,
+coverage, and shared request/candidate hashes; embedding-aware ranking remains
+pending.
 
 ## Handoff success criterion
 

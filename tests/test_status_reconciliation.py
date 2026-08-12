@@ -1,11 +1,32 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
 
 from geoembeddings.status_reconciliation import derive_status, reconcile_artifact_index
+
+
+def test_completed_cli_surfaces_are_checked_in_tasks() -> None:
+    """Keep implemented public milestones from retaining stale unchecked status."""
+    repository_root = Path(__file__).resolve().parents[1]
+    cli_source = (repository_root / "src/geoembeddings/cli.py").read_text(encoding="utf-8")
+    tasks = (repository_root / "TASKS.md").read_text(encoding="utf-8")
+    completed_cli_tasks = {"rank": "T3.4"}
+
+    for command, task_id in completed_cli_tasks.items():
+        assert f'commands.add_parser("{command}"' in cli_source
+        task_status = re.search(
+            rf"^- \[(?P<status>[ xX])\] \*\*{re.escape(task_id)}\b",
+            tasks,
+            flags=re.MULTILINE,
+        )
+        assert task_status is not None, f"{task_id} is missing from TASKS.md"
+        assert task_status.group("status").lower() == "x", (
+            f"implemented `geoembed {command}` surface cannot leave {task_id} unchecked"
+        )
 
 
 def _complete_comparison() -> dict:
