@@ -637,10 +637,16 @@ gated by T1.6.
     versioned prediction/report artifacts. Reports preserve T3.4 candidate
     identity and give separate control deltas, per-split requested/scorable/
     positive/candidate counts, request identities, and explicit exclusions.
-    Seed is `20260812`. No immutable same-run baseline/export artifacts are
-    present in this checkout, so baseline metrics, deltas, and coverage remain
-    explicitly unmeasured; the reproducible evidence command and limitations
-    are recorded in `docs/VERIFICATION.md` rather than fabricating a result.
+    Seed is `20260812`. The immutable same-run evidence lineage is indexed in
+    `docs/artifacts/t3.5-ranking-20260812.json` and interpreted in
+    `docs/VERIFICATION.md`: all four reports share request/candidate hashes;
+    frozen Recall@1/5/10 is 0.94/0.98/0.98, NDCG@1/5/10 is
+    0.94/0.962619/0.962619, and MRR is 0.956667. Every metric exceeds each
+    control separately. Training/validation/test request and user coverage is
+    36/36, 8/8, and 5/6, with the one causal-history exclusion named in the
+    index. This satisfies the T3.5 gate on this small synthetic fixed-seed
+    lineage only; it is not causal or utility evidence and does not authorize
+    end-to-end encoder tuning.
 
 - [ ] **T3.6 — Exposure-aware ranking and counterfactual evaluation.**
   - **Requirement IDs:** R5, R9.

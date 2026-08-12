@@ -483,10 +483,60 @@ Expected immutable artifacts are
 Acceptance requires identical request/candidate hashes across all four reports,
 finite causal embeddings, reported request/user coverage, and separate deltas
 against every control. A non-positive delta is diagnostic evidence and must not
-trigger end-to-end encoder tuning. No T3.5 immutable reference result is
-archived in this repository yet, so metrics and per-axis deltas remain
-unmeasured rather than inferred from expected paths.
+trigger end-to-end encoder tuning. The immutable result below is the first
+archived T3.5 lineage; it must not be generalized beyond its stated scope.
 
-### Runtime results
+### Runtime results (immutable T3.5 lineage, 2026-08-12)
 
-<!-- Intentionally empty until immutable T3.4 artifacts are produced and indexed. -->
+Requirement **R9** was exercised after source revision
+`ed3a15e547d6beaba61f7f1e4073dad7f01f1cf9` corrected the observable user-source
+authentication and distributed public recommendation requests across the run so
+the prepared temporal cutoffs contain disjoint training, validation, and test
+requests. This simulator/observed-surface and ranking-evaluator change does not
+change the dataset schema. The selected frozen representation is the
+`factorized_pc` combined component as a diagnostic export; the prior T2.7
+rejection remains binding and this result does **not** authorize end-to-end
+encoder tuning.
+
+The new dataset is
+`runs/t3.5-evidence-20260812-s20260812` (50 users, 14 days, simulation seed
+`20260812`) and the modeling lineage is
+`experiments/t3.5-evidence-20260812-factorized-pc` (training seed `20260806`,
+frozen-head seed `20260812`). Neither path reused, relabeled, or overwrote an
+older artifact. The exact resolved simulator and embedding configurations are
+`runs/t3.5-evidence-20260812-s20260812/config.resolved.yaml` and
+`experiments/t3.5-evidence-20260812-factorized-pc/prepared/config.resolved.yaml`.
+The checkpoint is `model/best_model.pt`, the selected request-time export is
+`dense_embeddings.npz`, and the frozen head checkpoint is
+`ranking/frozen_embedding_checkpoint.npz` under that experiment root. All exact
+commands, seeds, source hashes, artifact byte hashes, predictions, reports, and
+coverage are indexed immutably in
+`docs/artifacts/t3.5-ranking-20260812.json`.
+
+All four reports authenticate request hash
+`ee894bf15de303e0705c4ee6e7cdb4ba133a43a60caaf7c14f79e53d1546fcb7` and
+available-candidate hash
+`43fc4f02664bfd3ee544c960b079eb8290fe875199f4dfb3ae6b4ef4a9d94a9e`.
+Training covered 36/36 requests and users with 891 available candidates;
+validation covered 8/8 and 197; test covered 5/6 and 118. The sole exclusion,
+`request_043696ab43366cba6030189f`, had no embedding at or before its request
+cutoff, so no later vector was substituted.
+
+| Ranker | Recall@1 / @5 / @10 | NDCG@1 / @5 / @10 | MRR |
+|---|---:|---:|---:|
+| popularity | 0.880 / 0.880 / 0.880 | 0.880 / 0.880 / 0.880 | 0.885895 |
+| nearest | 0.000 / 0.140 / 0.360 | 0.000 / 0.070 / 0.134073 | 0.122200 |
+| category preference | 0.000 / 0.340 / 0.420 | 0.000 / 0.152486 / 0.180168 | 0.131912 |
+| frozen embedding | 0.940 / 0.980 / 0.980 | 0.940 / 0.962619 / 0.962619 | 0.956667 |
+
+Frozen-minus-control deltas remain separate: against popularity, Recall deltas
+are `+0.060/+0.100/+0.100`, NDCG deltas are
+`+0.060/+0.082619/+0.082619`, and MRR is `+0.070771`; against nearest they are
+`+0.940/+0.840/+0.620`, `+0.940/+0.892619/+0.828546`, and `+0.834467`;
+against category preference they are `+0.940/+0.640/+0.560`,
+`+0.940/+0.810133/+0.782451`, and `+0.824754`. These are observable click
+metrics on one small synthetic fixed-seed lineage, not utility, causal, or
+generalization evidence. The gate is satisfied for T3.5 because every requested
+axis beats every same-contract control with explicit coverage and exclusions;
+no encoder tuning was performed or is implied.
+
