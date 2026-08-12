@@ -103,6 +103,13 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark.add_argument("--iterations", type=int, default=5)
     benchmark.add_argument("--overwrite", action="store_true")
 
+    rank = commands.add_parser("rank", help="Run an observable dataset-2.0 recommendation baseline")
+    rank.add_argument("--run-dir", required=True, type=Path)
+    rank.add_argument("--experiment-dir", required=True, type=Path)
+    rank.add_argument("--model", required=True, choices=("popularity", "nearest", "category_preference"))
+    rank.add_argument("--k", type=int, nargs="+", default=[1, 5, 10])
+    rank.add_argument("--overwrite", action="store_true")
+
     robustness = commands.add_parser("robustness", help="Re-encode deterministic observed-data robustness views for R6/R7")
     _add_embedding_arguments(robustness)
     robustness.add_argument("--kind", choices=("learned", "baseline"), default="learned")
@@ -490,6 +497,14 @@ def main() -> None:
             result = _robustness(run, experiment, config_path, args.kind, args.views)
     elif args.command == "compare":
         result = _compare(args)
+    elif args.command == "rank":
+        from .ranking import run_ranking
+        run = DatasetLayout.from_path(args.run_dir)
+        experiment = ExperimentLayout.from_path(args.experiment_dir)
+        manifest = run.validate(require_truth=False)
+        result = run_ranking(run.observed, manifest, experiment.ranking_predictions(args.model),
+                             experiment.ranking_report(args.model), model=args.model,
+                             ks=args.k, overwrite=args.overwrite)
     elif args.command == "pipeline":
         result = _pipeline(args)
     else:

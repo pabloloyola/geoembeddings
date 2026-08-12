@@ -756,6 +756,60 @@ rejects mismatched specifications, hashes, masks, view IDs, keys, coverage,
 users, or cutoffs before reporting distinct learned-minus-baseline R6 and R7
 axes. These are controlled sensitivity tests, not causal or real-noise claims.
 
+## `rank`
+
+### Purpose
+
+Run one dataset-2.0 observable recommendation control over the public candidate
+surface. The command never reads `truth/` and rejects event-only dataset 1.0
+runs rather than manufacturing recommendation tables.
+
+```bash
+uv run geoembed rank \
+  --run-dir runs/kanto_pilot \
+  --experiment-dir experiments/kanto_ranking \
+  --model popularity
+uv run geoembed rank --run-dir runs/kanto_pilot \
+  --experiment-dir experiments/kanto_ranking --model nearest
+uv run geoembed rank --run-dir runs/kanto_pilot \
+  --experiment-dir experiments/kanto_ranking --model category_preference
+```
+
+`--k 1 5 10` controls the reported cutoffs. Existing prediction or report
+artifacts are immutable unless `--overwrite` is supplied.
+
+### Inputs and causal boundary
+
+All scoring and labels come from `observed/poi_catalog.csv.gz`,
+`recommendation_requests.csv.gz`, `impressions.csv.gz`, `interactions.csv.gz`,
+and `observed_events.csv.gz`. Candidates with `is_available != 1` are removed
+before scoring. Popularity is the POI interaction count strictly before each
+request timestamp; category preference is the requesting user's observed event
+category count strictly before that timestamp; nearest uses the request-time
+travel-time observable. Equal scores use ascending `poi_id`, so results do not
+depend on CSV row order. An interaction or event at the exact request timestamp
+is not training history.
+
+### Outputs
+
+Each model writes `EXPERIMENT_DIR/ranking/{model}.npz` predictions and a
+versioned `EXPERIMENT_DIR/ranking/{model}.json` report. Both identify the common
+request and available-candidate sets by canonical SHA-256. The report also
+records observed source hashes, source-manifest identity, cutoff semantics,
+scorer configuration, coverage, Recall@K, NDCG@K, and MRR. Requests without an
+available candidate remain in request coverage but have no prediction; requests
+without an observable interaction are excluded from metric means and reported
+separately.
+
+### Limitations
+
+These are controls, not learned personalization. Interaction popularity can be
+cold-started when the contract contains no earlier recommendation traffic;
+category counts treat unseen categories as zero; clicks are implicit observed
+relevance rather than utility or counterfactual relevance. Metrics do not use
+protected utility, true intent, or unexposed alternatives and therefore do not
+establish causal recommendation quality.
+
 ## `pipeline`
 
 ### Purpose
