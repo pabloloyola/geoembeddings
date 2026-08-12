@@ -10,6 +10,9 @@ not by themselves establish factorization, causal invariance, or external validi
 Start with [`START_HERE.md`](START_HERE.md). A Codex agent must also read the
 repository-root [`AGENTS.md`](AGENTS.md) before changing code.
 
+For a copy-and-paste local smoke run, artifact inspection guide, and
+troubleshooting, use the **[local exploration runbook](docs/LOCAL_EXPLORATION.md)**.
+
 One repository now owns the complete path from semi-synthetic Kanto data
 generation to user-embedding training and protected evaluation. The simulator
 and model remain logically separated by a versioned dataset contract, while a
@@ -20,7 +23,7 @@ single CLI resolves every filename and directory.
 From the extracted repository root:
 
 ```bash
-uv sync --extra dev
+uv sync --locked --extra dev
 uv run geoembed --version
 ```
 
@@ -106,87 +109,9 @@ The CLI additionally provides `simulate-pair`, `pair-manifest`,
 `validate-pair`, `evaluate-pair`, `evaluate-change`, `export-dense`,
 supplemental `evaluate` modes (`--episodes`, `--transfer`,
 `--temporal-routine`, `--reliability`), `robustness`, and `benchmark`. See
-`docs/COMMAND_REFERENCE.md` for their immutable inputs and artifacts.
-
-## Stage-by-stage commands
-
-```bash
-# Generate and validate
-uv run geoembed simulate \
-  --config configs/simulation/kanto_v1.yaml \
-  --run-dir runs/kanto_pilot
-
-uv run geoembed validate --run-dir runs/kanto_pilot
-
-# Prepare model inputs
-uv run geoembed prepare \
-  --config configs/embedding/single_vector.yaml \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
-
-# Non-learned comparator
-uv run geoembed baseline \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
-
-uv run geoembed evaluate \
-  --kind baseline \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
-
-# Learned encoder
-uv run geoembed train \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
-
-uv run geoembed export \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
-
-uv run geoembed evaluate \
-  --kind learned \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
-
-# Fair frozen-embedding comparison (both exports in one experiment directory)
-uv run geoembed compare \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
-```
-
-The baseline export is inexpensive and can share the learned experiment's
-prepared data:
-
-```bash
-uv run geoembed baseline \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
-
-uv run geoembed compare \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
-```
-
-`compare` writes `comparison/embedding_comparison.json` and a readable
-`comparison/embedding_comparison.md`. It uses identical users, temporal cutoffs,
-held-out-user splits, and frozen ridge probes for both representations. The
-report covers latent-trait and category-preference recovery, signal beyond
-home/work geography and activity volume, stability versus collapse, temporal
-user retrieval, effective rank, event-count dependence, and common future-event
-probes. Criteria that cannot be tested from three global cutoff embeddings are
-explicitly marked as unavailable.
-
-If the two exports live in different experiment directories, use:
-
-```bash
-uv run geoembed compare \
-  --run-dir runs/kanto_pilot \
-  --baseline-experiment-dir experiments/kanto_baseline \
-  --learned-experiment-dir experiments/kanto_single_vector
-```
-
-The command rejects comparisons when the two prepared artifacts do not identify
-the same source files and temporal split.
+`docs/COMMAND_REFERENCE.md` for their immutable inputs and artifacts. Follow
+the [local exploration runbook](docs/LOCAL_EXPLORATION.md) for an ordered,
+copy-and-paste workflow rather than duplicating the full command reference here.
 
 ## Configuration
 
@@ -204,7 +129,7 @@ configurations are saved with their artifacts.
 ```bash
 uv run pytest
 
-uv sync --extra viz
+uv sync --locked --extra dev --extra viz
 GEOEMBED_RUN_DIR=runs/kanto_pilot \
   uv run python scripts/kanto_visualization_validation.py
 ```
@@ -234,6 +159,7 @@ See `docs/SIMULATION_FLOW.md` for the exact handoff and
 - `AGENTS.md`: binding instructions for a Codex coding agent.
 - `docs/AGENT_HANDOFF.md`: architecture, evidence, risks, and ownership map.
 - `docs/COMMAND_REFERENCE.md`: every command, input, operation, and output.
+- `docs/LOCAL_EXPLORATION.md`: ordered local workflow, artifact checklist, and troubleshooting.
 - `docs/REQUIREMENTS_MATRIX.md`: measurable R1--R13 research requirements.
 - `docs/EXPERIMENT_PROTOCOL.md`: fair comparisons and artifact conventions.
 - `docs/ROADMAP.md`: ordered simulator, evaluator, and model milestones.

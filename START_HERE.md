@@ -5,6 +5,11 @@ representations from semi-synthetic Kanto mobility and commerce histories. It
 contains both the data-generating process and the embedding pipeline, separated
 by a versioned observed/truth contract.
 
+**Running the project locally?** Follow the
+**[local exploration runbook](docs/LOCAL_EXPLORATION.md)** for prerequisites, a
+fresh 50-user smoke workflow, artifact inspection, ranking controls, optional
+learned comparison, and troubleshooting.
+
 ## For a Codex agent
 
 Read these files in order before editing code:
