@@ -93,3 +93,27 @@ def test_simulate_pair_names_both_dataset_roots_and_pair_root() -> None:
     assert str(args.reference_run_dir) == "runs/ref"
     assert str(args.intervention_run_dir) == "runs/int"
     assert str(args.pair_dir) == "pairs/exposure"
+
+
+def test_privacy_audit_uses_canonical_roots_not_internal_artifact_paths() -> None:
+    args = build_parser().parse_args([
+        "audit-privacy", "--run-dir", "runs/pilot",
+        "--experiment-dir", "statistical_baseline=experiments/baseline",
+        "--experiment-dir", "capacity_matched_single=experiments/learned",
+        "--evidence-dir", "evidence/t2.7", "--utility-report-dir", "utility/t2.7",
+        "--config", "configs/privacy/diagnostic_v1.yaml",
+        "--output-dir", "audits/r12",
+    ])
+    assert str(args.run_dir) == "runs/pilot"
+    assert args.experiment_dir == [
+        "statistical_baseline=experiments/baseline",
+        "capacity_matched_single=experiments/learned",
+    ]
+    assert str(args.evidence_dir) == "evidence/t2.7"
+    assert str(args.utility_report_dir) == "utility/t2.7"
+    assert str(args.output_dir) == "audits/r12"
+    for forbidden in (
+        "observed_dir", "truth_dir", "export_path", "checkpoint_path",
+        "prepared_metadata_path", "utility_report_path", "evidence_index_path",
+    ):
+        assert not hasattr(args, forbidden)
