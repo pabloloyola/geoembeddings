@@ -754,7 +754,7 @@ gated by T1.6.
     audit the statistical baseline, capacity-matched single vector, and
     factorized diagnostic variants under the protocol's provenance rules.
 
-  - [ ] **T4.1a — Diagnostic-control uncertainty calibration (non-selection
+  - [x] **T4.1a — Diagnostic-control uncertainty calibration (non-selection
     evidence).**
     - **Scope:** calibrate on held-out users for the statistical baseline, the
       capacity-matched single-vector control, and each factorized diagnostic
@@ -785,6 +785,17 @@ gated by T1.6.
       complete T4.1. Only a future gate-passing representation with the
       immutable `selected_candidate` role can provide T4.1's
       selection-dependent completion evidence.
+    - **Completion note (2026-08-13):** `calibrate-reliability` authenticates
+      sources, preparation, dense exports, identical user coverage, and a
+      frozen calibration/test split. Seeded replacement bootstrap samples use
+      observed-history dense windows rather than T1.7 cutoff repeatability; a
+      nonnegative monotone affine map is fit only on calibration users. Raw and
+      calibrated reliability bins and coverage-risk curves are evaluated on
+      disjoint test users with counts, exclusions, and fitted parameters. Every
+      eligible input remains an immutable `diagnostic_control`, no aggregate
+      winner is emitted, and the selected-candidate conclusion is unavailable.
+      The indexed small smoke is
+      `docs/artifacts/t4.1a-calibration-smoke-20260813.json`.
 
 - [x] **T4.2 — Adaptation and forgetting audit.**
   - **Requirement IDs:** R11.

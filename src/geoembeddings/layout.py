@@ -242,6 +242,10 @@ class ExperimentLayout:
         return self.root / ("baseline_reliability.json" if kind == "baseline" else "reliability.json")
 
     @property
+    def calibration_report(self) -> Path:
+        return self.root / "reliability" / "calibration.json"
+
+    @property
     def benchmarks_dir(self) -> Path:
         return self.root / "benchmarks"
 

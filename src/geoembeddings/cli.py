@@ -111,6 +111,13 @@ def build_parser() -> argparse.ArgumentParser:
     audit_privacy.add_argument("--output-dir", required=True, type=Path)
     audit_privacy.add_argument("--overwrite", action="store_true")
 
+    calibrate = commands.add_parser("calibrate-reliability", help="Calibrate R10 diagnostic-control uncertainty")
+    calibrate.add_argument("--run-dir", required=True, type=Path)
+    calibrate.add_argument("--experiment-dir", required=True, action="append", metavar="NAME=ROOT")
+    calibrate.add_argument("--config", type=Path, default=Path("configs/reliability/diagnostic_v1.yaml"))
+    calibrate.add_argument("--output-dir", required=True, type=Path)
+    calibrate.add_argument("--overwrite", action="store_true")
+
     prepare = commands.add_parser("prepare", help="Fit leakage-safe preprocessing")
     _add_embedding_arguments(prepare)
 
@@ -566,6 +573,10 @@ def _run_command(args: argparse.Namespace) -> dict[str, Any]:
         result = audit_privacy(run_dir=args.run_dir, experiments=_named_roots(args.experiment_dir),
             evidence_dir=args.evidence_dir, utility_report_dir=args.utility_report_dir,
             config_path=args.config, output_dir=args.output_dir, overwrite=args.overwrite)
+    elif args.command == "calibrate-reliability":
+        from .calibration import calibrate_reliability
+        result = calibrate_reliability(args.run_dir, _named_roots(args.experiment_dir),
+            args.config, args.output_dir, overwrite=args.overwrite)
     elif args.command in {"prepare", "train", "baseline", "export", "export-dense", "evaluate", "robustness", "benchmark"}:
         run = DatasetLayout.from_path(args.run_dir)
         experiment = ExperimentLayout.from_path(args.experiment_dir)
