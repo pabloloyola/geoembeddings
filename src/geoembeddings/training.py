@@ -12,7 +12,8 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 
-from .data import TARGET_FIELDS, EventWindowDataset, collate_windows
+from .data import (PARTICIPATION_HASH_DEFINITION, TARGET_FIELDS, EventWindowDataset,
+                   collate_windows, participation_roles)
 from .io import read_json, sha256_file, write_json
 from .model import build_model, configured_model_variant
 from .prepare import UNK_TOKEN
@@ -48,6 +49,11 @@ def train_model(
     # Fail before dataset reads, output writes, or accelerator initialization.
     model_variant = configured_model_variant(config)
     output_dir = Path(output_dir)
+    participation_path = output_dir / "training_participation.json"
+    if participation_path.exists():
+        raise FileExistsError(
+            f"Immutable training participation artifact already exists: {participation_path}"
+        )
     output_dir.mkdir(parents=True, exist_ok=True)
     seed = int(config.get("seed", 0))
     seed_everything(seed)
@@ -160,6 +166,34 @@ def train_model(
         "checkpoint": str(checkpoint_path.resolve()),
         "history": history,
     }
+    participation = {
+        "schema_version": "geoembeddings-training-participation/1.0",
+        "participation_definition": {
+            "version": "eligible-target-windows/1.0",
+            "identity_hash": PARTICIPATION_HASH_DEFINITION,
+            "eligible_training_windows": "A user is included iff at least one observed target event is in the train split and has min_history_events strictly earlier observed events.",
+            "validation_checkpoint_selection_windows": "A user is included iff at least one observed target event is in the validation split and has min_history_events strictly earlier observed events.",
+            "train_fitted_preprocessing": "Users with at least one observed event at or before train_end; vocabularies and normalization consume those events only.",
+            "exported_only_after_checkpoint_freezing": "Users with an observed history eligible for a named cutoff export but no eligible train or validation target window; these users do not update or select the checkpoint.",
+            "exclusions": "Export availability, cutoff presence, test windows, and evaluator/probe splits never imply training or checkpoint-selection participation.",
+        },
+        "roles": participation_roles(train_dataset, validation_dataset),
+        "preparation_identity": {
+            "prepared_metadata_sha256": sha256_file(prepared_metadata_path),
+            "observed_source_hashes": dict(prepared_metadata["source_files"]),
+        },
+        "split_boundaries": {
+            "train_end": str(prepared_metadata["train_end"]),
+            "validation_end": str(prepared_metadata["validation_end"]),
+        },
+        "configuration_sha256": _canonical_config_hash(config),
+        "checkpoint_identity": {
+            "path": checkpoint_path.name,
+            "sha256": sha256_file(checkpoint_path),
+            "epoch": int(torch.load(checkpoint_path, map_location="cpu", weights_only=False)["epoch"]),
+        },
+    }
+    write_json(participation, participation_path)
     write_json(report, output_dir / "training_report.json")
     return report
 

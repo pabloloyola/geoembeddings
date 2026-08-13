@@ -186,6 +186,11 @@ class ExperimentLayout:
         return self.model / "training_report.json"
 
     @property
+    def training_participation(self) -> Path:
+        """Canonical immutable learned-training participation artifact."""
+        return self.model / "training_participation.json"
+
+    @property
     def command_log(self) -> Path:
         return self.root / "t0.2_commands.log"
 

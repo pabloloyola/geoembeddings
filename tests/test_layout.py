@@ -15,6 +15,7 @@ def test_layout_resolves_all_paths(tmp_path) -> None:
     assert run.truth == run.root / "truth"
     assert experiment.prepared == experiment.root / "prepared"
     assert experiment.checkpoint == experiment.root / "model" / "best_model.pt"
+    assert experiment.training_participation == experiment.root / "model" / "training_participation.json"
     assert experiment.dense_embeddings == experiment.root / "dense_embeddings.npz"
     assert experiment.episode_response == experiment.root / "episode_response.json"
     assert experiment.baseline_episode_response == experiment.root / "baseline_episode_response.json"

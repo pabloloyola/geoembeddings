@@ -458,7 +458,14 @@ Under `EXPERIMENT_DIR/model/`:
 - `best_model.pt`: state, resolved config, vocabularies, explicit field order,
   continuous fields, selected epoch, and validation metrics;
 - `training_report.json`: device, fields, window counts, best validation loss,
-  checkpoint path, and metrics for every epoch.
+  checkpoint path, and metrics for every epoch;
+- `training_participation.json`: immutable, versioned, non-identifying counts
+  and canonical user-set hashes for eligible train windows, validation
+  checkpoint-selection windows, train-fitted preprocessing, and users eligible
+  only for post-freeze export. Its lineage binds the exact participation
+  definition to preparation/source hashes, split boundaries, configuration,
+  and the selected checkpoint. Existing participation metadata is rejected
+  rather than replaced.
 
 `training_report.json` also contains the shared `runtime_metadata` object
 described under **Runtime metadata schema** below. The timed interval covers

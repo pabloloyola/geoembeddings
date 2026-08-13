@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -56,6 +57,11 @@ class EventWindowDataset(Dataset[dict[str, Any]]):
         self.references = self._make_references(events, split, config["data"])
         if not self.references:
             raise ValueError(f"No usable {split} windows after applying min_history_events")
+
+    @property
+    def participating_users(self) -> tuple[str, ...]:
+        """Users with actual eligible target windows, independent of iteration order."""
+        return tuple(sorted({reference.user_id for reference in self.references}))
 
     def __len__(self) -> int:
         return len(self.references)
@@ -173,6 +179,64 @@ def _timestamp_split(
     if timestamp <= validation_end:
         return "validation"
     return "test"
+
+
+PARTICIPATION_HASH_DEFINITION = "sha256-canonical-sorted-identifiers/1.0"
+
+
+def canonical_user_set(users: Iterable[str]) -> dict[str, Any]:
+    """Return a non-identifying, deterministic identity-set summary."""
+    values = sorted({str(user) for user in users})
+    if any(not value for value in values):
+        raise ValueError("participation identities must be non-empty strings")
+    return {
+        "count": len(values),
+        "identity_sha256": hashlib.sha256("\n".join(values).encode("utf-8")).hexdigest(),
+    }
+
+
+def participation_roles(
+    train_dataset: EventWindowDataset,
+    validation_dataset: EventWindowDataset,
+) -> dict[str, Any]:
+    """Derive training roles solely from observed preprocessing and model datasets."""
+    train_users = set(train_dataset.participating_users)
+    validation_users = set(validation_dataset.participating_users)
+    train_end = pd.Timestamp(train_dataset.metadata["train_end"])
+    preprocessing_users = set(
+        train_dataset.events.loc[train_dataset.events["timestamp"] <= train_end, "user_id"]
+        .astype(str)
+    )
+    export_users = set(train_dataset.events["user_id"].astype(str))
+    export_only_users = export_users - train_users - validation_users
+    # A frozen checkpoint may export one row for every available named cutoff.
+    boundaries = (
+        train_end,
+        pd.Timestamp(train_dataset.metadata["validation_end"]),
+        pd.Timestamp(train_dataset.metadata.get("timestamp_max", train_dataset.events["timestamp"].max())),
+    )
+    export_only_windows = sum(
+        int((group["timestamp"] <= cutoff).any())
+        for user, group in train_dataset.events.groupby("user_id", sort=False)
+        if str(user) in export_only_users
+        for cutoff in boundaries
+    )
+    return {
+        "eligible_training_windows": {
+            **canonical_user_set(train_users), "window_count": len(train_dataset),
+        },
+        "validation_checkpoint_selection_windows": {
+            **canonical_user_set(validation_users), "window_count": len(validation_dataset),
+        },
+        "train_fitted_preprocessing": {
+            **canonical_user_set(preprocessing_users),
+            "event_count": int((train_dataset.events["timestamp"] <= train_end).sum()),
+            "window_count": 0,
+        },
+        "exported_only_after_checkpoint_freezing": {
+            **canonical_user_set(export_only_users), "window_count": export_only_windows,
+        },
+    }
 
 
 def collate_windows(samples: Iterable[dict[str, Any]]) -> dict[str, Any]:
