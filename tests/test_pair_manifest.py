@@ -73,7 +73,7 @@ def test_pair_manifest_rejects_incompatible_contract(tmp_path: Path) -> None:
     reference, intervention = tmp_path / "reference", tmp_path / "intervention"
     _run(reference, 101); _run(intervention, 202)
     path = intervention / "manifest.json"
-    manifest = json.loads(path.read_text()); manifest["dataset_contract"]["version"] = "2.0"
+    manifest = json.loads(path.read_text()); manifest["dataset_contract"]["version"] = "1.0"
     path.write_text(json.dumps(manifest))
     with pytest.raises(ValueError, match="contract"):
         create_pair_manifest(reference, intervention, tmp_path / "pair" / "pair_manifest.json")

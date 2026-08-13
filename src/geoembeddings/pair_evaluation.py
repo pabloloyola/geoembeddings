@@ -131,7 +131,13 @@ def representation_metrics(reference: dict[tuple[str, str], np.ndarray],
         raise ValueError("Paired evaluation requires at least two matched test-cutoff users")
     a, b = (np.stack([source[key] for key in test_keys]) for source in (reference, intervention))
     if a.shape[1] != b.shape[1]:
-        raise ValueError("Reference and intervention representation dimensions mismatch")
+        return {
+            "status": "unavailable",
+            "reason": "reference_intervention_representation_dimensions_mismatch",
+            "coverage": {**coverage, "matched_test_users": len(users),
+                         "excluded_matched_non_test_rows": len(keys) - len(test_keys)},
+            "dimensions": {"reference": int(a.shape[1]), "intervention": int(b.shape[1])},
+        }
     cosine = _cosine_rows(a, b)
     normalized_a = a/np.maximum(np.linalg.norm(a, axis=1, keepdims=True), 1e-12)
     normalized_b = b/np.maximum(np.linalg.norm(b, axis=1, keepdims=True), 1e-12)
@@ -216,7 +222,12 @@ def _markdown(report: dict[str,Any])->str:
         "> No aggregate winner is calculated. GPS/missingness sensitivity remains distinct from controlled exposure/opportunity invariance.",""]
     for kind, result in report["results"].items():
         lines += [f"## {kind.title()}","",f"- Matched rows: {result['coverage']['matched_rows']}",
-            f"- Matched test users: {result['coverage']['matched_test_users']}",
+            f"- Matched test users: {result['coverage']['matched_test_users']}"]
+        if result.get("status") == "unavailable":
+            lines += [f"- Status: unavailable (`{result['reason']}`)",
+                      f"- Dimensions (reference/intervention): {result['dimensions']['reference']} / {result['dimensions']['intervention']}", ""]
+            continue
+        lines += [
             f"- Mean cosine drift: {result['embedding_drift']['mean_cosine_distance']:.6f}",
             f"- Cross-run retrieval top-1: {result['retrieval']['cross_run_user_top1']:.6f}",
             f"- Effective rank (reference/intervention): {result['effective_rank']['reference']:.4f} / {result['effective_rank']['intervention']:.4f}",""]

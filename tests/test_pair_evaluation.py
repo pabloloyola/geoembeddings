@@ -76,9 +76,13 @@ def test_pair_evaluator_is_only_modeling_module_that_names_pair_truth() -> None:
 def test_full_paired_run_evaluation(tmp_path: Path) -> None:
     pair_result = simulate_pair(Path("configs/simulation/kanto_v1.yaml"),
         tmp_path / "reference", tmp_path / "intervention", tmp_path / "pair",
-        intervention="observation", users=10, days=2, seed=20260811)
+        intervention="observation", users=30, days=2, seed=20260811)
     config = load_config(Path("configs/embedding/single_vector.yaml"))
     config["training"]["epochs"] = 1
+    # Matched interventions must use identical wall-clock cutoffs; observed
+    # quantiles can legitimately move when the observation process changes.
+    config["data"].update(train_end="2026-04-01T12:00:00Z",
+                          validation_end="2026-04-02T00:00:00Z")
     experiments = []
     for side in ("reference", "intervention"):
         experiment = ExperimentLayout.from_path(tmp_path / f"{side}-experiment")
@@ -92,6 +96,12 @@ def test_full_paired_run_evaluation(tmp_path: Path) -> None:
         experiments.append(experiment.root)
     report = evaluate_pair(pair_result["pair_manifest"], experiments, experiments, config)
     assert report["schema_version"] == "geoembeddings-counterfactual-comparison/1.0"
-    assert report["requirements"] == {"R5": "executable", "R7": "executable"}
+    assert report["requirements"] == {
+        "R3": "not_targeted", "R4": "not_targeted",
+        "R5": "executable", "R7": "executable",
+    }
+    assert report["results"]["baseline"]["status"] == "unavailable"
+    assert report["results"]["baseline"]["reason"] == \
+        "reference_intervention_representation_dimensions_mismatch"
     assert (tmp_path / "pair" / "counterfactual_comparison.json").is_file()
     assert (tmp_path / "pair" / "counterfactual_comparison.md").is_file()

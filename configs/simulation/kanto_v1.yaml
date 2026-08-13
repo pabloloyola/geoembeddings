@@ -245,7 +245,7 @@ interventions:
     affected_random_streams: [choices]
     reseed_streams: []
     invariant_entities: [users, regions, pois, episodes, choices]
-    permitted_changes: [truth.candidate_sets.*, truth.choices.*, truth.trajectories.*, observed.events.*]
+    permitted_changes: [truth.candidate_sets.*, truth.choices.*, truth.trajectories.*, observed.*]
     behavioral_diagnostics: {mean_candidate_count: decrease}
   observation:
     config_overrides: {scenarios.mixed.gps_scale: 1.70, scenarios.mixed.dropout_scale: 2.10}

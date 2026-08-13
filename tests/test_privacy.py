@@ -52,10 +52,14 @@ def test_privacy_config_rejects_unfrozen_derivation() -> None:
 
 def _export(rows):
     users, cutoffs = zip(*rows)
+    user_values = np.asarray([float(user.removeprefix("u").removeprefix("m").removeprefix("n"))
+                              if user.lstrip("umn").isdigit() else float(sum(map(ord, user)))
+                              for user in users], dtype=np.float32)
+    cutoff_values = np.asarray([float(cutoff == "test_end") for cutoff in cutoffs], dtype=np.float32)
     components = {
-        "persistent": np.arange(len(rows), dtype=np.float32)[:, None],
-        "context": (10 + np.arange(len(rows), dtype=np.float32))[:, None],
-        "combined": np.column_stack((np.arange(len(rows)), np.arange(len(rows)) + 1)).astype(np.float32),
+        "persistent": user_values[:, None],
+        "context": cutoff_values[:, None],
+        "combined": np.column_stack((user_values, cutoff_values)),
     }
     return LoadedEmbeddingExport({"user_id": np.asarray(users), "cutoff": np.asarray(cutoffs)},
                                  components, "test", "test")
@@ -252,7 +256,7 @@ def test_membership_population_is_deterministic_under_export_and_mapping_order()
         provenance_by_user=dict(reversed(list(provenance.items()))), **kwargs,
     )
     identity = lambda population: sorted(
-        (r.user_id, r.membership, r.split, r.vector, r.missing_cutoff_mask)
+        (r.user_id, r.membership, r.split, r.vector_features, r.missing_cutoff_mask)
         for r in population.records
     )
     assert identity(first) == identity(second)
@@ -291,8 +295,8 @@ def test_attack_is_unavailable_for_imbalanced_or_missing_split_classes() -> None
         population.component_order, population.vector_feature_names,
         population.provenance_feature_names,
         tuple(PrivacyPopulationRecord(
-            r.user_id, True, r.split, r.vector, r.missing_cutoff_mask,
-            r.missing_component_mask, r.provenance, r.stratum,
+            r.user_id, True, r.split, r.vector_features, r.missing_cutoff_mask,
+            r.missing_component_mask, r.provenance_covariates, r.matching_stratum,
         ) for r in population.records), population.excluded_users,
         population.user_set_hashes,
     )
@@ -325,6 +329,8 @@ def test_bootstrap_reports_degenerate_replicates_instead_of_hiding_them() -> Non
         ), replicates=40, seed=9,
     )
     assert result["requested_replicates"] == 40
-    assert result["degenerate_replicates"] > 0
-    assert result["excluded_replicates"] == result["degenerate_replicates"]
-    assert result["successful_replicates"] + result["excluded_replicates"] == 40
+    # Class is part of the effective stratum, so both singleton classes are
+    # retained in every replicate rather than being silently degenerate.
+    assert result["degenerate_replicates"] == 0
+    assert result["excluded_replicates"] == 0
+    assert result["successful_replicates"] == 40

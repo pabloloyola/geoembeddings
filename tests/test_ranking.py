@@ -217,8 +217,8 @@ def test_rankers_share_sets_reject_v1_and_never_open_truth(tmp_path, monkeypatch
     (prepared / "prepared_metadata.json").write_text(json.dumps({"train_end": train_end,
         "validation_end": train_end, "timestamp_max": timestamps[-1]}))
     dense_rows = request_rows[["user_id", "request_timestamp"]].astype(str).drop_duplicates()
-    users = dense_rows["user_id"].to_numpy()
-    dense_timestamps = dense_rows["request_timestamp"].to_numpy()
+    users = dense_rows["user_id"].to_numpy(dtype=str)
+    dense_timestamps = dense_rows["request_timestamp"].to_numpy(dtype=str)
     matrix = np.ones((len(users), 2))
     prepared_hash = sha256_file(prepared / "prepared_metadata.json")
     np.savez_compressed(experiment / "dense_embeddings.npz", user_id=users,
@@ -264,5 +264,8 @@ def test_rankers_share_sets_reject_v1_and_never_open_truth(tmp_path, monkeypatch
     manifest_path.write_text(json.dumps(manifest))
     monkeypatch.setattr("sys.argv", ["geoembed", "rank", "--run-dir", str(run),
         "--experiment-dir", str(tmp_path / "legacy"), "--model", "nearest"])
-    with pytest.raises((FileNotFoundError, ValueError), match="recommendation|Incomplete"):
+    # Public CLI failures are normalized to SystemExit without weakening the
+    # underlying dataset-contract authentication.
+    with pytest.raises(SystemExit) as error:
         main()
+    assert error.value.code == 2
