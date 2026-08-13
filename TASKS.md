@@ -826,6 +826,48 @@ gated by T1.6.
     records and a predeclared held-out cohort; never substitute another seed,
     source hash, preparation identity, or scenario.
 
+  - [ ] **T4.3a — Diagnostic-control privacy audit.**
+    - **Requirement ID:** R12.
+    - **Inputs and lineage:** audit the statistical baseline,
+      `capacity_matched_single`, and eligible T2.7 factorized variants from one
+      authenticated matched lineage. Every input must have the immutable
+      `selection_role: diagnostic_control`; reject missing or changed roles,
+      lineage/source/preparation mismatches, and unmatched user or cutoff
+      identities.
+    - **Executable attacks:** run the predeclared sensitive-attribute probes
+      when label and per-class/cell support satisfy the threat-model minimums;
+      otherwise report each affected probe as unavailable with support and
+      exclusion counts. Training-membership inference is executable only when
+      authenticated same-lineage clean members and non-members with adequate
+      common support exist; otherwise report it as unavailable. Statistical-
+      baseline training membership is always `not_applicable`.
+    - **Attack and split controls:** include the required random and
+      majority/prior controls, provenance-only attack, regularized linear
+      vector attack, bounded nonlinear attack, and vector-plus-provenance
+      comparison. Freeze disjoint user-level attack train/validation/test
+      splits; keep every cutoff and component for a user in one split; fit all
+      attack preprocessing, hyperparameters, and thresholds without test-label
+      reuse; and preserve natural prevalence with the threat model's declared
+      imbalance controls.
+    - **Uncertainty, coverage, and exclusions:** use the predeclared seeded
+      stratified user-level bootstrap, including paired resampling for matched
+      control deltas, and report point estimates, confidence intervals,
+      replicate/degeneracy counts, eligible and realized user/class coverage,
+      matching/common-support coverage, and every exclusion or unavailable
+      reason. Emit no aggregate winner.
+    - **Required output:** `audits/privacy.{json,md}`, with authenticated input
+      identities, immutable roles, split hashes, feature schemas, attack
+      settings, support, coverage, uncertainty, exclusions, and applicability
+      statuses recorded in both machine-readable and human-readable form.
+    - **Required conclusion:** report
+      `selection_dependent_privacy_conclusion` as unavailable with reason
+      `no_selected_candidate`.
+    - **Completion boundary:** completing T4.3a does not complete the
+      selection-dependent T4.3. Preserve the T2.7 **do not advance** decision:
+      this audit must not select the least-bad diagnostic control, relabel any
+      input as `selected_candidate`, or treat factorized branch names as
+      established semantics.
+
 - [x] **T4.4 — Online incremental-update benchmarks.**
   - **Requirement IDs:** R13.
   - **Design contract:** [`docs/INCREMENTAL_UPDATE_CONTRACT.md`](docs/INCREMENTAL_UPDATE_CONTRACT.md)
