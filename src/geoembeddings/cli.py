@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,26 @@ from .layout import DatasetLayout, ExperimentLayout, PairLayout
 DEFAULT_SIMULATION_CONFIG = Path("configs/simulation/kanto_v1.yaml")
 DEFAULT_EMBEDDING_CONFIG = Path("configs/embedding/single_vector.yaml")
 DEFAULT_PRIVACY_CONFIG = Path("configs/privacy/diagnostic_v1.yaml")
+
+
+class ScientificMetricUnavailable(RuntimeError):
+    """Signal an expected lack of scientific support, not a command failure."""
+
+    def __init__(self, section: str, reason: str) -> None:
+        super().__init__(reason)
+        self.section = section
+        self.reason = reason
+
+
+def _error_message(error: Exception) -> tuple[int, str]:
+    """Map expected failures to stable, path-safe CLI messages and exit codes."""
+    if isinstance(error, FileExistsError):
+        return 3, "output already exists and is immutable; choose a new output or use a supported --overwrite option"
+    if isinstance(error, FileNotFoundError):
+        return 4, "required source artifact is missing; run the prerequisite command and verify the supplied root"
+    if isinstance(error, (ValueError, PermissionError)):
+        return 2, "input schema or identity authentication failed; verify the artifact versions, hashes, and matching roots"
+    return 1, "unexpected internal error; rerun with validated inputs and report this failure if it persists"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -498,8 +519,7 @@ def _benchmark(run: DatasetLayout, experiment: ExperimentLayout, config_path: Pa
     return {"offline": offline, "online": online}
 
 
-def main() -> None:
-    args = build_parser().parse_args()
+def _run_command(args: argparse.Namespace) -> dict[str, Any]:
     if args.command == "simulate":
         result = _simulate(args)
     elif args.command == "inspect-evidence":
@@ -598,6 +618,26 @@ def main() -> None:
         result = _pipeline(args)
     else:
         raise AssertionError(f"Unhandled command: {args.command}")
+    return result
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Run the CLI with stable failure categories and JSON report semantics."""
+    args = build_parser().parse_args(argv)
+    try:
+        result = _run_command(args)
+    except ScientificMetricUnavailable as error:
+        # Lack of coverage/support is a valid scientific result when report generation
+        # itself succeeded.  Keep it machine-readable and do not turn it into failure.
+        result = {
+            "status": "unavailable",
+            "section": error.section,
+            "reason": error.reason,
+        }
+    except Exception as error:
+        exit_code, message = _error_message(error)
+        print(f"geoembed: error: {message}", file=sys.stderr)
+        raise SystemExit(exit_code) from None
     print(json.dumps(result, indent=2, default=str))
 
 

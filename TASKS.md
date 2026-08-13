@@ -8,6 +8,16 @@ documenting that command. Artifact paths are relative to `RUN_DIR` or
 
 ## Completed and verified
 
+Consistent CLI outcome handling now covers R12/R13 safe diagnostic operation
+and reproducible command behavior. This CLI/documentation-only change has no
+scientific baseline artifact and does not alter the simulator or observed
+contract. Synthetic CLI tests cover schema/identity failures, immutable-output
+conflicts, missing sources, unexpected failures, scientifically unavailable
+metrics, and mixed-availability successful reports. Exception details are
+suppressed to avoid exposing protected paths or values. Scientific producers
+remain responsible for recording precise coverage/support reasons; the CLI
+does not infer scientific unavailability from arbitrary failures.
+
 The bounded CLI integration smoke now covers the canonical disposable CPU path
 from simulation through privacy auditing, including dataset-2.0 naive ranking
 and reduced offline/online benchmarks. It authenticates schemas, source and
