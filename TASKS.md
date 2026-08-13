@@ -796,6 +796,9 @@ gated by T1.6.
       winner is emitted, and the selected-candidate conclusion is unavailable.
       The indexed small smoke is
       `docs/artifacts/t4.1a-calibration-smoke-20260813.json`.
+      The same-lineage bounded release-candidate execution is indexed at
+      `docs/artifacts/t4.1a-release-candidate-20260813.json`; it remains
+      diagnostic-control execution evidence and is not representation selection.
 
 - [x] **T4.2 — Adaptation and forgetting audit.**
   - **Requirement IDs:** R11.

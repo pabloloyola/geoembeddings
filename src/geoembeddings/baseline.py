@@ -147,6 +147,7 @@ def export_dense_statistical_baseline(
             timestamps.append(pd.Timestamp(events.iloc[ordered[offset]]["timestamp"]).isoformat())
             counts.append(offset + 1)
     matrix = np.stack(vectors)
+    source_files = dict(metadata["source_files"])
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
@@ -155,6 +156,9 @@ def export_dense_statistical_baseline(
         history_event_count=np.asarray(counts, dtype=np.int64),
         categorical_fields=np.asarray(categorical_fields, dtype=str),
         continuous_fields=np.asarray(continuous_fields, dtype=str),
+        preparation_hash=np.asarray(sha256_file(Path(prepared_dir) / "prepared_metadata.json")),
+        source_file_names=np.asarray(list(source_files), dtype=str),
+        source_hashes=np.asarray(list(source_files.values()), dtype=str),
     )
     return {"output": str(output_path.resolve()), "rows": len(users), "users": len(set(users)),
             "embedding_dim": int(matrix.shape[1]), "event_stride": event_stride,

@@ -1,0 +1,256 @@
+{
+  "artifacts": {
+    "baseline_dense_export_implementation": {
+      "bytes": 9146,
+      "path": "src/geoembeddings/baseline.py",
+      "sha256": "7023eb4d7d2ee2d3cd6239a92c93552591802de55adcbee676bcb78ba9474e15"
+    },
+    "calibration": {
+      "bytes": 17516,
+      "path": "/workspace/geoembeddings/docs/artifacts/t4.1a-release-candidate-20260813.calibration.json",
+      "sha256": "ec5d052e4152d71bc450f5fb85cd3e7e6924c16ae6b3e189f315b7e687f4e00e"
+    },
+    "calibration_config": {
+      "bytes": 262,
+      "path": "/workspace/geoembeddings/configs/reliability/diagnostic_v1.yaml",
+      "sha256": "78e0f1ba7c580721b0a8e033cf2e25633ec9ff050e4f1a7c1e1e7737c597508c"
+    },
+    "calibration_implementation": {
+      "bytes": 11233,
+      "path": "src/geoembeddings/calibration.py",
+      "sha256": "ea923c73108e7088ed8748a31e9e8d0fff82260eddeaf7bf79487103d173549e"
+    },
+    "cli_integration_workflow": {
+      "bytes": 11845,
+      "path": "scripts/run_cli_integration_smoke.py",
+      "sha256": "5245b1a76eb7d9d570d7f3b0220bae8754ff12f286d98a2bf4db68998979b8ef"
+    },
+    "comparison": {
+      "bytes": 13044,
+      "path": "/tmp/geoembeddings-release-candidate-20260813/experiment/comparison/embedding_comparison.json",
+      "sha256": "e50a4bdcc87bb8b99657e2d8dc870ce2a812fea6e3a9544ce2aaf407dcec4bce"
+    },
+    "learned_dense_export": {
+      "bytes": 42090,
+      "path": "/tmp/geoembeddings-release-candidate-20260813/experiment/dense_embeddings.npz",
+      "sha256": "926a4706fd72a8ecc611341c6f62fec370558ccc4246bd6b6cc2c963ec214bca"
+    },
+    "learned_export": {
+      "bytes": 19180,
+      "path": "/tmp/geoembeddings-release-candidate-20260813/experiment/embeddings.npz",
+      "sha256": "26e08103a2392fb0bfa902ed6150355af852131da74f2d74bda20ffcd406e9d6"
+    },
+    "manifest": {
+      "bytes": 4800,
+      "path": "/tmp/geoembeddings-release-candidate-20260813/run/manifest.json",
+      "sha256": "399d5caca990020f27df5c56494c46acaf08997152ff72b400f21c39f0b32ecc"
+    },
+    "offline_benchmark": {
+      "bytes": 6044,
+      "path": "/tmp/geoembeddings-release-candidate-20260813/experiment/benchmarks/offline.json",
+      "sha256": "32c16bdda3994c28ff5f5aa0b55285e446c6bc564f67421d697084f986649a8e"
+    },
+    "online_benchmark": {
+      "bytes": 17615,
+      "path": "/tmp/geoembeddings-release-candidate-20260813/experiment/benchmarks/online.json",
+      "sha256": "064872f091130d05623e9cd11ecb241725f7f634e89d28ea5439972daf11074c"
+    },
+    "online_workload": {
+      "bytes": 1000858,
+      "path": "/tmp/geoembeddings-release-candidate-20260813/experiment/benchmarks/online_workload.json",
+      "sha256": "45396ef7f318a2ab0d5931d926cbba4a14bb30e196d36d3d44e68eaeef9f5b83"
+    },
+    "preparation_metadata": {
+      "bytes": 2375,
+      "path": "/tmp/geoembeddings-release-candidate-20260813/experiment/prepared/prepared_metadata.json",
+      "sha256": "983c4751b87561c74aae529687754f2e34376e17dad004edb94646868a635e9b"
+    },
+    "privacy_audit_json": {
+      "bytes": 12661,
+      "path": "/tmp/geoembeddings-release-candidate-20260813/audit/audits/privacy.json",
+      "sha256": "a5f5640d5b58e8cd9179e99638961bbc46956b27cf19583b5742e9fa66510ca9"
+    },
+    "privacy_audit_markdown": {
+      "bytes": 12829,
+      "path": "/tmp/geoembeddings-release-candidate-20260813/audit/audits/privacy.md",
+      "sha256": "c6219fb35340527235d400b855d4f8548fec9b5f94571dc61688ef59c75df75c"
+    },
+    "privacy_config": {
+      "bytes": 2930,
+      "path": "/tmp/geoembeddings-release-candidate-20260813/privacy-smoke.yaml",
+      "sha256": "7058102e9195d021acdbec883cbaa435e10ef358f801dac0b829bb4a1042c1a1"
+    },
+    "statistical_baseline_export": {
+      "bytes": 58368,
+      "path": "/tmp/geoembeddings-release-candidate-20260813/experiment/statistical_baseline.npz",
+      "sha256": "6abcb0acb47851022b1d8130df80dc3c3bf28ae683738114e7fb3db29de703ca"
+    },
+    "statistical_dense_export": {
+      "bytes": 45882,
+      "path": "/tmp/geoembeddings-release-candidate-20260813/statistical-baseline-calibration/dense_statistical_baseline.npz",
+      "sha256": "f495caeb3a0ed7eaee8b212451b974b38bea3d34d6dd28f654ff8cab1fb4cb6e"
+    }
+  },
+  "authentication": {
+    "aggregate_winner": null,
+    "common_user_set": {
+      "count": 49,
+      "sha256": "dd8c73351f057f1a0d1401ecd0fc83357323f62b57a06837d27e48835371558a",
+      "users": [
+        "user_00c1907f853da05d025a78fa",
+        "user_06e043310e520673853096a2",
+        "user_083786aec1ec2eb60994be12",
+        "user_0dce08d810d52034bb110532",
+        "user_14bdc26a74f78b93d1c40696",
+        "user_16b1f8403d970dec375ac75f",
+        "user_16d131d90fb4b6bf1cda0027",
+        "user_17883eedf8ba1c8c2e3052fa",
+        "user_1bfae8a6a53fd251ff23c673",
+        "user_295ae38123d4da3ade5b088f",
+        "user_2abbfaa9cb64c2ee09956f0b",
+        "user_2fe99dc6c6b66212eb381dc4",
+        "user_39522c4e6eeaa3a5d1198773",
+        "user_3e2f137961043f09985ad97c",
+        "user_4b54ac7eae04d4e6842d99e3",
+        "user_4ee0953e8970f3dc4f6d64d4",
+        "user_563a324db4bf02e6f4405b4f",
+        "user_571c52db251508fa6ff30b6f",
+        "user_5e74cd5ba8ed6894af86b6f3",
+        "user_5f2f05a3ff2e0fe273b93847",
+        "user_612b0ebcd7f3cb8bbf4c67bf",
+        "user_622f8bd120d90879517fdbc6",
+        "user_66b212acde24e908175211f7",
+        "user_67fc28ebb12e765cb50147ee",
+        "user_73ec02f29509f99f9d94d576",
+        "user_823a1f7153e9577ab7be37d1",
+        "user_964cb86e2a17c85d51db939c",
+        "user_9a2e29de540852875980066e",
+        "user_a8c53e50412ddc8c6c3007e2",
+        "user_b20a18fd565f85f3855ab4bd",
+        "user_b40f5ec15b4f828b9a5cc0ce",
+        "user_b5d934a08257ef73d3926a74",
+        "user_b7d3421f283db9291a95f8d4",
+        "user_b87391fb1c53df1bf4bd8e68",
+        "user_b8fdbfe750aa6919c5f9469a",
+        "user_c4b71c729e2da2469e733e6e",
+        "user_c5f17ba15569335cbec9a062",
+        "user_cae94869abc87c79fe4fbd1f",
+        "user_cb4d9bded175d95ccc2599b7",
+        "user_ce7bc58572c43d4f5638d4b9",
+        "user_d9c0a7e15b2ba9f3ea2dd577",
+        "user_de41a94eaf9f4e6f9691b326",
+        "user_deb99985fa61ca560a6f7a41",
+        "user_deeadcaf9b865fccc6b77698",
+        "user_e0a4e2e74cb50340cbf28416",
+        "user_e561ab44f1e6f24638192012",
+        "user_ebb4982f53fe669b5a4ae87e",
+        "user_f2b0ae41d8a16ebc0b6a9e1c",
+        "user_fdb4c6bd6be07dea9e162924"
+      ]
+    },
+    "observed_source_hashes": {
+      "observed_events.csv.gz": "ed9907fb874d49494db65fd09a2ac31b8f68fef50efb878ccad111bad63e0467",
+      "users_observed.csv.gz": "38fecea5177dce38afe3e39f32926fe27c25ebd2b836452208cbb774a140c9c4"
+    },
+    "preparation_sha256": "983c4751b87561c74aae529687754f2e34376e17dad004edb94646868a635e9b",
+    "resampling": {
+      "method": "seeded_window_bootstrap",
+      "minimum_windows": 2,
+      "replacement": true,
+      "replicates": 200,
+      "sampling_unit": "dense observed-history window",
+      "seed": 20260813
+    },
+    "roles_immutable": true,
+    "selected_candidate_conclusion": {
+      "reason": "no_selected_candidate_after_negative_T2.7_gate",
+      "status": "unavailable"
+    },
+    "split": {
+      "algorithm": "sha256-seeded-user-order/1.0",
+      "calibration_users": {
+        "count": 24,
+        "sha256": "c02776971129e72a0e1edd1fe4121f2cc024929505013ea1226129f03d6a6283",
+        "users": [
+          "user_00c1907f853da05d025a78fa",
+          "user_06e043310e520673853096a2",
+          "user_083786aec1ec2eb60994be12",
+          "user_14bdc26a74f78b93d1c40696",
+          "user_16d131d90fb4b6bf1cda0027",
+          "user_295ae38123d4da3ade5b088f",
+          "user_39522c4e6eeaa3a5d1198773",
+          "user_4b54ac7eae04d4e6842d99e3",
+          "user_4ee0953e8970f3dc4f6d64d4",
+          "user_571c52db251508fa6ff30b6f",
+          "user_5f2f05a3ff2e0fe273b93847",
+          "user_612b0ebcd7f3cb8bbf4c67bf",
+          "user_622f8bd120d90879517fdbc6",
+          "user_66b212acde24e908175211f7",
+          "user_73ec02f29509f99f9d94d576",
+          "user_964cb86e2a17c85d51db939c",
+          "user_b20a18fd565f85f3855ab4bd",
+          "user_b40f5ec15b4f828b9a5cc0ce",
+          "user_b87391fb1c53df1bf4bd8e68",
+          "user_b8fdbfe750aa6919c5f9469a",
+          "user_c4b71c729e2da2469e733e6e",
+          "user_cae94869abc87c79fe4fbd1f",
+          "user_deeadcaf9b865fccc6b77698",
+          "user_f2b0ae41d8a16ebc0b6a9e1c"
+        ]
+      },
+      "overlap_count": 0,
+      "seed": 20260813,
+      "test_users": {
+        "count": 25,
+        "sha256": "b80070b6b0de76ff2bafaaecdd2ee3a37d286000d9172b15c232cbb7c101c3ae",
+        "users": [
+          "user_0dce08d810d52034bb110532",
+          "user_16b1f8403d970dec375ac75f",
+          "user_17883eedf8ba1c8c2e3052fa",
+          "user_1bfae8a6a53fd251ff23c673",
+          "user_2abbfaa9cb64c2ee09956f0b",
+          "user_2fe99dc6c6b66212eb381dc4",
+          "user_3e2f137961043f09985ad97c",
+          "user_563a324db4bf02e6f4405b4f",
+          "user_5e74cd5ba8ed6894af86b6f3",
+          "user_67fc28ebb12e765cb50147ee",
+          "user_823a1f7153e9577ab7be37d1",
+          "user_9a2e29de540852875980066e",
+          "user_a8c53e50412ddc8c6c3007e2",
+          "user_b5d934a08257ef73d3926a74",
+          "user_b7d3421f283db9291a95f8d4",
+          "user_c5f17ba15569335cbec9a062",
+          "user_cb4d9bded175d95ccc2599b7",
+          "user_ce7bc58572c43d4f5638d4b9",
+          "user_d9c0a7e15b2ba9f3ea2dd577",
+          "user_de41a94eaf9f4e6f9691b326",
+          "user_deb99985fa61ca560a6f7a41",
+          "user_e0a4e2e74cb50340cbf28416",
+          "user_e561ab44f1e6f24638192012",
+          "user_ebb4982f53fe669b5a4ae87e",
+          "user_fdb4c6bd6be07dea9e162924"
+        ]
+      }
+    }
+  },
+  "command": "uv run geoembed calibrate-reliability --run-dir /tmp/geoembeddings-release-candidate-20260813/run --experiment-dir statistical_baseline=/tmp/geoembeddings-release-candidate-20260813/statistical-baseline-calibration --experiment-dir capacity_matched_single=/tmp/geoembeddings-release-candidate-20260813/experiment --config configs/reliability/diagnostic_v1.yaml --output-dir /tmp/geoembeddings-release-candidate-20260813/calibration",
+  "limitations": [
+    "diagnostic controls only; does not complete selection-dependent T4.1",
+    "factorized branch names do not establish semantics",
+    "synthetic calibration may not transfer to real users",
+    "bounded 50-user, seven-day release-candidate workflow is execution evidence, not reference-scale scientific evidence"
+  ],
+  "release_candidate": {
+    "aggregate_winner": null,
+    "representation_selection": false,
+    "scope": "bounded synthetic CLI release-candidate workflow",
+    "simulation_seed": 20260811,
+    "source_base_commit": "d945ce7e57808c22e389c6249d69d2a52ccc6bc1"
+  },
+  "requirement_ids": [
+    "R10"
+  ],
+  "schema_version": "geoembeddings-release-evidence-index/1.0",
+  "scientific_role": "diagnostic_control",
+  "task_id": "T4.1a"
+}
