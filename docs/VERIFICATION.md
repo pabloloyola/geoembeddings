@@ -47,6 +47,95 @@ uv run pytest
 uv run geoembed --version
 ```
 
+## Stable-release checklist
+
+This is a **blocking release gate**. A release may be called stable only as a
+**synthetic research harness** after every checkbox below has current-revision
+evidence. “Stable” in this repository does **not** mean selected-candidate
+success, external validity, privacy certification, or production readiness;
+all four are explicitly outside this gate. A diagnostic result that is
+scientifically unavailable can satisfy an execution check only when the report
+honestly records its applicability, support, exclusions, and limitations. It
+cannot satisfy or imply the excluded scientific claims.
+
+- [ ] **Locked CPU suite is clean.** In a clean CPU-only environment, record
+  the source commit, OS/architecture, Python and uv versions, lockfile hash, and
+  the passing result of `uv sync --locked --extra dev`, `uv lock --check`, and
+  `uv run pytest`. A repaired, partially cached, unlocked, GPU-backed, or
+  failing environment does not pass.
+- [ ] **Package and CLI smokes pass.** Record a successful `uv build`, the
+  produced wheel and source-distribution paths/hashes, `uv run geoembed
+  --version`, and `uv run geoembed --help`. The reported CLI/package version
+  must agree with the release decision.
+- [ ] **One complete small baseline/learned workflow passes.** Run the bounded
+  disposable CPU workflow with `uv run python
+  scripts/run_cli_integration_smoke.py --work-dir NEW_IMMUTABLE_PATH`, record
+  its seed and exact run/experiment roots, and link its baseline and learned
+  exports/evaluations. Do not reuse or overwrite a prior release's evidence.
+- [ ] **One comparison report is valid.** Link the canonical comparison JSON
+  from that same source hash, preparation identity, users, cutoffs, and
+  candidate sets. Record the exact `uv run geoembed compare ...` command and
+  confirm that validation passed; do not name an aggregate winner.
+- [ ] **One online benchmark report is valid.** Link both immutable
+  `benchmarks/online_workload.json` and `benchmarks/online.json`, produced by
+  `uv run geoembed benchmark --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+  --warmup 10 --iterations 100`. Record CPU/software/hardware identity and
+  confirm every full-recomputation oracle check passed.
+- [ ] **One T4.3a privacy report is valid and candid.** Link the authenticated
+  `audits/privacy.json` and `audits/privacy.md`, the frozen threat-model config,
+  input/evidence identities, and the exact `uv run geoembed audit-privacy ...`
+  command. Confirm that membership and each sensitive probe are labeled
+  `applicable`, `unavailable`, or `not_applicable` as warranted, with support,
+  exclusions, and uncertainty. The required
+  `selection_dependent_privacy_conclusion` remains unavailable while there is
+  no `selected_candidate`; neither successful execution nor AUC near 0.5 is a
+  privacy guarantee or certification.
+- [ ] **Status and evidence-link checks pass.** Record successful runs of `uv
+  run python scripts/check_status_consistency.py` and `uv run python
+  scripts/check_evidence_links.py docs/EXTERNAL_VALIDITY.md`. Every linked
+  release artifact must exist, authenticate, and identify the revision being
+  released.
+- [ ] **No quantitative claim is unindexed.** Review the changelog, release
+  notes, decision documents, and verification additions. Every quantitative
+  claim must point to an evidence-registry entry with cohort, seed, source and
+  preparation identities, cutoff/candidate scope where applicable, artifact
+  hashes, and limitations. Otherwise remove the number or explicitly label it
+  unverified history rather than release evidence.
+- [ ] **No accidental generated source is tracked.** Review `git status
+  --short`, `git diff --cached --stat`, and `git ls-files runs experiments
+  notebook_artifacts`. Generated run, experiment, benchmark, audit, build, and
+  notebook outputs must remain untracked unless the release intentionally
+  indexes a small evidence/fixture file; each intentional exception needs a
+  documented purpose, scope, and provenance.
+- [ ] **Observed/truth leakage protections pass.** In addition to the full
+  suite, record passing targeted boundary tests for observed-only preparation,
+  training, baseline, export, ranking, and benchmarking; protected evaluator
+  access; rejected truth-like observed fields; and authentication before
+  protected-label access. A workflow that merely happens not to expose truth
+  is insufficient without these negative tests.
+- [ ] **Output immutability protections pass.** Record passing tests that
+  existing run, experiment, pair, comparison, benchmark, privacy, and other
+  report targets fail by default, that validated `--overwrite` behavior is
+  limited to commands which explicitly support it, and that failed writes leave
+  prior bytes unchanged.
+- [ ] **Accelerator status is explicit.** State separately whether CUDA and
+  Apple MPS were tested on this exact revision, with device/runtime identity
+  and test commands when they were. “Not tested” is acceptable for the CPU
+  gate; silence, CPU fallback described as an accelerator pass, or inference
+  from historical MPS results is not. Preserve the padded-GRU/floating-mask MPS
+  regression boundary.
+- [ ] **Changelog and version decision are recorded.** Add a dated changelog
+  entry that links the release evidence and limitations, and explicitly decide
+  whether the package version changes. If it changes, update all canonical
+  version declarations and verify wheel, sdist, and CLI agreement; if it does
+  not, document why the accumulated changes do not require a bump.
+
+The release sign-off must name the reviewer, UTC date, commit and tag, package
+version decision, evidence-index path, workflow/comparison/benchmark/privacy
+artifact paths, and unresolved limitations. Checking this list records software
+and contract readiness at that immutable revision only; it does not reverse a
+model-selection decision or expand the evidence scope.
+
 ## Continuous integration scope
 
 `.github/workflows/ci.yml` runs the locked development environment and test
