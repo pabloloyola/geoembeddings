@@ -275,9 +275,11 @@ an authenticated diagnostic-control adaptation/forgetting audit, not as a
 successful selected-model conclusion: no representation has the
 `selected_candidate` role, so a selection-dependent R11 conclusion remains
 unavailable. T4.5 is complete as claim-boundary and evidence-validation work,
-not as external validation; external validation remains absent. The remaining
-tasks are T4.1 uncertainty calibration, T4.3 privacy audits, and T4.4 online
-incremental-update benchmarks.
+not as external validation; external validation remains absent. T4.3a is
+complete as an executable diagnostic-control privacy audit, while T4.3 remains
+open because no representation has the `selected_candidate` role. The remaining
+tasks are T4.1 uncertainty calibration and selection-dependent T4.3 privacy
+audits.
 
 Historical plan: P4 was originally prioritized as T4.1 uncertainty calibration,
 T4.2 adaptation and forgetting audit, T4.3 privacy audits, T4.4 online

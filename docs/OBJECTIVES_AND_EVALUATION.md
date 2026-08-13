@@ -121,8 +121,13 @@ No aggregate winner is produced. Supplemental matched axes are added after
 `export-dense`/`evaluate --episodes`, `robustness`, and `evaluate --transfer`
 have produced both baseline and learned reports. Persistent/context
 disentanglement, counterfactual exposure invariance, real-noise calibration,
-unseen-POI transfer, uncertainty, sustained-change adaptation, privacy, and
-efficiency remain explicit missing tests.
+unseen-POI transfer, and calibrated uncertainty remain explicit missing tests.
+Sustained-change adaptation is executable only as the T4.2 authenticated
+diagnostic-control audit, and privacy is executable only as the T4.3a
+diagnostic-control audit; neither supports a selection-dependent conclusion
+because no representation is a `selected_candidate`. Efficiency has executable
+offline and online diagnostic-control benchmarks, but training efficiency and
+comparable hardware/reference-scale evidence remain unavailable.
 
 ## Executable R2/R8 spatial-transfer contract
 

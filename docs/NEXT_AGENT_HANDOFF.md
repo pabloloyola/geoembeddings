@@ -51,15 +51,26 @@ design document and tests before changing code. Research context lives in
 - T2.7 ended with a **do not advance** decision: persistent and combined
   task-information/collapse gates failed. Preserve that result and do not open
   a routine branch.
-- T4.2 adaptation/forgetting, T4.4 online benchmarking, and T4.5
-  external-validity boundaries are complete.
+- T4.2 adaptation/forgetting, T4.3a diagnostic-control privacy auditing, T4.4
+  online benchmarking, and T4.5 external-validity boundaries are complete.
 - No representation has the immutable `selected_candidate` role. Current
   representation comparisons are `diagnostic_control` evidence only.
 - The open top-level tasks are T4.1 (R10, uncertainty calibration) and T4.3
-  (R12, privacy audits). T4.1 cannot be completed without a selected candidate,
-  although its explicitly scoped T4.1a diagnostic-control work is open. The
-  roadmap's current next-task recommendation is T4.3. Reconfirm all statuses in
-  `TASKS.md` before starting because this paragraph will age.
+  (R12, selection-dependent privacy conclusion). T4.1 and T4.3 cannot be
+  completed without a selected candidate, although T4.1a remains open and the
+  explicitly scoped T4.3a diagnostic-control command is complete. Reconfirm all
+  statuses in `TASKS.md` before starting because this paragraph will age.
+
+Run T4.3a with `uv run geoembed audit-privacy --run-dir RUN_DIR
+--experiment-dir NAME=EXPERIMENT_DIR --evidence-dir EVIDENCE_DIR
+--utility-report-dir UTILITY_REPORT_DIR --config
+configs/privacy/diagnostic_v1.yaml --output-dir AUDIT_OUTPUT_DIR`. It writes
+immutable `audits/privacy.{json,md}` under schema
+`geoembeddings-privacy-audit/1.0`, authenticates inputs before protected-label
+access, and reports attacks, utility axes, uncertainty, coverage, exclusions,
+and unavailable reasons separately. Its scope is diagnostic-control evidence:
+it neither selects a representation nor certifies privacy, and AUC near 0.5 is
+not proof of safety. Preserve the T2.7 **do not advance** decision.
 
 ## How to select and record work
 
@@ -174,4 +185,3 @@ baseline comparison, and documented limitations.
 - source and artifact hashes plus matched per-axis deltas;
 - the supported conclusion and prohibited interpretations;
 - remaining blockers and the recommended next task.
-
