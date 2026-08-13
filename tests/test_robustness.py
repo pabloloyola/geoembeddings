@@ -8,6 +8,7 @@ import pytest
 from geoembeddings.baseline import export_statistical_baseline
 from geoembeddings.config import load_config
 from geoembeddings.robustness import deterministic_event_removal, export_robustness_views, perturb_view
+from geoembeddings.representation_schema import EXPORT_SCHEMA_VERSION, load_embedding_export
 
 
 def _events(n: int = 40) -> pd.DataFrame:
@@ -88,3 +89,18 @@ def test_sparse_histories_are_reported_unencodable_and_masks_match_kinds(
     assert baseline["artifacts"][1]["unencodable_keys"]
     assert baseline["artifacts"][0]["view_id"] == learned["artifacts"][0]["view_id"]
     assert baseline["information_boundary"].endswith("observed/ only")
+
+
+def test_statistical_baseline_uses_authenticated_component_export_schema(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    config = load_config(root / "configs/embedding/single_vector.yaml")
+    path = tmp_path / "baseline.npz"
+    export_statistical_baseline(
+        root / "smoke/run/observed", root / "smoke/experiment/prepared", path, config
+    )
+
+    loaded = load_embedding_export(path)
+    assert loaded.schema_version == EXPORT_SCHEMA_VERSION
+    assert loaded.arrays["model_variant"].item() == "statistical_baseline"
+    assert loaded.components["persistent"].shape == loaded.components["combined"].shape
+    assert not loaded.components["context"].any()

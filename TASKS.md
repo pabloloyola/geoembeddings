@@ -1021,3 +1021,19 @@ evidence.
 - Scope limitation: the configured role fractions execute the simulator-scoped
   diagnostic threat model only; they do not estimate deployment membership
   prevalence or provide a privacy guarantee.
+
+## Latest immutable privacy-audit evidence (2026-08-13)
+
+The new fixed-seed matched R12 diagnostic lineage is indexed at
+`docs/artifacts/t4.3-privacy-audit-20260813.json`. It authenticates the
+statistical baseline, capacity-matched single-vector control, five eligible
+factorized diagnostics and their named component exports, preparation,
+checkpoints, participation, exact-population utility reports, audit splits, and
+both privacy reports. The exact common export population contains 49
+`target_test` users and no target-training members, so frozen common support is
+insufficient and membership is explicitly unavailable for every learned
+control (the statistical baseline remains not applicable). The two supported
+evaluator-only sensitive probes were still executed and were excluded because
+the frozen per-split class-cell support threshold was not met. This unavailable
+result is not privacy evidence, does not alter the T2.7 **do not advance**
+decision, and does not establish a selection-dependent R12 conclusion.
