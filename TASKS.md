@@ -8,6 +8,15 @@ documenting that command. Artifact paths are relative to `RUN_DIR` or
 
 ## Completed and verified
 
+Map-linked simulator validity diagnostics now cover R7/R8 with per-user and
+synthetic age/household distributions, configured warning thresholds, explicit
+truth opt-in, and machine-readable support/missingness. The fixed-seed
+50-user/7-day seed-20260813 smoke at `/tmp/geoembed-viz-smoke50` passed deep
+validation (22/23 checks, zero errors, one expected sparse-volume warning) and
+produced 50 user summaries and 1,095 ordered transitions. This is disposable
+implementation evidence, not a durable demographic or scientific baseline;
+the documented diagnostics explicitly prohibit real-population inference.
+
 Consistent CLI outcome handling now covers R12/R13 safe diagnostic operation
 and reproducible command behavior. This CLI/documentation-only change has no
 scientific baseline artifact and does not alter the simulator or observed

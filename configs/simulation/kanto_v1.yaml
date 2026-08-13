@@ -1,4 +1,23 @@
-config_version: 3
+config_version: 4
+
+# Versioned thresholds for evaluator/visualization warnings. These are
+# synthetic plausibility hypotheses, not claims about real Kanto residents.
+visualization_diagnostics:
+  schema_version: geoembeddings-visualization-thresholds/1.0
+  timezone: Asia/Tokyo
+  unique_location_decimals: 4
+  thresholds:
+    consecutive_stop_distance_km: {min: 0.0, max: 250.0}
+    elapsed_time_hours: {min: 0.0, max: 24.0}
+    straight_line_speed_kmh: {min: 0.0, max: 350.0}
+    daily_displacement_km: {min: 0.0, max: 600.0}
+    radius_of_gyration_km: {min: 0.0, max: 250.0}
+    unique_location_count: {min: 0.0, max: 500.0}
+    home_work_distance_km: {min: 0.0, max: 250.0}
+    events_per_day: {min: 0.0, max: 500.0}
+    gps_error_m: {min: 0.0, max: 2000.0}
+    missing_event_rate: {min: 0.0, max: 1.0}
+    region_transitions: {min: 0.0, max: 100.0}
 
 run:
   users: 500

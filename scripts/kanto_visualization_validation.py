@@ -27,7 +27,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import yaml
 from folium.plugins import HeatMap, MarkerCluster
+
+from geoembeddings.visualization_diagnostics import METRICS, calculate_mobility_diagnostics, summarize_diagnostics
 
 try:
     from IPython.display import display
@@ -40,6 +43,7 @@ pd.set_option("display.max_columns", 30)
 
 # Set GEOEMBED_RUN_DIR to inspect a different simulator run.
 DATA_DIR = Path(os.environ.get("GEOEMBED_RUN_DIR", "runs/kanto_pilot"))
+INCLUDE_TRUTH = os.environ.get("GEOEMBED_INCLUDE_TRUTH", "false").lower() in {"1", "true", "yes"}
 SCENARIO_REPORT = DATA_DIR / "scenario_validation.json"
 ARTIFACT_DIR = DATA_DIR / "notebook_artifacts"
 ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
@@ -64,6 +68,11 @@ def save_figure(fig: plt.Figure, name: str) -> None:
 
 
 assert DATA_DIR.exists(), f"Dataset not found: {DATA_DIR.resolve()}"
+if not INCLUDE_TRUTH:
+    raise SystemExit(
+        "This evaluator notebook contains protected trajectory/home/work diagnostics. "
+        "Set GEOEMBED_INCLUDE_TRUTH=true to enable truth access explicitly."
+    )
 
 # %% [markdown]
 # ## 1. Load the simulator tables
@@ -105,6 +114,8 @@ episodes["end_time"] = pd.to_datetime(episodes["end_time"], utc=True).dt.tz_conv
 choices["timestamp"] = pd.to_datetime(choices["timestamp"], utc=True).dt.tz_convert("Asia/Tokyo")
 
 manifest = json.loads((DATA_DIR / "manifest.json").read_text(encoding="utf-8"))
+resolved_config = yaml.safe_load((DATA_DIR / "config.resolved.yaml").read_text(encoding="utf-8"))
+diagnostic_config = resolved_config["visualization_diagnostics"]
 deep_report_path = DATA_DIR / "deep_validation_report.json"
 deep_report = json.loads(deep_report_path.read_text(encoding="utf-8")) if deep_report_path.exists() else None
 
@@ -117,6 +128,40 @@ overview = pd.DataFrame(
     }
 )
 display(overview)
+
+# %% [markdown]
+# ## Quantitative counterparts to the displayed mobility maps
+#
+# Every distance uses the simulator's haversine helper. Strata are synthetic
+# support checks only: even visible differences must not be interpreted as
+# evidence about real age or household populations.
+
+# %%
+per_user_diagnostics, transition_diagnostics = calculate_mobility_diagnostics(
+    events, users,
+    truth={"latents": latents, "trajectories": trajectories, "observation": observation},
+    timezone=diagnostic_config["timezone"],
+    unique_location_decimals=int(diagnostic_config["unique_location_decimals"]),
+)
+diagnostic_summary = summarize_diagnostics(
+    per_user_diagnostics, diagnostic_config["thresholds"], transition_diagnostics
+)
+(ARTIFACT_DIR / "mobility_diagnostics.json").write_text(
+    json.dumps(diagnostic_summary, indent=2, allow_nan=False), encoding="utf-8"
+)
+per_user_diagnostics.to_csv(ARTIFACT_DIR / "mobility_diagnostics_per_user.csv", index=False)
+transition_diagnostics.to_csv(ARTIFACT_DIR / "mobility_transitions.csv", index=False)
+
+for stratum in ("age_group", "household_type"):
+    fig, axes = plt.subplots(4, 3, figsize=(17, 18))
+    for metric, ax in zip(METRICS, axes.flat):
+        sns.boxplot(data=per_user_diagnostics, x=stratum, y=metric, ax=ax, showfliers=False)
+        ax.set_title(f"{metric.replace('_', ' ')} by synthetic {stratum.replace('_', ' ')}")
+        ax.tick_params(axis="x", rotation=35)
+    axes.flat[-1].axis("off")
+    fig.suptitle(f"Map-linked mobility distributions by synthetic {stratum} (group sizes and missingness in JSON)")
+    fig.tight_layout()
+    save_figure(fig, f"00_mobility_diagnostics_by_{stratum}.png")
 
 # %% [markdown]
 # ## 2. Validation checklist

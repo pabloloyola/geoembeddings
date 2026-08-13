@@ -62,6 +62,11 @@ uv run geoembed pipeline \
 Use `--mode learned` to replace the statistical representation with GRU
 training and embedding export.
 
+The map-linked mobility, demographic-support, missingness, and optional
+observed-to-truth GPS diagnostics are specified in
+[`VISUALIZATION_VALIDITY.md`](VISUALIZATION_VALIDITY.md). They are evaluator-only
+and keep integrity failures separate from configured behavioral warnings.
+
 ## Simulator inputs
 
 The canonical file is `configs/simulation/kanto_v1.yaml`.
