@@ -197,6 +197,51 @@ This record is software-integration verification only. It is not evidence that
 T2.7 or any scientific gate passed. The T2.7 **do not advance** decision remains
 binding, and no evaluator or model feature was added.
 
+## Locked CPU verification attempt: `0bc2781` (2026-08-13 UTC)
+
+This is a fresh verification attempt of exact source commit
+`0bc27811d2bd9c7b8aa9d7dc2ea277f947602b82`; it does not reuse the earlier
+repaired-environment result. The checkout was clean before verification. The
+environment was Ubuntu 24.04.4 LTS on Linux `6.18.35`, `x86_64`, with three
+online Intel Xeon Platinum 8370C CPU cores. No `/dev/nvidia0` or `/dev/dri`
+device was present. CUDA and Apple MPS were not tested and this entry records
+no accelerator pass.
+
+Runtime metadata was captured at `2026-08-13T05:27:08+00:00`: Python `3.14.4`,
+uv `0.7.22`, package/CLI version `0.5.0`, and `uv.lock` SHA-256
+`b95e1b4e89d7a1c3296f5c059888f0ee42371202b4a2ad1ff0e0b4a15da0415f`.
+Durations below are wall-clock seconds measured around each process; command
+output and exit status, rather than duration, determine the result.
+
+| Command | Exit | Duration | Result |
+|---|---:|---:|---|
+| `uv sync --locked --extra dev` | nonzero | 0.578 s | **Failed.** uv resolved 145 packages, then the package-index tunnel failed after three retries while downloading locked `iniconfig==2.3.0`. |
+| `uv lock --check` | 0 | 2.291 s | Passed; uv resolved 145 packages in 4 ms. |
+| `uv run pytest` | 2 | 3.949 s | **Failed during collection:** 40 collection errors in pytest's reported 1.17 s; no tests ran, so totals are **0 passed, 0 failed tests, 40 collection errors**. |
+| `uv run geoembed --version` | 0 | 1.059 s | Passed: `geoembed 0.5.0`. |
+| `uv run geoembed --help` | 0 | 0.965 s | Passed; the public command list included `audit-privacy` and `calibrate-reliability`. |
+| `uv run geoembed audit-privacy --help` | 0 | 0.917 s | Passed; canonical run, named experiment, evidence, utility-report, config, output, and overwrite arguments were shown. |
+| `uv run geoembed calibrate-reliability --help` | 0 | 0.940 s | Passed; canonical run, named experiment, config, output, and overwrite arguments were shown. |
+| `uv run geoembed inspect-evidence` | 0 | 3.491 s | Passed with `ci_status=ok`: 8 indexes, 182 artifacts, 2 locally present/content-verified, 139 locally absent, 41 historically lost, and 0 content mismatches. |
+| `uv run python scripts/check_status_consistency.py` | 0 | 0.871 s | Passed: 36 completed tasks across 2 documents. |
+| `uv run python scripts/check_evidence_links.py docs/EXTERNAL_VALIDITY.md` | 0 | 0.910 s | Passed. |
+
+The sync failure left the clean environment without the locked project and
+scientific dependencies. Pytest consequently reported missing `numpy`,
+`pandas`, `torch`, `yaml`, and `geoembeddings` imports across 40 test modules.
+These are environment/dependency collection failures, not 40 executed test
+failures, and there was no pytest warning summary. The evidence inspector's
+locally absent and historically lost artifacts are expected availability
+states, not command warnings or scientific failures. No other command emitted
+a warning or failure.
+
+Because the mandatory locked sync and test suite did not pass, this revision
+does **not** satisfy the locked CPU release gate. The independently runnable
+lock, CLI, evidence-inspection, status, and link checks do not repair or replace
+that failed gate. This software verification outcome provides no new model
+evidence: the T2.7 **do not advance** decision remains binding, and a routine
+branch remains unauthorized.
+
 ## Historical evidence: initial release smoke
 
 Verification date: 2026-08-11 UTC.
