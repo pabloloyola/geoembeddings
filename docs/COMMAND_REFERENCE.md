@@ -868,6 +868,35 @@ timestamp for a user and request region (ties are early); late is strictly later
 Empty slices remain explicit. Utility regret is marked unavailable because this
 observed-only evaluator has no protected-utility input.
 
+## `audit-privacy` (T4.3a; R12)
+
+Run the authenticated diagnostic-control privacy audit from canonical roots:
+
+```bash
+uv run geoembed audit-privacy \
+  --run-dir RUN_DIR \
+  --experiment-dir statistical_baseline=BASELINE_EXPERIMENT_DIR \
+  --experiment-dir capacity_matched_single=LEARNED_EXPERIMENT_DIR \
+  --evidence-dir EVIDENCE_DIR \
+  --utility-report-dir UTILITY_REPORT_DIR \
+  --config configs/privacy/diagnostic_v1.yaml \
+  --output-dir AUDIT_OUTPUT_DIR
+```
+
+`EVIDENCE_DIR/evidence_index.json`, each named experiment's canonical export,
+preparation metadata and checkpoint, and
+`UTILITY_REPORT_DIR/<name>.json` are resolved internally. The command accepts
+neither observed-table nor truth-table paths. It validates the versioned YAML
+and authenticates every input before any protected-label access.
+
+The immutable outputs are `AUDIT_OUTPUT_DIR/audits/privacy.json` and
+`privacy.md`; existing outputs fail unless `--overwrite` is explicit. A lineage
+without authenticated user-level target-training participation can complete
+successfully, but membership results remain `unavailable` with an explicit
+reason. The supported conclusion is diagnostic-control evidence only. It does
+not select an input, establish factorized component semantics, provide a formal
+privacy guarantee, or make a selection-dependent R12 conclusion.
+
 ## `pipeline`
 
 ### Purpose

@@ -304,3 +304,34 @@ class ExperimentLayout:
         if kind not in {"baseline", "learned"}:
             raise ValueError(f"Unsupported robustness artifact kind: {kind}")
         return self.robustness_dir / kind
+
+
+@dataclass(frozen=True)
+class PrivacyEvidenceLayout:
+    """Canonical files below one privacy evidence root."""
+
+    root: Path
+
+    @classmethod
+    def from_path(cls, value: str | Path) -> "PrivacyEvidenceLayout":
+        return cls(Path(value).expanduser().resolve())
+
+    @property
+    def evidence_index(self) -> Path:
+        return self.root / "evidence_index.json"
+
+
+@dataclass(frozen=True)
+class UtilityReportLayout:
+    """Resolve immutable, named utility reports from their common root."""
+
+    root: Path
+
+    @classmethod
+    def from_path(cls, value: str | Path) -> "UtilityReportLayout":
+        return cls(Path(value).expanduser().resolve())
+
+    def report(self, name: str) -> Path:
+        if not name or name in {".", ".."} or Path(name).name != name:
+            raise ValueError(f"Invalid utility-report name: {name!r}")
+        return self.root / f"{name}.json"

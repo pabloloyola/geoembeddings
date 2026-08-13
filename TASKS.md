@@ -901,6 +901,15 @@ gated by T1.6.
       orchestration and matched utility/privacy artifacts remain blockers, so
       T4.3a stays open.
 
+    - **CLI orchestration note (2026-08-13):** `geoembed audit-privacy` now
+      resolves dataset, named experiment, evidence, utility-report, config, and
+      output roots canonically; authenticates public inputs before protected
+      label access; and atomically writes the JSON/Markdown audit. Scientifically
+      unavailable membership is an explicit successful result rather than an
+      invented label or command failure. No locally authenticated matched
+      utility/privacy lineage exists yet, so T4.3a stays open and no diagnostic
+      control is selected.
+
 - [x] **T4.4 — Online incremental-update benchmarks.**
   - **Requirement IDs:** R13.
   - **Design contract:** [`docs/INCREMENTAL_UPDATE_CONTRACT.md`](docs/INCREMENTAL_UPDATE_CONTRACT.md)
