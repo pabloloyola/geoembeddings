@@ -337,7 +337,12 @@ def _compare_identities(baseline: dict[str, Any], learned: dict[str, Any], *, la
 
 def _validate_observed_sources(dataset: DatasetLayout, metadata: dict[str, Any]) -> None:
     declared = _canonical_source_hashes(metadata.get("source_files", {}))
-    for filename in OBSERVED_FILES.values():
+    # Preparation intentionally authenticates only the observed inputs it
+    # consumed.  Legacy/event-only preparations therefore do not declare the
+    # recommendation tables added by dataset/2.0.
+    for filename in declared:
+        if filename not in OBSERVED_FILES.values():
+            raise ValueError(f"Prepared metadata declares unknown observed source: {filename}")
         actual = sha256_file(dataset.observed / filename)
         if declared.get(filename) != actual:
             raise ValueError(f"Observed source hash mismatch for {filename}: prepared={declared.get(filename)!r}, actual={actual!r}")

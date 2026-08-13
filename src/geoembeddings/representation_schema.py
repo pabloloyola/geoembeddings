@@ -98,6 +98,10 @@ def load_embedding_export(path: str | Path, *, dense: bool = False) -> LoadedEmb
 
     row_count = len(arrays["user_id"])
     for name, value in components.items():
-        if value.ndim != 2 or len(value) != row_count or not np.isfinite(value).all():
-            raise ValueError(f"Component {name!r} is not finite and row-aligned")
+        if value.ndim != 2:
+            raise ValueError(f"Component {name!r} must be 2-D")
+        if len(value) != row_count:
+            raise ValueError(f"Component {name!r} is not row-aligned")
+        if not np.isfinite(value).all():
+            raise ValueError(f"Component {name!r} contains non-finite values")
     return LoadedEmbeddingExport(arrays, components, version, compatibility)

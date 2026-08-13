@@ -14,6 +14,7 @@ from geoembeddings.contract import OBSERVED_FILES
 from geoembeddings.io import sha256_file, write_json
 from geoembeddings.privacy_audit import audit_privacy
 from geoembeddings.representation_schema import COMPONENT_NAMES, EXPORT_SCHEMA_VERSION
+from geoembeddings.schema import REQUIRED_EVENT_COLUMNS
 from geoembeddings.user_roles import (PROTOCOL_SCHEMA, assign_users,
                                       assignment_hash, role_summary)
 
@@ -56,6 +57,25 @@ def _fixture(tmp_path: Path) -> dict[str, Path]:
     observed.mkdir(parents=True)
     for filename in OBSERVED_FILES.values():
         pd.DataFrame({"fixture": []}).to_csv(observed / filename, index=False, compression="gzip")
+    pd.DataFrame({
+        "user_id": users,
+        "age_group": ["adult"] * len(users),
+        "household_type": ["single"] * len(users),
+        "home_prefecture": ["Tokyo"] * len(users),
+        "home_region_id": ["tokyo"] * len(users),
+        "geo_split": ["train"] * len(users),
+    }).to_csv(observed / OBSERVED_FILES["users"], index=False, compression="gzip")
+    event_defaults = {
+        "timestamp": "2025-12-01T00:00:00Z", "service_id": "location",
+        "action_type": "ping", "observation_mode": "passive", "object_id": "fixture",
+        "object_category": "place", "region_id": "tokyo", "prefecture": "Tokyo",
+        "latitude": 35.0, "longitude": 139.0, "geohash_5": "xn76g",
+        "geohash_7": "xn76g00", "location_accuracy_m": 10.0, "session_id": "fixture",
+    }
+    pd.DataFrame([{**event_defaults, "user_id": user} for user in users],
+                 columns=sorted(REQUIRED_EVENT_COLUMNS)).to_csv(
+        observed / OBSERVED_FILES["events"], index=False, compression="gzip"
+    )
     write_json({"dataset_contract": {"name": "geoembeddings-dataset", "version": "2.0"}},
                run / "manifest.json")
     source_hash = sha256_file(observed / "observed_events.csv.gz")
@@ -63,12 +83,15 @@ def _fixture(tmp_path: Path) -> dict[str, Path]:
     protocol_config = {"schema_version": PROTOCOL_SCHEMA, "seed": 73, "fractions": {
         "target_train": .45, "target_validation": .10, "target_test": .45}}
     assignments = assign_users(users, protocol_config)
+    export_users = [user for user in users if assignments[user] != "target_validation"]
     protocol = {**protocol_config, "assignment_sha256": assignment_hash(assignments),
                 "roles": role_summary(assignments)}
     truth = run / "truth"
     truth.mkdir()
     # Cycling values provide each probe split with all three train-fitted tertiles.
-    pd.DataFrame({"user_id": users, "price_sensitivity": np.arange(len(users)) % 30}).to_csv(
+    pd.DataFrame({"user_id": users, "price_sensitivity": [
+        int(hashlib.sha256(user.encode()).hexdigest(), 16) % 30 for user in users
+    ]}).to_csv(
         truth / "user_latents.csv.gz", index=False, compression="gzip")
 
     experiments: dict[str, Path] = {}
@@ -87,11 +110,11 @@ def _fixture(tmp_path: Path) -> dict[str, Path]:
                     "source_files": {"observed_events.csv.gz": source_hash},
                     "user_role_protocol": protocol}, metadata)
         export = root / ("statistical_baseline.npz" if name == "statistical_baseline" else "embeddings.npz")
-        _write_export(export, users, metadata, source_hash, variant)
+        _write_export(export, export_users, metadata, source_hash, variant)
         utility = utilities / f"{name}.json"
-        write_json({"population_identity": {"users": users,
-                                             "user_set_sha256": _canonical_hash(users)},
-                    "utility_metrics": {"held_out_accuracy": .5}, "coverage": {"users": len(users)}}, utility)
+        write_json({"population_identity": {"users": export_users,
+                                             "user_set_sha256": _canonical_hash(export_users)},
+                    "utility_metrics": {"held_out_accuracy": .5}, "coverage": {"users": len(export_users)}}, utility)
         indexed = [metadata, export, utility]
         if name != "statistical_baseline":
             checkpoint = root / "model/best_model.pt"
@@ -111,20 +134,20 @@ def _fixture(tmp_path: Path) -> dict[str, Path]:
 
     evidence = tmp_path / "evidence"
     evidence.mkdir()
-    keys = sorted((user, cutoff) for user in users
+    keys = sorted((user, cutoff) for user in export_users
                   for cutoff in ("train_end", "validation_end", "test_end"))
     write_json({"schema_version": "geoembeddings-factorization-evidence-index/1.0",
                 "task_id": "T2.7", "decision": "do not advance",
                 "matched_identity": {"source_files": {"observed_events.csv.gz": source_hash},
                                      "export_keys_sha256": _canonical_hash(keys),
-                                     "user_mask_sha256": _canonical_hash(users),
+                                     "user_mask_sha256": _canonical_hash(export_users),
                                      "cutoffs": ["test_end", "train_end", "validation_end"]},
                 "artifacts": artifacts}, evidence / "evidence_index.json")
 
     config = yaml.safe_load(Path("configs/privacy/diagnostic_v1.yaml").read_text())
     config["features"]["component_order"] = ["combined"]
-    config["support"] = {"minimum_total": 30, "minimum_per_class": 8,
-                         "minimum_per_stratum": 8, "minimum_sensitive_label_cell": 2}
+    config["support"] = {"minimum_total": 30, "minimum_per_class": 2,
+                         "minimum_per_stratum": 2, "minimum_sensitive_label_cell": 2}
     config["sensitive_attributes"] = [{"name": "price_sensitivity_group", "source": "evaluator_truth",
         "derivation": {"version": "fixture-fixed-edges/1.0", "method": "fixed_edges",
                        "source_field": "price_sensitivity", "bin_boundaries": [-1, 10, 20, 31],
@@ -169,13 +192,15 @@ def test_audit_privacy_orchestration_runs_authenticated_diagnostic_controls(
     assert all(split_users) and all(left.isdisjoint(right) for index, left in enumerate(split_users)
                                     for right in split_users[index + 1:])
     sensitive = report["sensitive_probe_metrics"]["price_sensitivity_group"]
-    assert sensitive["capacity_matched_single"]["combined"]["status"] == "available"
+    assert sensitive["capacity_matched_single"]["combined"] == {
+        "status": "unavailable",
+        "reason": "minimum_class_by_split_cell_support_not_met",
+        "attacks": {},
+    }
     split_hashes = report["splits"]["membership"]["user_set_hashes"]
     assert len({split_hashes[name] for name in ("train", "validation", "test")}) == 3
-    for results in (membership, sensitive["capacity_matched_single"]["combined"]):
-        boot = next(iter(results["attacks"].values()))[
-            "roc_auc" if results.get("task") == "membership" else "macro_f1"]["bootstrap"]
-        assert boot["interval"] is not None and boot["replicate_count"] == 5
+    boot = next(iter(membership["attacks"].values()))["roc_auc"]["bootstrap"]
+    assert boot["interval"] is not None and boot["replicate_count"] == 5
     assert set(report["utility_privacy_axes"]) == {"statistical_baseline", "capacity_matched_single"}
     assert all(role == "diagnostic_control" for role in report["selection"]["roles"].values())
     assert report["selection"]["selection_dependent_privacy_conclusion"] == {

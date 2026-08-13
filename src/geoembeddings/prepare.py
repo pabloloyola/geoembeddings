@@ -111,6 +111,18 @@ def _temporal_boundaries(
     events: pd.DataFrame,
     data_config: dict[str, Any],
 ) -> tuple[pd.Timestamp, pd.Timestamp]:
+    explicit_train = data_config.get("train_end")
+    explicit_validation = data_config.get("validation_end")
+    if (explicit_train is None) != (explicit_validation is None):
+        raise ValueError("Explicit train_end and validation_end must be configured together")
+    if explicit_train is not None:
+        train_end = pd.Timestamp(explicit_train)
+        validation_end = pd.Timestamp(explicit_validation)
+        if train_end.tzinfo is None or validation_end.tzinfo is None:
+            raise ValueError("Explicit preparation cutoffs must include a timezone")
+        if train_end >= validation_end:
+            raise ValueError("Explicit train_end must precede validation_end")
+        return train_end, validation_end
     timestamps = np.sort(events["timestamp"].drop_duplicates().to_numpy())
     if len(timestamps) < 3:
         raise ValueError("At least three distinct event timestamps are required")

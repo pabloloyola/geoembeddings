@@ -197,6 +197,47 @@ This record is software-integration verification only. It is not evidence that
 T2.7 or any scientific gate passed. The T2.7 **do not advance** decision remains
 binding, and no evaluator or model feature was added.
 
+## Failure reconciliation and repair (2026-08-13 UTC)
+
+The full suite was reproduced before repair in the available core environment
+with `PYTHONPATH=.venv/lib/python3.14/site-packages:src pytest`. It reported
+`205 passed, 13 failed, 1 warning in 31.55s`. The locked development sync could
+not be completed because the package-index tunnel could not download
+`pygments==2.20.0`; `uv sync --locked --offline` restored the cached locked core
+dependencies, and the pre-existing host pytest runner was used only as an
+environment workaround. This is a dependency/platform limitation, not one of
+the executed software failures below.
+
+Compared with the 13 failures recorded for `c64611e`, 12 test identities
+recurred. The earlier local-ridge intercept test was already resolved and passed
+in the reproduced suite. A privacy orchestration integration fixture was the
+one newly exposed failure. Every reproduced failure is classified and resolved
+as follows:
+
+| Reproduced failure | Classification | Resolution |
+|---|---|---|
+| artifact-index preparation/source mismatch rejection | **Code defect** | Source authentication now verifies exactly the observed inputs declared by preparation, rejects unknown declared observed filenames, and no longer requires dataset/2.0 recommendation files from a legacy event-only preparation. |
+| dense observed-only preparation fixture | **Stale fixture** | Added the required public dataset-contract manifest; no truth input was introduced. |
+| episode invalid non-finite export case | **Code defect** | Component validation now reports non-finite values distinctly from shape and row-alignment failures. |
+| episode invalid dimensionality case | **Code defect** | Component validation now reports the required 2-D shape failure distinctly. |
+| full paired-run evaluation | **Code defect** | Added authenticated explicit wall-clock preparation cutoffs for matched interventions. A representation whose independently fitted observed-only feature spaces have unequal dimensions is now reported as unavailable with dimensions and coverage instead of aborting the entire report; Markdown preserves that state. |
+| pair-manifest incompatible-contract rejection | **Stale fixture** | The fixture now changes dataset/2.0 to the genuinely incompatible legacy 1.0 value instead of assigning the already-current version. Authentication was not weakened. |
+| privacy population ordering | **Stale fixture** | Synthetic vector values are now keyed by user/cutoff rather than NPZ row position, and assertions use the documented participation-record field names. |
+| privacy imbalanced/missing split classes | **Stale fixture** | Updated the fixture to the documented `vector_features`, `provenance_covariates`, and `matching_stratum` record contract; fail-closed support behavior is unchanged. |
+| privacy bootstrap degeneracy accounting | **Intentional contract change** | The expectation now reflects the frozen protocol in which class is part of every effective stratum, so singleton classes remain present in every stratified replicate. |
+| privacy protected continuous bins | **Stale fixture** | Protected synthetic values now cover every frozen split's train-fitted bins; minimum class-by-split support remains enforced. |
+| privacy audit orchestration | **Stale fixture** | The fixture now supplies valid observed schemas, role-eligible export populations, authentic participation coverage, and explicitly expects a scientifically unavailable sensitive attack when the frozen cell-support gate fails. |
+| ranking observed/truth-boundary integration | **Stale fixture** | Dense NPZ identity arrays now use non-object strings, and the test expects the public CLI's authenticated `SystemExit(2)` failure contract for a tampered legacy manifest. Truth remains unopened. |
+| opportunity intervention pair integrity | **Intentional contract change** | Opportunity interventions now declare all newly public observed recommendation tables as permitted-to-change outputs; protected truth permissions and pair-integrity checks remain intact. |
+
+Focused module tests were rerun after each repair group. The final focused run
+for all affected modules passed, followed by a complete run of `218 passed in
+22.00s` with no failures, collection errors, skips, or warnings. The previously
+unregistered integration marker is now registered. There are **no remaining
+software-suite failures** in this environment. The locked-extra sync remains an
+environment limitation until the exact dev artifact can be fetched; it does not
+alter the passing executed-suite result or constitute scientific evidence.
+
 ## Locked CPU verification attempt: `0bc2781` (2026-08-13 UTC)
 
 This is a fresh verification attempt of exact source commit

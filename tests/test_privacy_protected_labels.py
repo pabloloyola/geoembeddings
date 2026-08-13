@@ -30,7 +30,8 @@ def _truth(tmp_path: Path) -> Path:
     for index in range(90):
         rows.append({
             "user_id": f"u{index}",
-            "price_sensitivity": float(index),
+            # Each frozen user split covers all train-fitted bins.
+            "price_sensitivity": float(index % 30),
             "family_orientation": float(index % 17),
             "home_latitude": 35.0,
         })

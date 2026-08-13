@@ -32,6 +32,9 @@ def test_dense_cutoffs_reject_invalid_stride() -> None:
 def test_dense_dataset_uses_only_observed_prepared_contract(tmp_path) -> None:
     observed = tmp_path / "run" / "observed"
     observed.mkdir(parents=True)
+    (observed.parent / "manifest.json").write_text(
+        '{"dataset_contract":{"name":"geoembeddings-dataset","version":"1.0"}}'
+    )
     pd.DataFrame(
         [
             {
