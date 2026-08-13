@@ -1,10 +1,9 @@
-"""Fail-closed input authentication for protected privacy evaluations.
+"""Fail-closed input authentication and label handling for privacy evaluation.
 
-This module deliberately does not know how to read protected labels.  A privacy
-evaluator must call :func:`authenticate_privacy_inputs` first and may pass the
-returned immutable identities to the label-loading phase.  Keeping this gate in
-a truth-independent module makes it possible to test that malformed evidence
-cannot create a report (or even cause a protected file to be opened).
+Protected labels are read only by :func:`load_protected_labels`, after public
+representation evidence has authenticated.  The loader accepts only a
+canonical, evaluator-resolved truth path and returns an opaque capability plus
+aggregate disclosure-safe metadata; it never serializes user-level labels.
 """
 
 from __future__ import annotations
@@ -15,9 +14,11 @@ from pathlib import Path
 from typing import Any, Literal, Mapping, Sequence
 
 import numpy as np
+import pandas as pd
 import torch
 
 from .artifact_index import SCHEMA_VERSION as EVIDENCE_INDEX_SCHEMA_VERSION
+from .contract import TRUTH_FILES
 from .io import read_json, sha256_file
 from .representation_schema import COMPONENT_NAMES, EXPORT_SCHEMA_VERSION, load_embedding_export
 from .runtime_metadata import RuntimeMetadata
@@ -28,6 +29,94 @@ PRIVACY_INPUT_SCHEMA_VERSION = "geoembeddings-privacy-input/1.0"
 SELECTION_ROLE = "diagnostic_control"
 BASELINE_CHECKPOINT_IDENTITY = "not_applicable"
 PRIVACY_POPULATION_SCHEMA_VERSION = "geoembeddings-privacy-population/1.0"
+PROTECTED_LABEL_SCHEMA_VERSION = "geoembeddings-protected-labels/1.0"
+
+
+@dataclass(frozen=True)
+class ProtectedAttributeDeclaration:
+    """Predeclared interpretation of one canonical simulator attribute."""
+
+    name: str
+    source_field: str
+    privacy_rationale: str
+    visibility: Literal["evaluator_only", "public_or_observed"]
+    derivation_version: str
+    derivation_method: Literal["train_quantile_bins", "observed_identity"]
+    labels: tuple[str, ...]
+    rare_class_mapping: tuple[tuple[str, str], ...] = ()
+
+
+# This allowlist is intentionally code-versioned and small. Adding a field is a
+# privacy-contract change, not something a caller may do through configuration.
+SUPPORTED_PROTECTED_ATTRIBUTES: Mapping[str, ProtectedAttributeDeclaration] = {
+    "price_sensitivity_group": ProtectedAttributeDeclaration(
+        "price_sensitivity_group", "price_sensitivity",
+        "A persistent synthetic economic-preference trait may be recoverable from an embedding.",
+        "evaluator_only", "price-sensitivity-train-tertiles/1.0", "train_quantile_bins",
+        ("low", "medium", "high"),
+    ),
+    "family_orientation_group": ProtectedAttributeDeclaration(
+        "family_orientation_group", "family_orientation",
+        "A persistent synthetic household-related trait may reveal modeled family orientation.",
+        "evaluator_only", "family-orientation-train-tertiles/1.0", "train_quantile_bins",
+        ("low", "medium", "high"),
+    ),
+    # These declarations document why tempting probes are not protected-label
+    # probes: their values are already explicit in users_observed.csv.gz.
+    "age_group": ProtectedAttributeDeclaration(
+        "age_group", "age_group", "Synthetic age band is demographic information.",
+        "public_or_observed", "age-group-observed-identity/1.0", "observed_identity", (),
+    ),
+    "household_type": ProtectedAttributeDeclaration(
+        "household_type", "household_type", "Synthetic household type is demographic information.",
+        "public_or_observed", "household-type-observed-identity/1.0", "observed_identity", (),
+    ),
+}
+
+PROHIBITED_PROTECTED_ATTRIBUTE_TOKENS = (
+    "latitude", "longitude", "coordinate", "user_id", "object_id", "session_id",
+    "episode_id", "decision_id", "identifier", "chosen", "utility", "text",
+    "intersection", "sparse_cell",
+)
+
+
+@dataclass(frozen=True)
+class ProtectedAttributeSummary:
+    """Aggregate-only label derivation result safe for a privacy report."""
+
+    name: str
+    status: Literal["available", "excluded"]
+    reason: str | None
+    privacy_rationale: str
+    visibility: str
+    derivation_version: str
+    derivation_method: str
+    fit_split: str | None
+    labels: tuple[str, ...]
+    bin_boundaries: tuple[float, ...]
+    counts: tuple[tuple[str, int], ...]
+    eligible_count: int
+    missing_count: int
+    unsupported_count: int
+
+
+class ProtectedLabelBundle:
+    """Opaque in-process labels and their aggregate, non-reconstructable summary.
+
+    The private mapping deliberately has no public accessor, iterator, repr, or
+    serialization method. Evaluator code can pass the bundle directly to
+    :func:`run_protected_attribute_attacks`.
+    """
+
+    __slots__ = ("schema_version", "summaries", "_labels")
+
+    def __init__(self, summaries: Sequence[ProtectedAttributeSummary], labels: Mapping[str, Mapping[str, str]]) -> None:
+        self.schema_version = PROTECTED_LABEL_SCHEMA_VERSION
+        self.summaries = tuple(summaries)
+        self._labels = {name: dict(values) for name, values in labels.items()}
+
+    def __repr__(self) -> str:
+        return f"ProtectedLabelBundle(schema_version={self.schema_version!r}, attributes={len(self.summaries)})"
 
 
 def _canonical_hash(value: Any) -> str:
@@ -719,3 +808,166 @@ def authenticate_privacy_inputs(
         sha256_file(path), str(schema), str(index["task_id"]), str(index["decision"]),
         identities, runtime_metadata,
     )
+
+
+def _excluded_summary(
+    declaration: ProtectedAttributeDeclaration,
+    reason: str,
+    *,
+    eligible_count: int = 0,
+    missing_count: int = 0,
+    unsupported_count: int = 0,
+) -> ProtectedAttributeSummary:
+    return ProtectedAttributeSummary(
+        declaration.name, "excluded", reason, declaration.privacy_rationale,
+        declaration.visibility, declaration.derivation_version, declaration.derivation_method,
+        None, declaration.labels, (), (), eligible_count, missing_count, unsupported_count,
+    )
+
+
+def load_protected_labels(
+    authenticated: AuthenticatedPrivacyInputs,
+    user_latents_truth_path: str | Path,
+    *,
+    split_by_user: Mapping[str, Literal["train", "validation", "test"]],
+    attributes: Sequence[str] = ("price_sensitivity_group", "family_orientation_group"),
+    minimum_total: int = 100,
+    minimum_per_class: int = 20,
+    minimum_cell_support: int = 20,
+) -> ProtectedLabelBundle:
+    """Load and derive a bounded set of protected simulator labels.
+
+    Authentication and all request validation happen before the truth file is
+    opened. Continuous bin edges are fitted on probe-train values only. Missing
+    values are excluded rather than imputed, and unsupported/public attributes
+    receive aggregate machine-readable exclusions. ``minimum_cell_support`` is
+    enforced for every class-by-probe-split cell, preventing reconstructable
+    small cells from reaching an attack or report.
+    """
+    if not isinstance(authenticated, AuthenticatedPrivacyInputs) or not authenticated.inputs:
+        raise TypeError("representation authentication must succeed before protected labels are loaded")
+    if authenticated.evidence_index_schema not in {
+        FACTORIZATION_INDEX_SCHEMA_VERSION, EVIDENCE_INDEX_SCHEMA_VERSION
+    } or authenticated.t2_7_decision != "do not advance":
+        raise ValueError("authenticated representation evidence is not eligible for privacy evaluation")
+    if not attributes or len(attributes) != len(set(attributes)):
+        raise ValueError("protected attributes must be a non-empty, unique predeclared list")
+    for value in (minimum_total, minimum_per_class, minimum_cell_support):
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            raise ValueError("privacy label support thresholds must be positive integers")
+    invalid_splits = {str(value) for value in split_by_user.values()} - {"train", "validation", "test"}
+    if invalid_splits:
+        raise ValueError(f"unsupported probe splits: {sorted(invalid_splits)}")
+
+    declarations: list[ProtectedAttributeDeclaration] = []
+    for name in attributes:
+        lower = str(name).lower()
+        if any(token in lower for token in PROHIBITED_PROTECTED_ATTRIBUTE_TOKENS):
+            raise ValueError(f"prohibited protected attribute request: {name!r}")
+        declaration = SUPPORTED_PROTECTED_ATTRIBUTES.get(str(name))
+        if declaration is None:
+            raise ValueError(f"undeclared protected attribute request: {name!r}")
+        declarations.append(declaration)
+
+    path = Path(user_latents_truth_path).expanduser().resolve()
+    if path.name != TRUTH_FILES["user_latents"] or path.parent.name != "truth":
+        raise ValueError("protected labels require the evaluator-resolved canonical truth/user_latents path")
+    if not path.is_file():
+        raise FileNotFoundError(f"missing canonical protected-label source: {path}")
+
+    # Only after every public/authentication/request check has passed may truth open.
+    frame = pd.read_csv(path, dtype={"user_id": str})
+    if "user_id" not in frame or frame["user_id"].isna().any() or frame["user_id"].duplicated().any():
+        raise ValueError("canonical user_latents truth must contain unique, nonmissing user_id values")
+    frame["user_id"] = frame["user_id"].astype(str)
+    summaries: list[ProtectedAttributeSummary] = []
+    protected: dict[str, dict[str, str]] = {}
+    total_rows = int(len(frame))
+
+    for declaration in declarations:
+        if declaration.visibility == "public_or_observed":
+            summaries.append(_excluded_summary(
+                declaration, "public_or_observed_not_a_protected_leakage_target",
+                unsupported_count=total_rows,
+            ))
+            continue
+        if declaration.source_field not in frame:
+            summaries.append(_excluded_summary(
+                declaration, "canonical_truth_field_missing", unsupported_count=total_rows,
+            ))
+            continue
+        numeric = pd.to_numeric(frame[declaration.source_field], errors="coerce")
+        finite = np.isfinite(numeric.to_numpy(dtype=float))
+        split_known = frame["user_id"].isin(split_by_user)
+        eligible_mask = finite & split_known.to_numpy()
+        missing_count = int((~finite).sum())
+        unsupported_count = int((finite & ~split_known.to_numpy()).sum())
+        train_mask = eligible_mask & frame["user_id"].map(split_by_user).eq("train").to_numpy()
+        train_values = numeric.to_numpy(dtype=float)[train_mask]
+        if len(train_values) < len(declaration.labels):
+            summaries.append(_excluded_summary(
+                declaration, "probe_train_support_inadequate_for_bin_fit",
+                eligible_count=int(eligible_mask.sum()), missing_count=missing_count,
+                unsupported_count=unsupported_count,
+            ))
+            continue
+        quantiles = np.linspace(0.0, 1.0, len(declaration.labels) + 1)[1:-1]
+        interior = np.quantile(train_values, quantiles)
+        if not np.all(np.isfinite(interior)) or len(np.unique(interior)) != len(interior):
+            summaries.append(_excluded_summary(
+                declaration, "probe_train_bin_boundaries_not_distinct",
+                eligible_count=int(eligible_mask.sum()), missing_count=missing_count,
+                unsupported_count=unsupported_count,
+            ))
+            continue
+        values = numeric.to_numpy(dtype=float)[eligible_mask]
+        indices = np.searchsorted(interior, values, side="right")
+        labels = np.asarray(declaration.labels, dtype=object)[indices]
+        users = frame.loc[eligible_mask, "user_id"].to_numpy(dtype=str)
+        derived = dict(zip(users.tolist(), labels.tolist(), strict=True))
+        counts = {label: int(np.sum(labels == label)) for label in declaration.labels}
+        cell_counts = {
+            (split, label): sum(1 for user, value in derived.items() if split_by_user[user] == split and value == label)
+            for split in ("train", "validation", "test") for label in declaration.labels
+        }
+        reason = None
+        if len(derived) < minimum_total:
+            reason = "minimum_total_support_not_met"
+        elif any(count < minimum_per_class for count in counts.values()):
+            reason = "minimum_class_support_not_met"
+        elif any(count < minimum_cell_support for count in cell_counts.values()):
+            reason = "minimum_class_by_split_cell_support_not_met"
+        if reason:
+            # Do not expose the small per-cell counts which caused exclusion.
+            summaries.append(_excluded_summary(
+                declaration, reason, eligible_count=len(derived), missing_count=missing_count,
+                unsupported_count=unsupported_count,
+            ))
+            continue
+        summaries.append(ProtectedAttributeSummary(
+            declaration.name, "available", None, declaration.privacy_rationale,
+            declaration.visibility, declaration.derivation_version, declaration.derivation_method,
+            "train", declaration.labels, tuple(float(value) for value in interior),
+            tuple((label, counts[label]) for label in declaration.labels), len(derived),
+            missing_count, unsupported_count,
+        ))
+        protected[declaration.name] = derived
+    return ProtectedLabelBundle(summaries, protected)
+
+
+def run_protected_attribute_attacks(
+    population: PrivacyPopulation,
+    bundle: ProtectedLabelBundle,
+    attribute: str,
+    config: Any,
+) -> dict[str, Any]:
+    """Consume opaque labels in-process without returning or logging them."""
+    summary = next((item for item in bundle.summaries if item.name == attribute), None)
+    if summary is None:
+        return {"status": "unavailable", "reason": "attribute_not_requested", "attacks": {}}
+    if summary.status != "available":
+        return {"status": "unavailable", "reason": summary.reason, "attacks": {}}
+    labels = bundle._labels[attribute]
+    if any(record.user_id not in labels for record in population.records):
+        return {"status": "unavailable", "reason": "privacy_population_has_missing_labels", "attacks": {}}
+    return run_privacy_attacks_from_config(population, labels, config, task="sensitive_attribute")
