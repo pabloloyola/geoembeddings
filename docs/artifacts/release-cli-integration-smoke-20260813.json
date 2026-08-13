@@ -1,0 +1,299 @@
+{
+  "benchmarks": {
+    "offline_report": {
+      "bytes": 6061,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment/benchmarks/offline.json",
+      "sha256": "c8456b9527ada9d16059f72beb44c297471a0a9b9289434b053c232183cb8b36"
+    },
+    "online_report": {
+      "bytes": 17583,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment/benchmarks/online.json",
+      "sha256": "401f7aa906445b56a12bbe20fd4c5d5cd58c45f83609ba20f5d63e56ae71aa7e"
+    },
+    "online_workload": {
+      "bytes": 1000858,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment/benchmarks/online_workload.json",
+      "sha256": "33408a0b9e4bfb5c8c284da2e5e5a753aa31c4eb0ba2a75be7d609d91e40d86f"
+    },
+    "online_workload_identity": "0a5c893b89e82e311c8c90713c893bce6e65a7c1677c64268c3eaa3cf5c848b2"
+  },
+  "calibration": {
+    "path": null,
+    "reason": "bounded workflow does not invoke calibrate-reliability",
+    "status": "not_included"
+  },
+  "command": "UV_NO_SYNC=1 uv run python scripts/run_cli_integration_smoke.py --work-dir /tmp/geoembeddings-release-smoke-20260813-4dcba634-v2",
+  "dataset": {
+    "contract": {
+      "name": "geoembeddings-dataset",
+      "version": "2.0"
+    },
+    "deep_validation_report": {
+      "bytes": 7037,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/run/deep_validation_report.json",
+      "sha256": "788b34f05a936d793d8077fd81edbe20c5c8cee6f5b2a5b6124fc7f693052a8b"
+    },
+    "manifest": {
+      "bytes": 4800,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/run/manifest.json",
+      "sha256": "e5dae861a8e1aaced74c8e55f94c4c4a07c0e7a5f32866339f707df4027a4264"
+    },
+    "resolved_simulation_config": {
+      "bytes": 12636,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/run/config.resolved.yaml",
+      "sha256": "92d17c782a9daaa8afa6a6346c3c3e28f79b09f787c8e29ca812d3310f489b82"
+    }
+  },
+  "exclusions": {
+    "online_benchmark": [
+      "training",
+      "hardware-normalized comparison",
+      "accelerator memory when unsupported",
+      {
+        "reasons": [
+          "insufficient source events"
+        ],
+        "representation": "baseline",
+        "workload": "frozen_batch_128"
+      },
+      {
+        "reasons": [
+          "insufficient source events"
+        ],
+        "representation": "learned",
+        "workload": "frozen_batch_128"
+      }
+    ],
+    "privacy_audit": [
+      {
+        "count": 1,
+        "reason": "authenticated_training_membership_labels_unavailable"
+      }
+    ],
+    "privacy_limitations": [
+      "Diagnostic controls do not establish deployment privacy.",
+      "Component names do not establish factorized semantics.",
+      "Unavailable membership evidence is not evidence of privacy."
+    ],
+    "scope": [
+      "not reference scale",
+      "no aggregate winner",
+      "no scientific or deployment conclusion"
+    ]
+  },
+  "exports": {
+    "baseline": {
+      "bytes": 58371,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment/statistical_baseline.npz",
+      "sha256": "0ddd4925a435cfb3df138a6bbf672e2bcae4f51276d31e04daf6100ceff170ce"
+    },
+    "learned": {
+      "bytes": 19183,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment/embeddings.npz",
+      "sha256": "4bce082ae4c19c4f6917f957e25e15c58b65c3b381e75770e77062c8bc9e7145"
+    },
+    "learned_dense": {
+      "bytes": 42093,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment/dense_embeddings.npz",
+      "sha256": "1b91c1dbc6ff667c6a5cd14fc34e59db520f718a804112f1d9a4dab92db33c6f"
+    }
+  },
+  "immutability_checks": {
+    "repeat_ranking_without_overwrite": "rejected_and_original_hash_preserved",
+    "truth_subroot_as_dataset_root": "rejected"
+  },
+  "preparation": {
+    "categorical_fields": [
+      "service_id",
+      "action_type",
+      "observation_mode",
+      "object_category",
+      "region_id",
+      "geohash_5",
+      "geohash_7"
+    ],
+    "continuous_fields": [
+      "latitude",
+      "longitude",
+      "log_delta_minutes",
+      "hour_sin",
+      "hour_cos",
+      "dow_sin",
+      "dow_cos",
+      "log_location_accuracy_m"
+    ],
+    "definition_sha256": "72ae2b651c1420c1b1f3ad4da90cb28fd8e14c0f43a02e6ca99918c040a38b01",
+    "metadata": {
+      "bytes": 2391,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment/prepared/prepared_metadata.json",
+      "sha256": "1664e57b82dc46332cdf3defa95cf25b91393072c3a713edbef9976df0840d9c"
+    },
+    "metadata_sha256": "1664e57b82dc46332cdf3defa95cf25b91393072c3a713edbef9976df0840d9c",
+    "resolved_config": {
+      "bytes": 2563,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment/prepared/config.resolved.yaml",
+      "sha256": "df5ef0694fc4b25017bb63adeb69ee89ab2a2764b7acebcde17886967d431f83"
+    },
+    "resolved_config_sha256": "df5ef0694fc4b25017bb63adeb69ee89ab2a2764b7acebcde17886967d431f83",
+    "source_files": {
+      "observed_events.csv.gz": "ed9907fb874d49494db65fd09a2ac31b8f68fef50efb878ccad111bad63e0467",
+      "users_observed.csv.gz": "38fecea5177dce38afe3e39f32926fe27c25ebd2b836452208cbb774a140c9c4"
+    }
+  },
+  "privacy": {
+    "applicability_statuses": {
+      "membership_metrics": {
+        "capacity_matched_single": {
+          "reason": "authenticated_training_membership_labels_unavailable",
+          "status": "unavailable"
+        }
+      },
+      "membership_population": {
+        "capacity_matched_single": {
+          "reason": "authenticated_training_membership_labels_unavailable",
+          "status": "unavailable"
+        },
+        "statistical_baseline": {
+          "reason": "no_learned_target_parameters",
+          "status": "not_applicable"
+        }
+      },
+      "selection_dependent_privacy_conclusion": {
+        "reason": "no_selected_candidate",
+        "status": "unavailable"
+      },
+      "sensitive_attributes": {
+        "age_group": {
+          "reason": "public_or_observed_not_a_protected_leakage_target",
+          "status": "excluded"
+        },
+        "household_type": {
+          "reason": "public_or_observed_not_a_protected_leakage_target",
+          "status": "excluded"
+        },
+        "leisure_preference_group": {
+          "reason": "unsupported_protected_attribute",
+          "status": "unavailable"
+        }
+      }
+    },
+    "audit_json": {
+      "bytes": 12716,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/audit/audits/privacy.json",
+      "sha256": "ce05be4cd9b1de4d4c3f8056fd4237c88c99a606b596f47150868dc00e7e5b02"
+    },
+    "audit_markdown": {
+      "bytes": 12884,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/audit/audits/privacy.md",
+      "sha256": "76688036f8bb7e1f3c8db20b792b05d9c462a55087e21d405d290613c9ee78ea"
+    },
+    "authentication_index": {
+      "bytes": 2154,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/evidence/evidence_index.json",
+      "sha256": "51751404d176c38f354d0656914c5e04f9b9814296f4daa4b52fe92cd0bbd28e"
+    },
+    "utility_reports": {
+      "capacity_matched_single": {
+        "bytes": 2099,
+        "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/utility/capacity_matched_single.json",
+        "sha256": "e41124f46d9e7836db1d203ab665570633c4021ea65bd8d34646c7cf31e27fdc"
+      },
+      "statistical_baseline": {
+        "bytes": 2099,
+        "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/utility/statistical_baseline.json",
+        "sha256": "e41124f46d9e7836db1d203ab665570633c4021ea65bd8d34646c7cf31e27fdc"
+      }
+    }
+  },
+  "ranking": {
+    "model": "nearest",
+    "predictions": {
+      "bytes": 6622,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment/ranking/nearest.npz",
+      "sha256": "427b1ad3b626ee31efd55ba6cf0236a2fe02b05918d6c225f3b976ac13ccc451"
+    },
+    "report": {
+      "bytes": 3751,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment/ranking/nearest.json",
+      "sha256": "a9284f004a503fc4286ecc821e52f4be80fa1e7a7daae22769a08f2899f99f2c"
+    }
+  },
+  "reports": {
+    "baseline_evaluation": {
+      "bytes": 9633,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment/baseline_evaluation.json",
+      "sha256": "80e91d856bdc9c75c878709637c5e7d2e400e6657005a87b038cdba8c8fffaf1"
+    },
+    "comparison_json": {
+      "bytes": 13060,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment/comparison/embedding_comparison.json",
+      "sha256": "de873b2eba18538c61f7a045bf9a69e156338fe990b7a6aa854a7628b82f559b"
+    },
+    "comparison_markdown": {
+      "bytes": 3557,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment/comparison/embedding_comparison.md",
+      "sha256": "6b15687b5e82ce9b2b3d6f93df53b4d9b6552e343bc131a94789d33b34eade6b"
+    },
+    "learned_evaluation": {
+      "bytes": 226725,
+      "path": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment/evaluation.json",
+      "sha256": "40d68d4db31600aa91fb398c2b4678f4d22bc8d002890d9b2533041f27349a5f"
+    }
+  },
+  "resolved_roots": {
+    "experiment_dir": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/experiment",
+    "privacy_audit_dir": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/audit",
+    "run_dir": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2/run",
+    "work_dir": "/tmp/geoembeddings-release-smoke-20260813-4dcba634-v2"
+  },
+  "runtime": {
+    "command_duration_seconds": 71.685,
+    "end_utc": "2026-08-13T06:16:43.339762202Z",
+    "environment": {
+      "accelerator": null,
+      "device_type": "cpu",
+      "operating_system": "Linux-6.18.35-x86_64-with-glibc2.39",
+      "package_version": "0.5.0",
+      "python_version": "3.14.4",
+      "pytorch_version": "2.13.0+cu130",
+      "schema_version": "geoembeddings-runtime-metadata/1.0",
+      "seed": 20260806,
+      "source_commit": "4dcba63462570fda439e24e4e4812a85c6854753",
+      "wall_clock_duration_seconds": 2.815956653000285
+    },
+    "start_utc": "2026-08-13T06:15:31.637897001Z",
+    "successful_command_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "uv_version": "0.7.22"
+  },
+  "schema_version": "geoembeddings-release-evidence-index/1.0",
+  "scientific_conclusion": "not_applicable",
+  "scope": "bounded 50-user/seven-day synthetic CLI integration smoke; execution and contract evidence only",
+  "seeds": {
+    "evaluation": 20260806,
+    "online_benchmark": 20260812,
+    "privacy_audit": 20260813,
+    "simulation": 20260811,
+    "training": 20260806
+  },
+  "source": {
+    "commit": "4dcba63462570fda439e24e4e4812a85c6854753",
+    "package_version": "0.5.0",
+    "smoke_script_sha256": "262b98ac5918f50ded4bd2f1f6bad6c134803190c7c8d76bd2c86f22dc9359e3",
+    "working_tree_note": "The boundary-assertion compatibility fix was uncommitted during this execution and is committed with this index."
+  },
+  "warnings": [
+    {
+      "expectation": "At least 100 travel events in the pilot; still treat this as a sparse probe",
+      "name": "Travel signal volume",
+      "source": "deep_validation_report",
+      "value": {
+        "events": 2,
+        "share": 0.0016
+      }
+    },
+    {
+      "message": "Initial uv synchronization could not fetch hatchling because the PyPI tunnel was unavailable; successful execution used the existing locked environment with UV_NO_SYNC=1.",
+      "source": "environment_preflight"
+    }
+  ]
+}

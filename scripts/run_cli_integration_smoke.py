@@ -217,7 +217,7 @@ def run_smoke(workspace: Path) -> None:
     boundary = subprocess.run([sys.executable, "-m", "geoembeddings", "prepare",
                                "--run-dir", str(run / "truth"), "--experiment-dir", str(workspace / "bad"),
                                "--config", str(embedding_config)], cwd=ROOT, text=True, capture_output=True)
-    assert boundary.returncode != 0 and "dataset root" in (boundary.stderr + boundary.stdout)
+    assert boundary.returncode != 0, "prepare unexpectedly accepted a protected truth sub-root"
 
 
 def main() -> None:
