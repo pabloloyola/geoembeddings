@@ -8,6 +8,16 @@ documenting that command. Artifact paths are relative to `RUN_DIR` or
 
 ## Completed and verified
 
+Training participation provenance for R12 is now emitted as immutable learned
+experiment metadata at `model/training_participation.json`. It separates users
+with actual eligible train targets, validation/checkpoint-selection targets,
+train-fitted preprocessing exposure, and post-freeze export-only availability;
+records only counts and canonical user-set hashes; and binds the definition to
+preparation, observed sources, split boundaries, configuration, and checkpoint
+identity. This does not change the observed dataset contract. Privacy-audit
+consumption remains follow-up work and must authenticate this artifact rather
+than substitute export coverage.
+
 These milestones are complete. Their evidence verifies execution and evaluator
 contracts, not scientific superiority or disentanglement.
 
