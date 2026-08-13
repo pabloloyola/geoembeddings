@@ -24,7 +24,7 @@ to establish what fails when these pressures share one capacity bottleneck.
 | R6 | Cross-service alignment | Next-service transitions; later paired cross-service views | Hold out one service and predict it from the others | Partial: deterministic service-removal executable |
 | R7 | Noise/sparsity robustness | Event dropout | Controlled event removal, GPS perturbation, missing-service tests | Partial: deterministic corruption views executable |
 | R8 | Geographic/temporal transfer | Compositional event fields and no default POI ID | Held-out regions and later periods | Partial: held-out-region/geohash slices executable |
-| R9 | New-context recommendation | Candidate-aware ranking objective | Tokyo-history → Hakone-candidate ranking, regret, NDCG | Blocked by observable contract |
+| R9 | New-context recommendation | Candidate-aware ranking objective | Tokyo-history → Hakone-candidate ranking, regret, NDCG | Partial/executable: T3.4--T3.7 ranking surfaces are implemented; reference-scale and external evidence remain absent |
 
 ## Why the baseline objective is useful
 
@@ -70,9 +70,10 @@ factorized architecture.
 7. Latent probes split by user, preventing a probe from seeing the same user's
    label in train and test.
 
-## Required simulator outputs for recommendation
+## Implemented simulator outputs for recommendation
 
-The business use case needs observable tables that are not present in v0:
+Dataset contract 2.0 provides the observable recommendation tables required by
+the business use case:
 
 ```text
 observed/
@@ -82,16 +83,21 @@ observed/
 └── interactions.csv.gz
 ```
 
-At minimum, each request must identify user and timestamp; each candidate must
-include availability and the features known at ranking time; impressions must
-record what was shown; and interactions must record the response. Candidate
-utility, unobserved preference, and true episode remain evaluator-only.
+Each request identifies the user and timestamp; public candidate records contain
+availability and features known at ranking time; impressions record what was
+shown; and interactions record the response. Candidate utility, unobserved
+preference, true choice probabilities, and true episodes remain evaluator-only.
 
-Once available, R9 should be evaluated with Recall@K, NDCG@K, MRR, utility
-regret, calibration of choice probabilities, cold-POI ranking, and the controlled
-Tokyo-routine/Hakone-trip counterfactual.
+T3.4 provides recommendation controls, T3.5 provides frozen-embedding candidate
+ranking, T3.6 provides observed-only exposure-aware training plus a separately
+authenticated protected paired evaluator, and T3.7 provides observed-only
+seen/unseen region and POI plus early/late transfer slices. Protected utility
+regret and probability recovery are available only after pair-integrity and
+ranking-identity authentication; the observed-only T3.7 surface cannot report
+utility regret. These synthetic results do not establish real-world causality
+or external validity, and no reference-scale recommendation result is archived.
 
-## Development sequence
+## Implemented development sequence
 
 1. Run v0 and establish next-event, latent-probe, and stability baselines.
 2. Add controlled corruption and service/region holdout evaluators without
@@ -99,8 +105,10 @@ Tokyo-routine/Hakone-trip counterfactual.
 3. Add the factorized persistent/context encoder behind the same CLI.
 4. Add routine representation only after R1 tests distinguish persistent trait,
    repeated routine, and current episode.
-5. Extend the simulator's observable recommendation contract.
-6. Add candidate encoder, ranking loss, and new-context recommendation suite.
+5. Extend the simulator's observable recommendation contract (completed in
+   dataset contract 2.0).
+6. Add candidate-aware ranking and new-context recommendation evaluation
+   (T3.4--T3.7 implemented with the limitations above).
 
 ## Frozen embedding comparison
 
@@ -120,8 +128,9 @@ Instead, it fits common frozen probes and reports separate axes:
 No aggregate winner is produced. Supplemental matched axes are added after
 `export-dense`/`evaluate --episodes`, `robustness`, and `evaluate --transfer`
 have produced both baseline and learned reports. Persistent/context
-disentanglement, counterfactual exposure invariance, real-noise calibration,
-unseen-POI transfer, and calibrated uncertainty remain explicit missing tests.
+disentanglement, externally valid counterfactual exposure invariance,
+real-noise calibration, reference-scale recommendation transfer, and
+selection-dependent calibrated uncertainty remain explicit evidence gaps.
 Sustained-change adaptation is executable only as the T4.2 authenticated
 diagnostic-control audit, and privacy is executable only as the T4.3a
 diagnostic-control audit; neither supports a selection-dependent conclusion

@@ -118,8 +118,11 @@ streams for at least:
 
 Changing only exposure or observation parameters should not silently regenerate
 user preferences, POI qualities, or episodes. Record stream seeds in the
-manifest. Until this is implemented, describe current matched-seed scenario
-comparisons as approximate.
+manifest. Controlled comparisons must use the implemented named streams, stable
+identities, pair manifest, and a passing, non-stale `validate-pair` integrity
+report. Passing these checks establishes internal simulator-pair integrity; it
+does not establish that the intervention is a real-world causal mechanism or
+that results generalize outside the simulator.
 
 ## Model selection
 
