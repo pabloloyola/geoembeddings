@@ -5,6 +5,7 @@ on:
   pull_request:
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
@@ -14,6 +15,11 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+        with:
+          clean: true
+          fetch-depth: 1
+      - name: Ensure generated artifact roots are absent
+        run: test ! -e runs && test ! -e experiments && test ! -e notebook_artifacts
       - name: Install uv and Python
         uses: astral-sh/setup-uv@v7
         with:
@@ -24,6 +30,8 @@ jobs:
         run: uv sync --locked --extra dev
       - name: Run disposable end-to-end CLI contract
         run: uv run python scripts/run_cli_integration_smoke.py
+      - name: Ensure smoke did not create generated roots in the checkout
+        run: test ! -e runs && test ! -e experiments && test ! -e notebook_artifacts
 
   test:
     name: Python ${{ matrix.python-version }} (CPU)
@@ -72,3 +80,73 @@ jobs:
 
       - name: Check external-validity evidence links
         run: uv run python scripts/check_evidence_links.py docs/EXTERNAL_VALIDITY.md
+
+      - name: Ensure tests did not create generated roots in the checkout
+        run: test ! -e runs && test ! -e experiments && test ! -e notebook_artifacts
+
+  release-verification:
+    name: Record immutable release verification
+    runs-on: ubuntu-latest
+    needs: [cli-integration-smoke, test]
+    steps:
+      - name: Record workflow and job identities
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const expected = [
+              "Bounded CLI integration smoke (CPU)",
+              "Python 3.11 (CPU)",
+              "Python 3.12 (CPU)",
+              "Python 3.13 (CPU)",
+              "Python 3.14 (CPU)",
+            ];
+            const response = await github.paginate(
+              github.rest.actions.listJobsForWorkflowRunAttempt,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: context.runId,
+                attempt_number: Number(process.env.GITHUB_RUN_ATTEMPT),
+                per_page: 100,
+              },
+            );
+            const byName = new Map(response.map(job => [job.name, job]));
+            for (const name of expected) {
+              const job = byName.get(name);
+              if (!job || job.conclusion !== "success") {
+                core.setFailed(`${name}: missing or not successful`);
+              }
+            }
+            const jobs = expected.map(name => {
+              const job = byName.get(name);
+              return {
+                name,
+                database_id: job?.id ?? null,
+                conclusion: job?.conclusion ?? null,
+                url: job?.html_url ?? null,
+              };
+            });
+            const record = {
+              schema_version: "geoembeddings-release-ci-verification/1.0",
+              repository: `${context.repo.owner}/${context.repo.repo}`,
+              commit_sha: context.sha,
+              workflow: context.workflow,
+              workflow_run_id: context.runId,
+              workflow_run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT),
+              workflow_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/attempts/${process.env.GITHUB_RUN_ATTEMPT}`,
+              event_name: context.eventName,
+              jobs,
+              generated_artifact_roots_policy: {
+                forbidden_checkout_roots: ["runs", "experiments", "notebook_artifacts"],
+                cache_dependency_glob: "uv.lock",
+              },
+            };
+            const fs = require("fs");
+            fs.writeFileSync("release-verification.json", `${JSON.stringify(record, null, 2)}\n`);
+      - name: Upload release verification record
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-verification-${{ github.sha }}-attempt-${{ github.run_attempt }}
+          path: release-verification.json
+          if-no-files-found: error
+          retention-days: 90

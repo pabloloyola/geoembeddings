@@ -150,6 +150,17 @@ hardware. A passing CPU workflow does not establish CUDA or MPS compatibility,
 and accelerator results must continue to report their actual device and avoid
 counting device fallback as an accelerator pass.
 
+Every successful workflow attempt also publishes a
+`release-verification-<commit>-attempt-<attempt>` artifact. Its JSON record
+names the exact commit SHA, workflow run ID and attempt, workflow URL, and the
+immutable Actions database ID and URL for the bounded smoke job and each Python
+3.11--3.14 matrix job. The recording job fails rather than publishing a passing
+record if any required job is missing or unsuccessful. Use those identifiers,
+not a branch name or a moving status badge, in a release sign-off. The artifact
+also records the checkout-root and uv-cache policy; CI checks that `runs/`,
+`experiments/`, and `notebook_artifacts/` are absent both before and after
+execution, while the only configured cache dependency key is `uv.lock`.
+
 ## Integration verification: `c64611e` (2026-08-13 UTC)
 
 This run verified source commit
