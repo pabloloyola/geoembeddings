@@ -1,0 +1,1037 @@
+{
+  "artifacts": [
+    {
+      "bytes": 4837,
+      "path": "runs/t4.3-privacy-audit-20260813-s20260813/manifest.json",
+      "sha256": "78cbb579d3f4c9e9e77379862dc1cc086bcda93106eabf1269a5c89385d9aa29"
+    },
+    {
+      "bytes": 12655,
+      "path": "runs/t4.3-privacy-audit-20260813-s20260813/config.resolved.yaml",
+      "sha256": "5a85506f6d8683b29be6def4fc30bab6bd2ec0c94711d33eb30ec9b51b115dee"
+    },
+    {
+      "bytes": 1044,
+      "path": "runs/t4.3-privacy-audit-20260813-s20260813/validation_report.json",
+      "sha256": "be120fff0b3a57381e4e86de88085d1b2b455fb8305fca472947b7fe5085ee37"
+    },
+    {
+      "bytes": 7065,
+      "path": "runs/t4.3-privacy-audit-20260813-s20260813/deep_validation_report.json",
+      "sha256": "535fd9a2c60d38304f417e960b4b6a8a12a72ee7654cee71933de83a1083bdbe"
+    },
+    {
+      "bytes": 21960,
+      "path": "experiments/t4.3-privacy-audit-20260813-s20260813/privacy_evidence/evidence_index.json",
+      "sha256": "8ea9649c761852937b7392bfef8e9acf080e14cf0e56f1358758be488ced8e3f"
+    },
+    {
+      "bytes": 2692,
+      "path": "experiments/t4.3-privacy-audit-20260813-s20260813/privacy_audit_supported/config.resolved.yaml",
+      "sha256": "066f81a9d5120e654070b11cf301ec851d4f3ec27a62989d00f8501d0547a9bf"
+    },
+    {
+      "bytes": 3024541,
+      "path": "experiments/t4.3-privacy-audit-20260813-s20260813/privacy_audit_supported/audits/privacy.json",
+      "sha256": "7d2999ac4eb0c66fb5af66f968329e807a642b12f1bb9ec78a5ab0c5b923177d"
+    },
+    {
+      "bytes": 3024709,
+      "path": "experiments/t4.3-privacy-audit-20260813-s20260813/privacy_audit_supported/audits/privacy.md",
+      "sha256": "e86e717fefcb92951a72a3b9531dd671bdab2abf7d898de91d28afe984d1cde7"
+    }
+  ],
+  "audit_population": {
+    "dataset_users": 200,
+    "definition": "exact common target-test export user set",
+    "eligible_users": 49,
+    "excluded_without_common_export": 151,
+    "user_set_sha256": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512"
+  },
+  "audit_split_hashes": {
+    "membership": {
+      "status": "available",
+      "user_grouped": true,
+      "user_set_hashes": {
+        "eligible": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+        "excluded": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+        "matched": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "test": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "train": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "validation": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    },
+    "sensitive_probe": {
+      "split_seed": 20260814,
+      "status": "available",
+      "user_grouped": true,
+      "user_set_hashes": {
+        "eligible": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+        "split_assignment": "c1cb5e73e53f379dba5bd732110cb75ecf447ac45aa5160fbca700fcf3641538",
+        "test": "48fc090b3c5c5b824049c35431c06df834aae07354e73026c1006ac30b600876",
+        "train": "278a54959e446be0aa33cf3eb0a898cc4661013d637447999ef1de0435a1002f",
+        "validation": "f1a5995780c389eacf9cac9edab676a7ce9c0411ab57315784310dd66e4c66ae"
+      }
+    }
+  },
+  "authentication_index": {
+    "bytes": 21960,
+    "path": "experiments/t4.3-privacy-audit-20260813-s20260813/privacy_evidence/evidence_index.json",
+    "sha256": "8ea9649c761852937b7392bfef8e9acf080e14cf0e56f1358758be488ced8e3f"
+  },
+  "commands": [
+    "uv run geoembed simulate --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --users 200 --days 7 --seed 20260813",
+    "uv run geoembed validate --run-dir runs/t4.3-privacy-audit-20260813-s20260813",
+    "uv run geoembed prepare --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/statistical_baseline.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/statistical_baseline_matched",
+    "uv run geoembed prepare --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/capacity_matched_single.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single",
+    "uv run geoembed prepare --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/factorized_pc.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc",
+    "uv run geoembed prepare --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/persistent_only.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only",
+    "uv run geoembed prepare --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/context_only.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/context_only",
+    "uv run geoembed prepare --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/factorized_no_persistent_loss.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss",
+    "uv run geoembed prepare --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/factorized_no_context_loss.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss",
+    "uv run geoembed baseline --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/statistical_baseline.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/statistical_baseline_matched",
+    "uv run geoembed train --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/capacity_matched_single.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single",
+    "uv run geoembed export --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/capacity_matched_single.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single",
+    "uv run geoembed train --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/factorized_pc.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc",
+    "uv run geoembed export --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/factorized_pc.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc",
+    "uv run geoembed train --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/persistent_only.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only",
+    "uv run geoembed export --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/persistent_only.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only",
+    "uv run geoembed train --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/context_only.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/context_only",
+    "uv run geoembed export --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/context_only.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/context_only",
+    "uv run geoembed train --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/factorized_no_persistent_loss.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss",
+    "uv run geoembed export --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/factorized_no_persistent_loss.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss",
+    "uv run geoembed train --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/factorized_no_context_loss.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss",
+    "uv run geoembed export --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/factorized_no_context_loss.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss",
+    "uv run geoembed evaluate --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/statistical_baseline.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/statistical_baseline_matched --kind baseline",
+    "uv run geoembed evaluate --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/capacity_matched_single.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single --kind learned",
+    "uv run geoembed evaluate --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/factorized_pc.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc --kind learned",
+    "uv run geoembed evaluate --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/persistent_only.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only --kind learned",
+    "uv run geoembed evaluate --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/context_only.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/context_only --kind learned",
+    "uv run geoembed evaluate --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/factorized_no_persistent_loss.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss --kind learned",
+    "uv run geoembed evaluate --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/factorized_no_context_loss.yaml --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss --kind learned",
+    "uv run geoembed audit-privacy --run-dir runs/t4.3-privacy-audit-20260813-s20260813 --experiment-dir statistical_baseline=experiments/t4.3-privacy-audit-20260813-s20260813/statistical_baseline_matched --experiment-dir capacity_matched_single=experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single --experiment-dir factorized_pc=experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc --experiment-dir persistent_only=experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only --experiment-dir context_only=experiments/t4.3-privacy-audit-20260813-s20260813/context_only --experiment-dir factorized_no_persistent_loss=experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss --experiment-dir factorized_no_context_loss=experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss --evidence-dir experiments/t4.3-privacy-audit-20260813-s20260813/privacy_evidence --utility-report-dir experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports --config /tmp/t4.3-privacy-audit-20260813-s20260813-configs/privacy_diagnostic_resolved.yaml --output-dir experiments/t4.3-privacy-audit-20260813-s20260813/privacy_audit_supported"
+  ],
+  "coverage": {
+    "authenticated_controls": 7,
+    "membership_evaluated_controls": 0,
+    "sensitive_probe_common_users": 49,
+    "sensitive_probe_supported_attributes": 2
+  },
+  "exclusions": [],
+  "experiments": {
+    "capacity_matched_single": {
+      "checkpoint": {
+        "bytes": 2227765,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single/model/best_model.pt",
+        "sha256": "447dd68a6e8e607a0f5bb628850bd65bb5b1ee458bc8301f4e30827870ac172f"
+      },
+      "cutoffs": [
+        "test",
+        "train",
+        "validation"
+      ],
+      "export": {
+        "bytes": 208302,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single/embeddings.npz",
+        "sha256": "92851403afba5d09a2259261e94d801066ec7139dfffc8c43af9767960571764"
+      },
+      "export_keys_sha256": "b26ed6b1814236ec1e7b3b2e9f4e4a3a6cfc02e40326f81b6a6c6976cd50835a",
+      "exported_components": {
+        "combined": {
+          "dimension": 128,
+          "rows": 147
+        },
+        "context": {
+          "dimension": 128,
+          "rows": 147
+        },
+        "persistent": {
+          "dimension": 128,
+          "rows": 147
+        }
+      },
+      "parameter_count": 545434,
+      "prepared_metadata": {
+        "bytes": 3704,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single/prepared/prepared_metadata.json",
+        "sha256": "599d29afc64bf6058c3bc4b600e2c165e2d266da803e62db8fb92606300278f4"
+      },
+      "resolved_configuration": {
+        "bytes": 2875,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single/prepared/config.resolved.yaml",
+        "sha256": "c00ba0f1467b2d6863c5664c4a5719a488c7d4edcc2424dd4c822c097ebd9656"
+      },
+      "root": "experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single",
+      "selection_role": "diagnostic_control",
+      "training_participation": {
+        "bytes": 3769,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single/model/training_participation.json",
+        "sha256": "7d64b8d8370ae7f11e3f23e49eb74ac20290f29b6b85487988a7d16d4be1b15c"
+      },
+      "training_report": {
+        "bytes": 18379,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single/model/training_report.json",
+        "sha256": "05b748bc3355ab47176ee0eb7df6bafc2d9b9db044e93eb98eef50ff2e65420a"
+      },
+      "user_set_sha256": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+      "utility_report": {
+        "bytes": 431737,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports/capacity_matched_single.json",
+        "sha256": "b0d7cf5ad3827616d02433533608502b6497bf13f7961876a3da6b47ce45265b"
+      },
+      "utility_source_evaluation": {
+        "bytes": 398920,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single/evaluation.json",
+        "sha256": "0efa6eff4f3705b877c2283b5c4a9a91e615049ee14d7b485374ff1af93dcbf2"
+      },
+      "variant": "capacity_matched_single"
+    },
+    "context_only": {
+      "checkpoint": {
+        "bytes": 2236789,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/context_only/model/best_model.pt",
+        "sha256": "9a711f8046a13046a1751607fc3356f751288c85046adedd57e2185f48c77009"
+      },
+      "cutoffs": [
+        "test",
+        "train",
+        "validation"
+      ],
+      "export": {
+        "bytes": 208341,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/context_only/embeddings.npz",
+        "sha256": "5fc66d6ad4411990c8a185b6b602e28488fbfcebbcf76e1197d4d31181429a90"
+      },
+      "export_keys_sha256": "b26ed6b1814236ec1e7b3b2e9f4e4a3a6cfc02e40326f81b6a6c6976cd50835a",
+      "exported_components": {
+        "combined": {
+          "dimension": 128,
+          "rows": 147
+        },
+        "context": {
+          "dimension": 128,
+          "rows": 147
+        },
+        "persistent": {
+          "dimension": 128,
+          "rows": 147
+        }
+      },
+      "parameter_count": 546314,
+      "prepared_metadata": {
+        "bytes": 3704,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/context_only/prepared/prepared_metadata.json",
+        "sha256": "599d29afc64bf6058c3bc4b600e2c165e2d266da803e62db8fb92606300278f4"
+      },
+      "resolved_configuration": {
+        "bytes": 3050,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/context_only/prepared/config.resolved.yaml",
+        "sha256": "2ab486d9522aa0545ce614cdbbe980f412ff0afb49e10d7b035e578f59ec4920"
+      },
+      "root": "experiments/t4.3-privacy-audit-20260813-s20260813/context_only",
+      "selection_role": "diagnostic_control",
+      "training_participation": {
+        "bytes": 3769,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/context_only/model/training_participation.json",
+        "sha256": "370eb5eac6ec3e383488c8e09415a4f11d527e14e7eacf5a289cde4c97d0dceb"
+      },
+      "training_report": {
+        "bytes": 18579,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/context_only/model/training_report.json",
+        "sha256": "3b89b599cfdc6c32806c613828d34e1aff192a02bd493df45b1c8f51d273f5cd"
+      },
+      "user_set_sha256": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+      "utility_report": {
+        "bytes": 431614,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports/context_only.json",
+        "sha256": "01e5086cc32dad9db60e2a9ce70b5ed85f08e73aa3334323a0b1582fce03f18f"
+      },
+      "utility_source_evaluation": {
+        "bytes": 398817,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/context_only/evaluation.json",
+        "sha256": "9e05720f6136c49234038482ee7b59dab3cf3c01b0157e3e98e593854a44c4ef"
+      },
+      "variant": "context_only"
+    },
+    "factorized_no_context_loss": {
+      "checkpoint": {
+        "bytes": 2236789,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss/model/best_model.pt",
+        "sha256": "42c349defe6f138b85613684409a86d68cff82ea95a6848c412168e54020ec01"
+      },
+      "cutoffs": [
+        "test",
+        "train",
+        "validation"
+      ],
+      "export": {
+        "bytes": 275862,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss/embeddings.npz",
+        "sha256": "0f07183a9d8340541950ae3b5145173bfd92ed52a185ce5435536bd89d48a456"
+      },
+      "export_keys_sha256": "b26ed6b1814236ec1e7b3b2e9f4e4a3a6cfc02e40326f81b6a6c6976cd50835a",
+      "exported_components": {
+        "combined": {
+          "dimension": 128,
+          "rows": 147
+        },
+        "context": {
+          "dimension": 128,
+          "rows": 147
+        },
+        "persistent": {
+          "dimension": 128,
+          "rows": 147
+        }
+      },
+      "parameter_count": 546314,
+      "prepared_metadata": {
+        "bytes": 3704,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss/prepared/prepared_metadata.json",
+        "sha256": "599d29afc64bf6058c3bc4b600e2c165e2d266da803e62db8fb92606300278f4"
+      },
+      "resolved_configuration": {
+        "bytes": 3065,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss/prepared/config.resolved.yaml",
+        "sha256": "a69af90161f730535a26203f2c23c6374eab839e05aecea69919185098bf153a"
+      },
+      "root": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss",
+      "selection_role": "diagnostic_control",
+      "training_participation": {
+        "bytes": 3769,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss/model/training_participation.json",
+        "sha256": "15377345dadc84e6c6a1140d7a9a52a44a801a3a8eb29c0d32ad83b28fc17894"
+      },
+      "training_report": {
+        "bytes": 18547,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss/model/training_report.json",
+        "sha256": "6ea70292384b83db72f108419d4ce10d31cdbd2dd7e885bc328f44679ae48564"
+      },
+      "user_set_sha256": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+      "utility_report": {
+        "bytes": 431242,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports/factorized_no_context_loss.json",
+        "sha256": "2d8104ffc8b090e933ad2a2a036e29e29f274856fa7eaa2112b7502ab642477c"
+      },
+      "utility_source_evaluation": {
+        "bytes": 398415,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss/evaluation.json",
+        "sha256": "93caa3f2a6df4e2900ae9c378f55469f8f611a5ceb284c63a2fc68cf4af68764"
+      },
+      "variant": "factorized_pc"
+    },
+    "factorized_no_persistent_loss": {
+      "checkpoint": {
+        "bytes": 2236789,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss/model/best_model.pt",
+        "sha256": "349ddcb5c2e7b94d81c50ea44fbb01e6a15a28c7212735d9cc5da5f383c0d211"
+      },
+      "cutoffs": [
+        "test",
+        "train",
+        "validation"
+      ],
+      "export": {
+        "bytes": 276476,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss/embeddings.npz",
+        "sha256": "7fbf35d209bc94ef0f0a88ec1d063bd663828e6e51a791b70a6c36929e542e89"
+      },
+      "export_keys_sha256": "b26ed6b1814236ec1e7b3b2e9f4e4a3a6cfc02e40326f81b6a6c6976cd50835a",
+      "exported_components": {
+        "combined": {
+          "dimension": 128,
+          "rows": 147
+        },
+        "context": {
+          "dimension": 128,
+          "rows": 147
+        },
+        "persistent": {
+          "dimension": 128,
+          "rows": 147
+        }
+      },
+      "parameter_count": 546314,
+      "prepared_metadata": {
+        "bytes": 3704,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss/prepared/prepared_metadata.json",
+        "sha256": "599d29afc64bf6058c3bc4b600e2c165e2d266da803e62db8fb92606300278f4"
+      },
+      "resolved_configuration": {
+        "bytes": 3044,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss/prepared/config.resolved.yaml",
+        "sha256": "a8bdcbbadc31965d819c2e7a92fbb9d9ca61c806259ee810052495974e6c2c89"
+      },
+      "root": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss",
+      "selection_role": "diagnostic_control",
+      "training_participation": {
+        "bytes": 3769,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss/model/training_participation.json",
+        "sha256": "ff8afd1edb71d7293b0ac6b9a9c9d8100a8cb46fae16b1fa405b7d76ab7e3d70"
+      },
+      "training_report": {
+        "bytes": 18611,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss/model/training_report.json",
+        "sha256": "0e615dd824703a820582b42a7f6048f7812ec014cae931882883bbfa4c65a9f6"
+      },
+      "user_set_sha256": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+      "utility_report": {
+        "bytes": 431858,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports/factorized_no_persistent_loss.json",
+        "sha256": "985a2cbd68348ca2cf427a61b90ea49a4efa122c94c3716badf20d04068b1982"
+      },
+      "utility_source_evaluation": {
+        "bytes": 399025,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss/evaluation.json",
+        "sha256": "6e3ae20e84f9a95d26272bf39119a49011c93ff32f0f1c8d15c863c1fdc0cd84"
+      },
+      "variant": "factorized_pc"
+    },
+    "factorized_pc": {
+      "checkpoint": {
+        "bytes": 2236789,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc/model/best_model.pt",
+        "sha256": "d138f7202a2787d0d813f46ff0e75a66cd8e71ae55f5dc9c07f7429c4c0585bd"
+      },
+      "cutoffs": [
+        "test",
+        "train",
+        "validation"
+      ],
+      "export": {
+        "bytes": 275862,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc/embeddings.npz",
+        "sha256": "fc34118d1bcc92f85a356891714bccb12356449aac1db097af6d6b2b92cf6003"
+      },
+      "export_keys_sha256": "b26ed6b1814236ec1e7b3b2e9f4e4a3a6cfc02e40326f81b6a6c6976cd50835a",
+      "exported_components": {
+        "combined": {
+          "dimension": 128,
+          "rows": 147
+        },
+        "context": {
+          "dimension": 128,
+          "rows": 147
+        },
+        "persistent": {
+          "dimension": 128,
+          "rows": 147
+        }
+      },
+      "parameter_count": 546314,
+      "prepared_metadata": {
+        "bytes": 3704,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc/prepared/prepared_metadata.json",
+        "sha256": "599d29afc64bf6058c3bc4b600e2c165e2d266da803e62db8fb92606300278f4"
+      },
+      "resolved_configuration": {
+        "bytes": 3051,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc/prepared/config.resolved.yaml",
+        "sha256": "e6ec188648c5defcc812e2513a8385b54ac33003e9b0c85f412fa4ed546cd7c7"
+      },
+      "root": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc",
+      "selection_role": "diagnostic_control",
+      "training_participation": {
+        "bytes": 3769,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc/model/training_participation.json",
+        "sha256": "64aaaf26e90c946e68daee43bdaf8d7e9366e9cd824e55ab490ed509f52d6ff9"
+      },
+      "training_report": {
+        "bytes": 18459,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc/model/training_report.json",
+        "sha256": "a26fdf96a19470747f3d23b2e91f63a1765279d1b22762d69f918042f2eff553"
+      },
+      "user_set_sha256": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+      "utility_report": {
+        "bytes": 431617,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports/factorized_pc.json",
+        "sha256": "2da6157b07e67ebac6c23c62a1e621e827992a8371db349584367a5108e6d635"
+      },
+      "utility_source_evaluation": {
+        "bytes": 398818,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc/evaluation.json",
+        "sha256": "cbbdd56ddc9d5df64d6669c6cc5e91f37bd9b66e8952ce5185fbc6f0c43b72c2"
+      },
+      "variant": "factorized_pc"
+    },
+    "persistent_only": {
+      "checkpoint": {
+        "bytes": 2236789,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only/model/best_model.pt",
+        "sha256": "5bf60390e2a29978bb82988c12563e73468ec1df6019ffea6dec5f49e4594796"
+      },
+      "cutoffs": [
+        "test",
+        "train",
+        "validation"
+      ],
+      "export": {
+        "bytes": 209384,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only/embeddings.npz",
+        "sha256": "d1f2fd252018b8c4d1a842e3e4c3f333b650414b7103aec0a8e6df62844a963a"
+      },
+      "export_keys_sha256": "b26ed6b1814236ec1e7b3b2e9f4e4a3a6cfc02e40326f81b6a6c6976cd50835a",
+      "exported_components": {
+        "combined": {
+          "dimension": 128,
+          "rows": 147
+        },
+        "context": {
+          "dimension": 128,
+          "rows": 147
+        },
+        "persistent": {
+          "dimension": 128,
+          "rows": 147
+        }
+      },
+      "parameter_count": 546314,
+      "prepared_metadata": {
+        "bytes": 3704,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only/prepared/prepared_metadata.json",
+        "sha256": "599d29afc64bf6058c3bc4b600e2c165e2d266da803e62db8fb92606300278f4"
+      },
+      "resolved_configuration": {
+        "bytes": 3053,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only/prepared/config.resolved.yaml",
+        "sha256": "80fa3eec4758705371c761026ca35ef5a9dd4d98d859237b28e4fd2b39f481ee"
+      },
+      "root": "experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only",
+      "selection_role": "diagnostic_control",
+      "training_participation": {
+        "bytes": 3769,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only/model/training_participation.json",
+        "sha256": "573a63097317576f05dcdd4e81264bba82144a48b350b98feeb6c543c5008bf4"
+      },
+      "training_report": {
+        "bytes": 18553,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only/model/training_report.json",
+        "sha256": "f7bab2308e8737014f128d7fe188a3593ecaedc89ef2c0cd13110849e1766e79"
+      },
+      "user_set_sha256": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+      "utility_report": {
+        "bytes": 431245,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports/persistent_only.json",
+        "sha256": "21bf42b8f4325c32f0baac356a0d2b721dbc593beba3d4209d80ff0b7be56b26"
+      },
+      "utility_source_evaluation": {
+        "bytes": 398443,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only/evaluation.json",
+        "sha256": "0cc3402609428ea2b6d4927f5e8bc527dc3f6b5140902848eb282e4f75304b39"
+      },
+      "variant": "persistent_only"
+    },
+    "statistical_baseline": {
+      "checkpoint": {
+        "reason": "non_parametric_statistical_baseline",
+        "status": "not_applicable"
+      },
+      "cutoffs": [
+        "test",
+        "train",
+        "validation"
+      ],
+      "export": {
+        "bytes": 72473,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/statistical_baseline_matched/statistical_baseline.npz",
+        "sha256": "ac6b294d4dfbff40a3b5fa0042f06805da27bcd6a74fe0d7a1335c86638a133a"
+      },
+      "export_keys_sha256": "b26ed6b1814236ec1e7b3b2e9f4e4a3a6cfc02e40326f81b6a6c6976cd50835a",
+      "exported_components": {
+        "combined": {
+          "dimension": 1399,
+          "rows": 147
+        },
+        "context": {
+          "dimension": 1399,
+          "rows": 147
+        },
+        "persistent": {
+          "dimension": 1399,
+          "rows": 147
+        }
+      },
+      "parameter_count": 0,
+      "prepared_metadata": {
+        "bytes": 3704,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/statistical_baseline_matched/prepared/prepared_metadata.json",
+        "sha256": "599d29afc64bf6058c3bc4b600e2c165e2d266da803e62db8fb92606300278f4"
+      },
+      "resolved_configuration": {
+        "bytes": 3051,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/statistical_baseline_matched/prepared/config.resolved.yaml",
+        "sha256": "e6ec188648c5defcc812e2513a8385b54ac33003e9b0c85f412fa4ed546cd7c7"
+      },
+      "root": "experiments/t4.3-privacy-audit-20260813-s20260813/statistical_baseline_matched",
+      "selection_role": "diagnostic_control",
+      "training_participation": {
+        "reason": "no_learned_target_parameters",
+        "status": "not_applicable"
+      },
+      "user_set_sha256": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+      "utility_report": {
+        "bytes": 9156,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports/statistical_baseline.json",
+        "sha256": "cc4fe31f4194bc5666253bf390eb797796aa8ef3728ad530db240b0a951de505"
+      },
+      "utility_source_evaluation": {
+        "bytes": 9601,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/statistical_baseline_matched/baseline_evaluation.json",
+        "sha256": "38ce674f4bf3d3ac280e824b95f3c3dddde6fa0c6314a48a71b1b8838a0967ad"
+      },
+      "variant": "statistical_baseline"
+    }
+  },
+  "immutable": true,
+  "limitations": [
+    "Diagnostic controls do not establish deployment privacy.",
+    "Component names do not establish factorized semantics.",
+    "Unavailable membership evidence is not evidence of privacy.",
+    "Membership is unavailable because the exact export population contains no training-member class/common support.",
+    "Supported protected probes were executed but excluded when frozen split-cell support was insufficient.",
+    "Simulator-scoped diagnostics are not a privacy guarantee."
+  ],
+  "lineage_id": "t4.3-privacy-audit-20260813-s20260813",
+  "preparation_identity": {
+    "categorical_fields": [
+      "service_id",
+      "action_type",
+      "observation_mode",
+      "object_category",
+      "region_id",
+      "geohash_5",
+      "geohash_7"
+    ],
+    "continuous_fields": [
+      "latitude",
+      "longitude",
+      "log_delta_minutes",
+      "hour_sin",
+      "hour_cos",
+      "dow_sin",
+      "dow_cos",
+      "log_location_accuracy_m"
+    ],
+    "dataset_contract": {
+      "name": "geoembeddings-dataset",
+      "version": "2.0"
+    },
+    "prepared_metadata_sha256": "599d29afc64bf6058c3bc4b600e2c165e2d266da803e62db8fb92606300278f4",
+    "schema_version": "geoembeddings-preparation/2.0",
+    "train_end": "2026-04-05T11:48:00+00:00",
+    "user_role_protocol": {
+      "assignment_sha256": "aedc517c6e7663e9213aee318c2b0d23c9dc0b92e86dedd90e125174fee25e87",
+      "fractions": {
+        "target_test": 0.25,
+        "target_train": 0.5,
+        "target_validation": 0.25
+      },
+      "roles": {
+        "all_target_users": {
+          "count": 200,
+          "identity_sha256": "a8ba8053cbaade2b60f3c102ba61b5f8a1434ede0a44f10bfb4087efc2d6fe52"
+        },
+        "target_test": {
+          "count": 49,
+          "identity_sha256": "83442bec6d11667c04b5cd13b9eb0e4206b72ee760a2c68d93b14857df8b812d"
+        },
+        "target_train": {
+          "count": 103,
+          "identity_sha256": "9a2447377eaf98ef358b7fe5d2c432170cb23eace571b55a8314b7cfe999c32b"
+        },
+        "target_validation": {
+          "count": 48,
+          "identity_sha256": "c8948a9fd09013068b1eb34af12642d39700cb89ed87b3eeb83603e38e7f268c"
+        }
+      },
+      "schema_version": "geoembeddings-user-role-protocol/1.0",
+      "seed": 20260813
+    },
+    "validation_end": "2026-04-06T12:56:00+00:00"
+  },
+  "requirement_ids": [
+    "R12"
+  ],
+  "resolved_configurations": {
+    "experiments": {
+      "capacity_matched_single": {
+        "bytes": 2875,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single/prepared/config.resolved.yaml",
+        "sha256": "c00ba0f1467b2d6863c5664c4a5719a488c7d4edcc2424dd4c822c097ebd9656"
+      },
+      "context_only": {
+        "bytes": 3050,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/context_only/prepared/config.resolved.yaml",
+        "sha256": "2ab486d9522aa0545ce614cdbbe980f412ff0afb49e10d7b035e578f59ec4920"
+      },
+      "factorized_no_context_loss": {
+        "bytes": 3065,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss/prepared/config.resolved.yaml",
+        "sha256": "a69af90161f730535a26203f2c23c6374eab839e05aecea69919185098bf153a"
+      },
+      "factorized_no_persistent_loss": {
+        "bytes": 3044,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss/prepared/config.resolved.yaml",
+        "sha256": "a8bdcbbadc31965d819c2e7a92fbb9d9ca61c806259ee810052495974e6c2c89"
+      },
+      "factorized_pc": {
+        "bytes": 3051,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc/prepared/config.resolved.yaml",
+        "sha256": "e6ec188648c5defcc812e2513a8385b54ac33003e9b0c85f412fa4ed546cd7c7"
+      },
+      "persistent_only": {
+        "bytes": 3053,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only/prepared/config.resolved.yaml",
+        "sha256": "80fa3eec4758705371c761026ca35ef5a9dd4d98d859237b28e4fd2b39f481ee"
+      },
+      "statistical_baseline": {
+        "bytes": 3051,
+        "path": "experiments/t4.3-privacy-audit-20260813-s20260813/statistical_baseline_matched/prepared/config.resolved.yaml",
+        "sha256": "e6ec188648c5defcc812e2513a8385b54ac33003e9b0c85f412fa4ed546cd7c7"
+      }
+    },
+    "privacy": {
+      "bytes": 2692,
+      "path": "experiments/t4.3-privacy-audit-20260813-s20260813/privacy_audit_supported/config.resolved.yaml",
+      "sha256": "066f81a9d5120e654070b11cf301ec851d4f3ec27a62989d00f8501d0547a9bf"
+    },
+    "simulation": {
+      "bytes": 12655,
+      "path": "runs/t4.3-privacy-audit-20260813-s20260813/config.resolved.yaml",
+      "sha256": "5a85506f6d8683b29be6def4fc30bab6bd2ec0c94711d33eb30ec9b51b115dee"
+    }
+  },
+  "results": {
+    "membership": {
+      "capacity_matched_single": {
+        "reason": "membership_classes_inadequate",
+        "status": "unavailable",
+        "supported": false,
+        "user_set_hashes": {
+          "eligible": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+          "excluded": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+          "matched": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "test": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "train": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "validation": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      },
+      "context_only": {
+        "reason": "membership_classes_inadequate",
+        "status": "unavailable",
+        "supported": false,
+        "user_set_hashes": {
+          "eligible": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+          "excluded": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+          "matched": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "test": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "train": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "validation": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      },
+      "factorized_no_context_loss": {
+        "reason": "membership_classes_inadequate",
+        "status": "unavailable",
+        "supported": false,
+        "user_set_hashes": {
+          "eligible": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+          "excluded": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+          "matched": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "test": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "train": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "validation": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      },
+      "factorized_no_persistent_loss": {
+        "reason": "membership_classes_inadequate",
+        "status": "unavailable",
+        "supported": false,
+        "user_set_hashes": {
+          "eligible": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+          "excluded": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+          "matched": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "test": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "train": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "validation": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      },
+      "factorized_pc": {
+        "reason": "membership_classes_inadequate",
+        "status": "unavailable",
+        "supported": false,
+        "user_set_hashes": {
+          "eligible": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+          "excluded": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+          "matched": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "test": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "train": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "validation": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      },
+      "persistent_only": {
+        "reason": "membership_classes_inadequate",
+        "status": "unavailable",
+        "supported": false,
+        "user_set_hashes": {
+          "eligible": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+          "excluded": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+          "matched": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "test": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "train": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "validation": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      },
+      "statistical_baseline": {
+        "reason": "no_learned_target_parameters",
+        "status": "not_applicable"
+      }
+    },
+    "selection": {
+      "roles": {
+        "capacity_matched_single": "diagnostic_control",
+        "context_only": "diagnostic_control",
+        "factorized_no_context_loss": "diagnostic_control",
+        "factorized_no_persistent_loss": "diagnostic_control",
+        "factorized_pc": "diagnostic_control",
+        "persistent_only": "diagnostic_control",
+        "statistical_baseline": "diagnostic_control"
+      },
+      "selection_dependent_privacy_conclusion": {
+        "reason": "no_selected_candidate",
+        "status": "unavailable"
+      }
+    },
+    "sensitive_attributes": {
+      "family_orientation_group": {
+        "bin_boundaries": [],
+        "counts": [],
+        "derivation_method": "train_quantile_bins",
+        "derivation_version": "family-orientation-train-tertiles/1.0",
+        "eligible_count": 49,
+        "fit_split": null,
+        "labels": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "missing_count": 0,
+        "name": "family_orientation_group",
+        "privacy_rationale": "A persistent synthetic household-related trait may reveal modeled family orientation.",
+        "reason": "minimum_class_by_split_cell_support_not_met",
+        "status": "excluded",
+        "unsupported_count": 151,
+        "visibility": "evaluator_only"
+      },
+      "price_sensitivity_group": {
+        "bin_boundaries": [],
+        "counts": [],
+        "derivation_method": "train_quantile_bins",
+        "derivation_version": "price-sensitivity-train-tertiles/1.0",
+        "eligible_count": 49,
+        "fit_split": null,
+        "labels": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "missing_count": 0,
+        "name": "price_sensitivity_group",
+        "privacy_rationale": "A persistent synthetic economic-preference trait may be recoverable from an embedding.",
+        "reason": "minimum_class_by_split_cell_support_not_met",
+        "status": "excluded",
+        "unsupported_count": 151,
+        "visibility": "evaluator_only"
+      }
+    },
+    "sensitive_probe_statuses": {
+      "family_orientation_group": {
+        "capacity_matched_single": {
+          "combined": "unavailable",
+          "context": "unavailable",
+          "persistent": "unavailable"
+        },
+        "context_only": {
+          "combined": "unavailable",
+          "context": "unavailable",
+          "persistent": "unavailable"
+        },
+        "factorized_no_context_loss": {
+          "combined": "unavailable",
+          "context": "unavailable",
+          "persistent": "unavailable"
+        },
+        "factorized_no_persistent_loss": {
+          "combined": "unavailable",
+          "context": "unavailable",
+          "persistent": "unavailable"
+        },
+        "factorized_pc": {
+          "combined": "unavailable",
+          "context": "unavailable",
+          "persistent": "unavailable"
+        },
+        "persistent_only": {
+          "combined": "unavailable",
+          "context": "unavailable",
+          "persistent": "unavailable"
+        },
+        "statistical_baseline": {
+          "combined": "unavailable",
+          "context": "unavailable",
+          "persistent": "unavailable"
+        }
+      },
+      "price_sensitivity_group": {
+        "capacity_matched_single": {
+          "combined": "unavailable",
+          "context": "unavailable",
+          "persistent": "unavailable"
+        },
+        "context_only": {
+          "combined": "unavailable",
+          "context": "unavailable",
+          "persistent": "unavailable"
+        },
+        "factorized_no_context_loss": {
+          "combined": "unavailable",
+          "context": "unavailable",
+          "persistent": "unavailable"
+        },
+        "factorized_no_persistent_loss": {
+          "combined": "unavailable",
+          "context": "unavailable",
+          "persistent": "unavailable"
+        },
+        "factorized_pc": {
+          "combined": "unavailable",
+          "context": "unavailable",
+          "persistent": "unavailable"
+        },
+        "persistent_only": {
+          "combined": "unavailable",
+          "context": "unavailable",
+          "persistent": "unavailable"
+        },
+        "statistical_baseline": {
+          "combined": "unavailable",
+          "context": "unavailable",
+          "persistent": "unavailable"
+        }
+      }
+    },
+    "utility_privacy_axes": {
+      "capacity_matched_single": {
+        "coverage": {
+          "exact_audit_population_users": 49,
+          "source_report": "/workspace/geoembeddings/experiments/t4.3-privacy-audit-20260813-s20260813/capacity_matched_single/evaluation.json"
+        },
+        "report_path": "/workspace/geoembeddings/experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports/capacity_matched_single.json",
+        "report_sha256": "b0d7cf5ad3827616d02433533608502b6497bf13f7961876a3da6b47ce45265b"
+      },
+      "context_only": {
+        "coverage": {
+          "exact_audit_population_users": 49,
+          "source_report": "/workspace/geoembeddings/experiments/t4.3-privacy-audit-20260813-s20260813/context_only/evaluation.json"
+        },
+        "report_path": "/workspace/geoembeddings/experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports/context_only.json",
+        "report_sha256": "01e5086cc32dad9db60e2a9ce70b5ed85f08e73aa3334323a0b1582fce03f18f"
+      },
+      "factorized_no_context_loss": {
+        "coverage": {
+          "exact_audit_population_users": 49,
+          "source_report": "/workspace/geoembeddings/experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_context_loss/evaluation.json"
+        },
+        "report_path": "/workspace/geoembeddings/experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports/factorized_no_context_loss.json",
+        "report_sha256": "2d8104ffc8b090e933ad2a2a036e29e29f274856fa7eaa2112b7502ab642477c"
+      },
+      "factorized_no_persistent_loss": {
+        "coverage": {
+          "exact_audit_population_users": 49,
+          "source_report": "/workspace/geoembeddings/experiments/t4.3-privacy-audit-20260813-s20260813/factorized_no_persistent_loss/evaluation.json"
+        },
+        "report_path": "/workspace/geoembeddings/experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports/factorized_no_persistent_loss.json",
+        "report_sha256": "985a2cbd68348ca2cf427a61b90ea49a4efa122c94c3716badf20d04068b1982"
+      },
+      "factorized_pc": {
+        "coverage": {
+          "exact_audit_population_users": 49,
+          "source_report": "/workspace/geoembeddings/experiments/t4.3-privacy-audit-20260813-s20260813/factorized_pc/evaluation.json"
+        },
+        "report_path": "/workspace/geoembeddings/experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports/factorized_pc.json",
+        "report_sha256": "2da6157b07e67ebac6c23c62a1e621e827992a8371db349584367a5108e6d635"
+      },
+      "persistent_only": {
+        "coverage": {
+          "exact_audit_population_users": 49,
+          "source_report": "/workspace/geoembeddings/experiments/t4.3-privacy-audit-20260813-s20260813/persistent_only/evaluation.json"
+        },
+        "report_path": "/workspace/geoembeddings/experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports/persistent_only.json",
+        "report_sha256": "21bf42b8f4325c32f0baac356a0d2b721dbc593beba3d4209d80ff0b7be56b26"
+      },
+      "statistical_baseline": {
+        "coverage": {
+          "exact_audit_population_users": 49,
+          "source_report": "/workspace/geoembeddings/experiments/t4.3-privacy-audit-20260813-s20260813/statistical_baseline_matched/baseline_evaluation.json"
+        },
+        "report_path": "/workspace/geoembeddings/experiments/t4.3-privacy-audit-20260813-s20260813/utility_reports/statistical_baseline.json",
+        "report_sha256": "cc4fe31f4194bc5666253bf390eb797796aa8ef3728ad530db240b0a951de505"
+      }
+    }
+  },
+  "roots": {
+    "experiments": "experiments/t4.3-privacy-audit-20260813-s20260813",
+    "privacy_output": "experiments/t4.3-privacy-audit-20260813-s20260813/privacy_audit_supported",
+    "run": "runs/t4.3-privacy-audit-20260813-s20260813"
+  },
+  "runtime_environment": {
+    "accelerator": null,
+    "device_type": null,
+    "operating_system": "Linux-6.18.35-x86_64-with-glibc2.39",
+    "package_version": "0.5.0",
+    "python_version": "3.14.4",
+    "pytorch_version": "2.13.0+cu130",
+    "schema_version": "geoembeddings-runtime-metadata/1.0",
+    "seed": 20260813,
+    "source_commit": "0a406e7a6baaee870b8edf118ba8916fcf2581ea",
+    "wall_clock_duration_seconds": 0.9094937410000057
+  },
+  "schema_version": "geoembeddings-privacy-evidence-index/1.0",
+  "scope": {
+    "affected_layers": [
+      "observed-only preparation",
+      "statistical and learned representation export",
+      "protected evaluator"
+    ],
+    "baseline_artifact": "none; the request required a new immutable matched lineage",
+    "decision": "selection-dependent conclusion unavailable; no selected candidate",
+    "selection_role": "diagnostic_control"
+  },
+  "seeds": {
+    "privacy_audit": 20260813,
+    "privacy_bootstrap": 20260818,
+    "privacy_split": 20260814,
+    "simulation": 20260813,
+    "training": 20260806,
+    "user_role": 20260813
+  },
+  "source": {
+    "commit": "0a406e7a6baaee870b8edf118ba8916fcf2581ea",
+    "historical_t2_7": {
+      "bytes_reused": false,
+      "hashes_claimed": false,
+      "reason": "Missing historical bytes were not reconstructed; this is a newly identified lineage."
+    },
+    "working_tree_diff_sha256": "3f3af17288ba6c08c72b88e9a30e6256b42382a6e66116528169eb2daa047a1a"
+  },
+  "source_hashes": {
+    "evaluator_truth": {
+      "user_latents.csv.gz": "c48bbec5dc53e5c41719d2ee8f9506955dccf7921ab0ce49d6a6d34203a5b4b4"
+    },
+    "manifest": "78cbb579d3f4c9e9e77379862dc1cc086bcda93106eabf1269a5c89385d9aa29",
+    "observed": {
+      "observed_events.csv.gz": "f5535f4ba59efe077e1e47697c3f41ed6f4073a7dfc25a66c1cbc61463b9b82a",
+      "users_observed.csv.gz": "e0f94bff03b599607a664449693306c1724e36fec56bce6b4114dd84c20708c5"
+    }
+  },
+  "task_id": "T4.3a"
+}

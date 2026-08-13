@@ -23,6 +23,7 @@ from .privacy import (BASELINE_CHECKPOINT_IDENTITY, PRIVACY_AUDIT_SCHEMA_VERSION
 from .privacy_evaluation import load_privacy_config
 from .representation_schema import load_embedding_export
 from .runtime_metadata import collect_runtime_metadata
+from .schema import load_observed
 from .user_roles import (PROTOCOL_SCHEMA as USER_ROLE_SCHEMA, assign_users,
                          assignment_hash, role_summary)
 
@@ -60,7 +61,8 @@ def _declaration(name: str, experiment: ExperimentLayout,
 
 
 def _authenticated_membership(experiment: ExperimentLayout, declaration: PrivacyInput,
-                              evidence_index: Mapping[str, Any]) -> dict[str, bool] | None:
+                              evidence_index: Mapping[str, Any],
+                              lineage_users: tuple[str, ...]) -> dict[str, bool] | None:
     """Recover membership only from an indexed, checkpoint-bound role protocol."""
     path = experiment.training_participation
     if not path.is_file():
@@ -80,7 +82,7 @@ def _authenticated_membership(experiment: ExperimentLayout, declaration: Privacy
         return None
     if value.get("preparation_identity", {}).get("prepared_metadata_sha256") != sha256_file(declaration.prepared_metadata_path):
         return None
-    assignments = assign_users(declaration.eligible_users, protocol)
+    assignments = assign_users(lineage_users, protocol)
     expected = {
         "schema_version": USER_ROLE_SCHEMA, "seed": int(protocol["seed"]),
         "fractions": {name: float(protocol["fractions"][name])
@@ -127,13 +129,17 @@ def audit_privacy(*, run_dir: str | Path, experiments: Mapping[str, str | Path],
     membership: dict[str, Any] = {}
     membership_metrics: dict[str, Any] = {}
     evidence_value = read_json(evidence.evidence_index)
+    observed_users, _ = load_observed(run.observed)
+    lineage_users = tuple(sorted(observed_users["user_id"].astype(str)))
     membership_labels: dict[str, dict[str, bool]] = {}
     for identity in authenticated.inputs:
         if identity.kind == "statistical_baseline":
             membership[identity.name] = {"status": "not_applicable", "reason": "no_learned_target_parameters"}
         else:
             declaration = next(item for item in declarations if item.name == identity.name)
-            labels = _authenticated_membership(layouts[identity.name], declaration, evidence_value)
+            labels = _authenticated_membership(
+                layouts[identity.name], declaration, evidence_value, lineage_users
+            )
             if labels is None:
                 membership[identity.name] = {"supported": False, "status": "unavailable",
                                              "reason": "authenticated_training_membership_labels_unavailable"}

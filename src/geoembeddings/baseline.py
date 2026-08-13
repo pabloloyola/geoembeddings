@@ -6,10 +6,12 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .io import read_json
+from .io import read_json, sha256_file
 from .prepare import UNK_TOKEN, derive_continuous_features
+from .representation_schema import COMPONENT_NAMES, EXPORT_SCHEMA_VERSION
 from .schema import load_observed
 from .data import _dense_cutoff_offsets
+from .user_roles import authenticate_roles
 
 
 def export_statistical_baseline(
@@ -23,10 +25,16 @@ def export_statistical_baseline(
 ) -> dict[str, Any]:
     """Export normalized event histograms and continuous moments, with no learned parameters."""
     if events is None:
-        _, events = load_observed(observed_dir)
+        users, events = load_observed(observed_dir)
+    else:
+        users, _ = load_observed(observed_dir)
     events = events.copy()
     prepared_dir = Path(prepared_dir)
     metadata = read_json(prepared_dir / "prepared_metadata.json")
+    assignments = authenticate_roles(metadata, config, users["user_id"].astype(str))
+    if assignments is not None:
+        eligible_users = {user for user, role in assignments.items() if role == "target_test"}
+        events = events[events["user_id"].astype(str).isin(eligible_users)].copy()
     vocabularies: dict[str, dict[str, int]] = read_json(prepared_dir / "vocabularies.json")
     categorical_fields = list(metadata["categorical_fields"])
     continuous_fields = list(metadata["continuous_fields"])
@@ -42,6 +50,7 @@ def export_statistical_baseline(
     user_ids: list[str] = []
     cutoff_names: list[str] = []
     vectors: list[np.ndarray] = []
+    history_counts: list[int] = []
     for user_id, indices in events.groupby("user_id", sort=False).indices.items():
         ordered = np.asarray(indices, dtype=np.int64)
         for cutoff_name, cutoff in cutoffs.items():
@@ -59,15 +68,37 @@ def export_statistical_baseline(
             vectors.append(np.concatenate(components))
             user_ids.append(str(user_id))
             cutoff_names.append(cutoff_name)
+            history_counts.append(len(eligible))
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     matrix = np.stack(vectors)
+    zeros = np.zeros_like(matrix)
+    source_files = dict(metadata["source_files"])
     np.savez_compressed(
         output_path,
         user_id=np.asarray(user_ids, dtype=str),
         cutoff=np.asarray(cutoff_names, dtype=str),
         embedding=matrix,
+        history_event_count=np.asarray(history_counts, dtype=np.int64),
+        schema_version=np.asarray(EXPORT_SCHEMA_VERSION),
+        component_names=np.asarray(COMPONENT_NAMES),
+        component_dimensions=np.asarray([matrix.shape[1]] * len(COMPONENT_NAMES)),
+        model_variant=np.asarray("statistical_baseline"),
+        categorical_fields=np.asarray(categorical_fields),
+        continuous_fields=np.asarray(continuous_fields),
+        preparation_hash=np.asarray(sha256_file(prepared_dir / "prepared_metadata.json")),
+        source_file_names=np.asarray(list(source_files)),
+        source_hashes=np.asarray(list(source_files.values())),
+        train_end=np.asarray(metadata["train_end"]),
+        validation_end=np.asarray(metadata["validation_end"]),
+        export_cutoffs=np.asarray(["train", "validation", "test"]),
+        compatibility=np.asarray("statistical baseline mapped to persistent/combined; context=zeros"),
+        user_role_protocol=np.asarray(__import__("json").dumps(
+            metadata.get("user_role_protocol"), sort_keys=True, separators=(",", ":"))),
+        component_persistent=matrix,
+        component_context=zeros,
+        component_combined=matrix,
     )
     return {
         "output": str(output_path.resolve()),
