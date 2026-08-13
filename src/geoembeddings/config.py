@@ -32,6 +32,8 @@ def load_mapping_config(path: str | Path) -> dict[str, Any]:
 
 
 def _validate_config(config: dict[str, Any]) -> None:
+    from .user_roles import protocol_config
+    protocol_config(config)
     data = config["data"]
     train_fraction = float(data["train_fraction"])
     validation_fraction = float(data["validation_fraction"])

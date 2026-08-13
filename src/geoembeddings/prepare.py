@@ -10,6 +10,8 @@ import pandas as pd
 from .config import dump_config
 from .io import sha256_file, write_json
 from .schema import EVENT_FILE, USER_FILE, load_observed
+from .user_roles import (PREPARATION_SCHEMA, PROTOCOL_SCHEMA, ROLES, assign_users,
+                         assignment_hash, protocol_config, role_summary)
 
 
 PAD_TOKEN = "<PAD>"
@@ -23,12 +25,25 @@ def prepare_data(
 ) -> dict[str, Any]:
     observed_dir = Path(observed_dir).resolve()
     output_dir = Path(output_dir).resolve()
+    protocol = protocol_config(config)
+    if protocol and (output_dir / "prepared_metadata.json").exists():
+        raise FileExistsError(
+            "Immutable user-role preparation already exists; use a new experiment directory"
+        )
     output_dir.mkdir(parents=True, exist_ok=True)
     users, events = load_observed(observed_dir)
     source_contract = json.loads((observed_dir.parent / "manifest.json").read_text(encoding="utf-8"))["dataset_contract"]
 
     train_end, validation_end = _temporal_boundaries(events, config["data"])
-    train_events = events.loc[events["timestamp"] <= train_end]
+    assignments = assign_users(users["user_id"].astype(str), protocol) if protocol else None
+    if assignments:
+        role_series = events["user_id"].astype(str).map(assignments)
+        train_events = events.loc[(role_series == "target_train") & (events["timestamp"] <= train_end)]
+        if train_events.empty:
+            raise ValueError("User-role protocol produced no target-training events at or before train_end")
+    else:
+        role_series = None
+        train_events = events.loc[events["timestamp"] <= train_end]
 
     categorical_fields = list(config["data"]["categorical_fields"])
     if bool(config["data"].get("include_object_id", False)):
@@ -42,8 +57,9 @@ def prepare_data(
     }
     continuous_stats = _continuous_statistics(train_events)
 
-    per_split = _count_targets_by_split(events, train_end, validation_end)
+    per_split = _count_targets_by_split(events, train_end, validation_end, role_series)
     report = {
+        "preparation_schema_version": PREPARATION_SCHEMA if assignments else "geoembeddings-preparation/1.0",
         "dataset_contract": {
             "name": source_contract["name"],
             "version": source_contract["version"],
@@ -70,6 +86,20 @@ def prepare_data(
             "No truth/ file is accepted or read by prepare or train."
         ),
     }
+    if assignments:
+        report["user_role_protocol"] = {
+            "schema_version": PROTOCOL_SCHEMA,
+            "seed": int(protocol["seed"]),
+            "fractions": {role: float(protocol["fractions"][role]) for role in ROLES},
+            "assignment_sha256": assignment_hash(assignments),
+            "roles": role_summary(assignments),
+        }
+        report["preprocessing_participants"] = {
+            **role_summary({user: role for user, role in assignments.items() if role == "target_train"})["all_target_users"],
+            "role": "target_train",
+            "event_count": int(len(train_events)),
+            "description": "Participants whose eligible training-time events fit vocabularies and normalization; they are not clean whole-pipeline non-members.",
+        }
 
     write_json(vocabularies, output_dir / "vocabularies.json")
     write_json(report, output_dir / "prepared_metadata.json")
@@ -151,8 +181,15 @@ def _count_targets_by_split(
     events: pd.DataFrame,
     train_end: pd.Timestamp,
     validation_end: pd.Timestamp,
+    roles: pd.Series | None = None,
 ) -> dict[str, int]:
     timestamps = events["timestamp"]
+    if roles is not None:
+        return {
+            "train": int(((roles == "target_train") & (timestamps <= train_end)).sum()),
+            "validation": int(((roles == "target_validation") & (timestamps > train_end) & (timestamps <= validation_end)).sum()),
+            "test": int(((roles == "target_test") & (timestamps > validation_end)).sum()),
+        }
     return {
         "train": int((timestamps <= train_end).sum()),
         "validation": int(((timestamps > train_end) & (timestamps <= validation_end)).sum()),

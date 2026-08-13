@@ -11,9 +11,10 @@ import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 
-from .io import read_json
+from .io import read_json, sha256_file
 from .prepare import UNK_TOKEN, derive_continuous_features
-from .schema import load_observed
+from .schema import EVENT_FILE, USER_FILE, load_observed
+from .user_roles import authenticate_roles
 
 
 TARGET_FIELDS = {
@@ -43,7 +44,7 @@ class EventWindowDataset(Dataset[dict[str, Any]]):
     ) -> None:
         if split not in {"train", "validation", "test"}:
             raise ValueError(f"Unknown split: {split}")
-        _, events = load_observed(observed_dir)
+        users, events = load_observed(observed_dir)
         self.metadata = read_json(Path(prepared_dir) / "prepared_metadata.json")
         self.vocabularies: dict[str, dict[str, int]] = read_json(
             Path(prepared_dir) / "vocabularies.json"
@@ -51,6 +52,11 @@ class EventWindowDataset(Dataset[dict[str, Any]]):
         self.categorical_fields = list(self.metadata["categorical_fields"])
         self.continuous_fields = list(self.metadata["continuous_fields"])
         self._validate_prepared_contract(config)
+        current_sources = {USER_FILE: sha256_file(Path(observed_dir) / USER_FILE),
+                           EVENT_FILE: sha256_file(Path(observed_dir) / EVENT_FILE)}
+        if current_sources != self.metadata.get("source_files"):
+            raise ValueError("Observed source files changed after preparation")
+        self.user_roles = authenticate_roles(self.metadata, config, users["user_id"].astype(str))
         self.events = events
         self.encoded_categories = self._encode_categories(events)
         self.continuous = self._encode_continuous(events)
@@ -147,6 +153,8 @@ class EventWindowDataset(Dataset[dict[str, Any]]):
         maximum = int(data_config["max_sequence_length"])
         references: list[SampleReference] = []
         for user_id, indices in events.groupby("user_id", sort=False).indices.items():
+            if self.user_roles is not None and self.user_roles[str(user_id)] != f"target_{split}":
+                continue
             ordered = np.asarray(indices, dtype=np.int64)
             for offset in range(minimum, len(ordered)):
                 target_index = int(ordered[offset])
@@ -207,6 +215,9 @@ def participation_roles(
         train_dataset.events.loc[train_dataset.events["timestamp"] <= train_end, "user_id"]
         .astype(str)
     )
+    if getattr(train_dataset, "user_roles", None) is not None:
+        preprocessing_users &= {user for user, role in train_dataset.user_roles.items()
+                                if role == "target_train"}
     export_users = set(train_dataset.events["user_id"].astype(str))
     export_only_users = export_users - train_users - validation_users
     # A frozen checkpoint may export one row for every available named cutoff.
@@ -275,13 +286,20 @@ class UserCutoffDataset(Dataset[dict[str, Any]]):
     ) -> None:
         base = EventWindowDataset.__new__(EventWindowDataset)
         if events is None:
-            _, events = load_observed(observed_dir)
+            users, events = load_observed(observed_dir)
+        else:
+            users, _ = load_observed(observed_dir)
         events = events.copy()
         base.metadata = read_json(Path(prepared_dir) / "prepared_metadata.json")
         base.vocabularies = read_json(Path(prepared_dir) / "vocabularies.json")
         base.categorical_fields = list(base.metadata["categorical_fields"])
         base.continuous_fields = list(base.metadata["continuous_fields"])
         base._validate_prepared_contract(config)
+        current_sources = {USER_FILE: sha256_file(Path(observed_dir) / USER_FILE),
+                           EVENT_FILE: sha256_file(Path(observed_dir) / EVENT_FILE)}
+        if current_sources != base.metadata.get("source_files"):
+            raise ValueError("Observed source files changed after preparation")
+        base.user_roles = authenticate_roles(base.metadata, config, users["user_id"].astype(str))
         base.events = events
         base.encoded_categories = base._encode_categories(events)
         base.continuous = base._encode_continuous(events)
@@ -294,6 +312,8 @@ class UserCutoffDataset(Dataset[dict[str, Any]]):
             "test": pd.Timestamp(base.metadata.get("timestamp_max", events["timestamp"].max())),
         }
         for user_id, indices in events.groupby("user_id", sort=False).indices.items():
+            if base.user_roles is not None and base.user_roles[str(user_id)] != "target_test":
+                continue
             ordered = np.asarray(indices, dtype=np.int64)
             for cutoff_name, cutoff in cutoffs.items():
                 eligible_mask = (events.iloc[ordered]["timestamp"] <= cutoff).to_numpy()
@@ -337,12 +357,17 @@ class DenseUserCutoffDataset(Dataset[dict[str, Any]]):
         event_stride: int = 1,
     ) -> None:
         base = EventWindowDataset.__new__(EventWindowDataset)
-        _, events = load_observed(observed_dir)
+        users, events = load_observed(observed_dir)
         base.metadata = read_json(Path(prepared_dir) / "prepared_metadata.json")
         base.vocabularies = read_json(Path(prepared_dir) / "vocabularies.json")
         base.categorical_fields = list(base.metadata["categorical_fields"])
         base.continuous_fields = list(base.metadata["continuous_fields"])
         base._validate_prepared_contract(config)
+        current_sources = {USER_FILE: sha256_file(Path(observed_dir) / USER_FILE),
+                           EVENT_FILE: sha256_file(Path(observed_dir) / EVENT_FILE)}
+        if current_sources != base.metadata.get("source_files"):
+            raise ValueError("Observed source files changed after preparation")
+        base.user_roles = authenticate_roles(base.metadata, config, users["user_id"].astype(str))
         base.events = events
         base.encoded_categories = base._encode_categories(events)
         base.continuous = base._encode_continuous(events)

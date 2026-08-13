@@ -1007,3 +1007,17 @@ temporal contract cannot provide training membership without reserving a
 held-out-user cohort before preprocessing and training; proceed to that
 separately scoped task without treating this unavailable result as privacy
 evidence.
+# T4.3b configuration-controlled diagnostic user roles (R12)
+
+- Implemented a new opt-in preparation/2.0 protocol with seeded canonical
+  target-train/validation/test users, role-restricted temporal windows,
+  train-role-only preprocessing, validation-role-only checkpoint selection,
+  and frozen target-test export. Existing temporal-only experiments remain
+  readable and unchanged.
+- Preparation, checkpoint, export, and training-participation lineage record
+  immutable role counts/hashes and distinguish preprocessing participants from
+  clean whole-pipeline non-members. Authentication rejects source/config/role
+  drift. Cross-stage tests prove target-test users contribute no fitting window.
+- Scope limitation: the configured role fractions execute the simulator-scoped
+  diagnostic threat model only; they do not estimate deployment membership
+  prevalence or provide a privacy guarantee.
