@@ -61,6 +61,17 @@ evidence.
 
 ## P0 — Reproduction, reference, and status
 
+- [x] **T0.1b — Add read-only evidence availability inspection.**
+  - **Requirement IDs:** R1--R13 (evidence provenance and claim boundaries only).
+  - **Baseline artifact:** the immutable indexes already registered under
+    `docs/artifacts/`; no scientific artifact was regenerated.
+  - **Affected layer:** evaluator/documentation tooling only; neither the
+    simulator nor observed contract nor model changes.
+  - **Completion evidence:** `geoembed inspect-evidence` verifies any locally
+    present indexed bytes, distinguishes external/absent/lost availability,
+    preserves historical identities, and emits a versioned CI summary without
+    downloading or editing evidence.
+
 - [x] **T0.1 — Execution/contract smoke verified.** The 50-user, 7-day learned
   pipeline, statistical baseline, and matched comparison are recorded in
   `docs/VERIFICATION.md`; this is plumbing evidence only.

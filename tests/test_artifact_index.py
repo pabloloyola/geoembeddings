@@ -7,7 +7,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from geoembeddings.artifact_index import normalize_identifier, stable_values_hash, build_artifact_index
+from geoembeddings.artifact_index import (build_artifact_index, inspect_evidence_indexes,
+                                          normalize_identifier, stable_values_hash)
 from geoembeddings.io import sha256_file
 
 
@@ -73,6 +74,39 @@ def test_index_rejects_mismatched_preparation_source_metadata(tmp_path: Path) ->
 
     with pytest.raises(ValueError, match="baseline episode preparation identity mismatch"):
         build_artifact_index(run, experiment, tmp_path / "index.json", repository_root=tmp_path)
+
+
+def test_inspection_reports_present_absent_external_and_lost_without_writes(tmp_path: Path) -> None:
+    artifacts = tmp_path / "docs" / "artifacts"
+    artifacts.mkdir(parents=True)
+    local = tmp_path / "result.bin"
+    local.write_bytes(b"evidence")
+    index_path = artifacts / "current.json"
+    _write_json(index_path, {
+        "schema_version": "geoembeddings-evidence-index/1.0", "task_id": "T-new",
+        "commands": ["uv run geoembed pipeline --run-dir runs/new --experiment-dir experiments/new"],
+        "required_artifacts": {"all": [
+            {"id": "local", "identifier": "result.bin", "bytes": 8, "sha256": sha256_file(local)},
+            {"id": "absent", "identifier": "missing.bin", "bytes": 1, "sha256": "0" * 64},
+            {"id": "remote", "identifier": "https://example.test/archive.bin", "bytes": 1, "sha256": "1" * 64},
+        ]}})
+    lost_path = artifacts / "lost.json"
+    _write_json(lost_path, {"task_id": "T-old", "evidence_status": "evidence lost/unverifiable",
+                            "required_artifacts": {"all": [{"identifier": "old.bin", "sha256": "2" * 64}]}})
+    before = {path: path.read_bytes() for path in (index_path, lost_path)}
+
+    report = inspect_evidence_indexes(artifacts, repository_root=tmp_path)
+
+    assert report["ci_status"] == "ok"
+    assert report["summary"] == {"present_local": 1, "locally_absent": 1,
+        "intentionally_external": 1, "historically_lost": 1, "total": 4,
+        "content_verified": 1, "content_mismatch": 0}
+    current = report["indexes"][0]
+    assert current["artifacts"][0]["byte_count_matches"] is True
+    assert current["artifacts"][0]["sha256_matches"] is True
+    assert current["index_alone_sufficient_for_documentation_claims"] is False
+    assert current["rerun_commands_for_new_lineage"]
+    assert {path: path.read_bytes() for path in before} == before
 
 
 def _write_json(path: Path, value: object) -> None:

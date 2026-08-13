@@ -17,6 +17,133 @@ from .io import read_json, sha256_file, write_json
 from .layout import DatasetLayout, ExperimentLayout
 
 SCHEMA_VERSION = "geoembeddings-evidence-index/1.0"
+INSPECTION_SCHEMA_VERSION = "geoembeddings-evidence-inspection/1.0"
+
+
+def inspect_evidence_indexes(
+    index_dir: str | Path = "docs/artifacts", *, repository_root: str | Path | None = None
+) -> dict[str, Any]:
+    """Verify all immutable evidence indexes without retrieving or changing artifacts."""
+    repository = Path(repository_root or Path.cwd()).expanduser().resolve()
+    directory = Path(index_dir).expanduser()
+    if not directory.is_absolute():
+        directory = repository / directory
+    index_paths = sorted(directory.glob("*.json"))
+    reports = [_inspect_evidence_index(path, repository) for path in index_paths]
+    artifacts = [artifact for report in reports for artifact in report["artifacts"]]
+    counts = {
+        key: sum(artifact["availability"] == key for artifact in artifacts)
+        for key in ("present_local", "locally_absent", "intentionally_external", "historically_lost")
+    }
+    counts["total"] = len(artifacts)
+    counts["content_verified"] = sum(artifact["content_verified"] is True for artifact in artifacts)
+    counts["content_mismatch"] = sum(artifact["content_verified"] is False for artifact in artifacts)
+    return {
+        "schema_version": INSPECTION_SCHEMA_VERSION,
+        "read_only": True,
+        "index_directory": normalize_identifier(directory, base=repository),
+        "index_count": len(reports),
+        "summary": counts,
+        "ci_status": "mismatch" if counts["content_mismatch"] else "ok",
+        "indexes": reports,
+        "limitations": [
+            "Absent artifacts are evidence-availability states, not failed scientific results.",
+            "No artifact was downloaded and no evidence index was modified.",
+        ],
+    }
+
+
+def _inspect_evidence_index(path: Path, repository: Path) -> dict[str, Any]:
+    index = read_json(path)
+    lost = "lost" in str(index.get("evidence_status", "")).lower() or bool(index.get("loss_audit"))
+    artifacts = []
+    seen: set[tuple[str, str | None]] = set()
+    for entry in _artifact_entries(index):
+        identifier = entry.get("identifier", entry.get("path"))
+        expected_hash = entry.get("sha256")
+        key = (str(identifier), expected_hash if isinstance(expected_hash, str) else None)
+        if key in seen:
+            continue
+        seen.add(key)
+        artifacts.append(_inspect_artifact(entry, repository, lost=lost))
+    commands = _string_list(index.get("commands"))
+    identity = {
+        "task_id": index.get("task_id"),
+        "index_location": index.get("index_location", normalize_identifier(path, base=repository)),
+        "source_commit": index.get("provenance", {}).get("source_commit"),
+        "historical_roots": index.get("storage", {}).get("unavailable_historical_roots", []),
+    }
+    return {
+        "index": normalize_identifier(path, base=repository),
+        "task_id": index.get("task_id"),
+        "evidence_status": index.get("evidence_status", "indexed"),
+        "artifacts": artifacts,
+        "index_alone_sufficient_for_documentation_claims": False,
+        "index_sufficiency": (
+            "disposition_only" if lost else "identity_inventory_only"
+        ),
+        "index_sufficiency_reason": (
+            "The index can document historical loss, but cannot substitute for unavailable bytes."
+            if lost else "The index records identity and provenance; claims must use authenticated artifact contents and their stated scope."
+        ),
+        "rerun_commands_for_new_lineage": commands,
+        "rerun_guidance": (
+            "Run the recorded commands when available, using new run, experiment, and index names; otherwise follow docs/COMMAND_REFERENCE.md."
+        ),
+        "historical_identity_must_never_be_reused": identity,
+    }
+
+
+def _artifact_entries(value: Any) -> Iterable[dict[str, Any]]:
+    if isinstance(value, dict):
+        identifier = value.get("identifier", value.get("path"))
+        if isinstance(identifier, str) and isinstance(value.get("sha256"), str):
+            yield value
+        for child in value.values():
+            yield from _artifact_entries(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _artifact_entries(child)
+
+
+def _inspect_artifact(entry: dict[str, Any], repository: Path, *, lost: bool) -> dict[str, Any]:
+    identifier = str(entry.get("identifier", entry.get("path")))
+    parsed = urlsplit(identifier)
+    external = bool(parsed.scheme and parsed.scheme != "file")
+    local_path = None if external else Path(parsed.path if parsed.scheme == "file" else identifier).expanduser()
+    if local_path is not None and not local_path.is_absolute():
+        local_path = repository / local_path
+    present = bool(local_path and local_path.is_file())
+    actual_bytes = local_path.stat().st_size if present and local_path is not None else None
+    actual_hash = sha256_file(local_path) if present and local_path is not None else None
+    expected_bytes = entry.get("bytes") if isinstance(entry.get("bytes"), int) else None
+    expected_hash = entry.get("sha256")
+    byte_match = (actual_bytes == expected_bytes) if present and expected_bytes is not None else None
+    hash_match = (actual_hash == expected_hash) if present else None
+    status = str(entry.get("status", "")).lower()
+    availability = (
+        "present_local" if present else
+        "intentionally_external" if external or status in {"external", "remote", "remote-only"} else
+        "historically_lost" if lost or status in {"lost", "unavailable"} else
+        "locally_absent"
+    )
+    return {
+        "id": entry.get("id"),
+        "identifier": identifier,
+        "availability": availability,
+        "present_locally": present,
+        "expected_bytes": expected_bytes,
+        "actual_bytes": actual_bytes,
+        "byte_count_matches": byte_match,
+        "expected_sha256": expected_hash,
+        "actual_sha256": actual_hash,
+        "sha256_matches": hash_match,
+        "content_verified": (hash_match and byte_match is not False) if present else None,
+    }
+
+
+def _string_list(value: Any) -> list[str]:
+    return [item for item in value if isinstance(item, str)] if isinstance(value, list) else []
 
 
 def stable_values_hash(values: Iterable[str]) -> str:
@@ -255,8 +382,9 @@ def _public_identity(identity: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in identity.items() if key != "keys"}
 
 
-def _artifact(identifier: str, path: Path, repository: Path) -> dict[str, str]:
-    return {"id": identifier, "identifier": normalize_identifier(path, base=repository), "sha256": sha256_file(path), "status": "present"}
+def _artifact(identifier: str, path: Path, repository: Path) -> dict[str, Any]:
+    return {"id": identifier, "identifier": normalize_identifier(path, base=repository),
+            "bytes": path.stat().st_size, "sha256": sha256_file(path), "status": "present"}
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
