@@ -1075,3 +1075,17 @@ evaluator-only sensitive probes were still executed and were excluded because
 the frozen per-split class-cell support threshold was not met. This unavailable
 result is not privacy evidence, does not alter the T2.7 **do not advance**
 decision, and does not establish a selection-dependent R12 conclusion.
+
+## Latest immutable user-role diagnostic v2 evidence (2026-08-13)
+
+The matched 200-user R12 lineage at
+`docs/artifacts/t4.3-user-role-diagnostic-v2-20260813.json` authenticates the
+predeclared target roles, learned participation, statistical and learned
+exports, utility reports, frozen splits, and immutable privacy reports. The
+exact common export population contains all 49 target-test users and no
+training members, so the configured minimum total/class/stratum support gates
+fail and no membership attack runs. The independent sensitive probes remain
+excluded or unavailable under the frozen allowlist. See
+`docs/decisions/t4.3-user-role-diagnostic-v2-20260813.md` for the exact
+population constraint. This does not relax thresholds, select a diagnostic
+control, change the T2.7 decision, or complete selection-dependent T4.3.

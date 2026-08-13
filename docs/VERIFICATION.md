@@ -883,3 +883,26 @@ support. The attack gate records eligible/matched/unmatched/excluded counts of
 100/0/100/100 and realized member/nonmember counts of 0/0; no membership attack
 was run. See `docs/decisions/t4.3-participation-diagnostic-20260813.md` for the
 bounded interpretation and held-out-user next task.
+
+## T4.3 user-role diagnostic v2 lineage (2026-08-13)
+
+The new 200-user immutable R12 lineage is indexed at
+`docs/artifacts/t4.3-user-role-diagnostic-v2-20260813.json` and interpreted at
+`docs/decisions/t4.3-user-role-diagnostic-v2-20260813.md`. It uses simulator
+seed `20260813` and the unmodified predeclared user-role embedding configuration.
+Deep validation passed 22 of 23 checks with one expected small-cohort warning.
+
+The authenticated learned participation record contains 92 users and 1,377
+eligible target-training windows plus 42 users and 179 validation/checkpoint-
+selection windows. Ninety-four target-train users participated in preprocessing;
+the 49 target-test users are recorded separately as clean whole-pipeline
+nonparticipants.
+
+Both frozen exports contain only those 49 target-test users. Therefore their
+common population contains zero members, fails the frozen total/class/stratum
+thresholds, and produces no membership attack. Sensitive probes execute through
+the independent gate but the three configured targets are excluded or
+unsupported under the code-versioned allowlist. The immutable privacy reports
+preserve the unavailable metrics, coverage, split hashes, and exclusions. No
+threshold was relaxed, every role remains `diagnostic_control`, and the
+selection-dependent conclusion remains unavailable with `no_selected_candidate`.

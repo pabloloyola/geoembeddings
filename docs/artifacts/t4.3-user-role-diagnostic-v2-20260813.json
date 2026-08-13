@@ -1,0 +1,457 @@
+{
+  "schema_version": "geoembeddings-r12-diagnostic-lineage-index/1.0",
+  "task_id": "T4.3a",
+  "lineage_id": "t4.3-user-role-diagnostic-v2-20260813-s20260813-r2",
+  "source_commit": "98b2b9d6e91c00db03d49382fea4015bd253c5d7",
+  "selection_role": "diagnostic_control",
+  "commands": [
+    "uv run geoembed simulate --run-dir runs/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2 --users 200 --days 7 --seed 20260813",
+    "uv run geoembed validate --run-dir runs/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2",
+    "uv run geoembed prepare --config configs/embedding/user_role_diagnostic_v2.yaml --run-dir runs/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2 --experiment-dir experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/statistical_baseline",
+    "uv run geoembed prepare --config configs/embedding/user_role_diagnostic_v2.yaml --run-dir runs/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2 --experiment-dir experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/capacity_matched_single",
+    "uv run geoembed baseline --config configs/embedding/user_role_diagnostic_v2.yaml --run-dir runs/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2 --experiment-dir experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/statistical_baseline",
+    "uv run geoembed train --config configs/embedding/user_role_diagnostic_v2.yaml --run-dir runs/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2 --experiment-dir experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/capacity_matched_single",
+    "uv run geoembed export --config configs/embedding/user_role_diagnostic_v2.yaml --run-dir runs/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2 --experiment-dir experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/capacity_matched_single",
+    "uv run geoembed evaluate --config configs/embedding/user_role_diagnostic_v2.yaml --run-dir runs/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2 --experiment-dir experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/statistical_baseline --kind baseline",
+    "uv run geoembed evaluate --config configs/embedding/user_role_diagnostic_v2.yaml --run-dir runs/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2 --experiment-dir experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/capacity_matched_single --kind learned",
+    "uv run geoembed audit-privacy --run-dir runs/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2 --experiment-dir statistical_baseline=experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/statistical_baseline --experiment-dir capacity_matched_single=experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/capacity_matched_single --evidence-dir experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/privacy_evidence --utility-report-dir experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/utility_reports --config experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/privacy_diagnostic_resolved.yaml --output-dir experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/privacy_audit"
+  ],
+  "artifacts": [
+    {
+      "path": "runs/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/manifest.json",
+      "bytes": 4837,
+      "sha256": "02bedaf0c3d19e6acc8f4aad1ed4c130af7ea39a9146e8fd90d64e10d8bb6096"
+    },
+    {
+      "path": "runs/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/config.resolved.yaml",
+      "bytes": 12668,
+      "sha256": "ecf90422841e3a19bb7f82fd86d080ecb69f9cbfbcae211dc26af7bcdd8ae63c"
+    },
+    {
+      "path": "runs/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/validation_report.json",
+      "bytes": 1044,
+      "sha256": "be120fff0b3a57381e4e86de88085d1b2b455fb8305fca472947b7fe5085ee37"
+    },
+    {
+      "path": "runs/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/deep_validation_report.json",
+      "bytes": 7078,
+      "sha256": "848fd71fc7ba6685545107ca11413775593bd0fdb0e7c1d87f63e6ef7ea2c733"
+    },
+    {
+      "path": "configs/embedding/user_role_diagnostic_v2.yaml",
+      "bytes": 3123,
+      "sha256": "d01965986b0949636adad4de291a245ebadc28644d27e21b616118e20deb6ace"
+    },
+    {
+      "path": "configs/privacy/diagnostic_v1.yaml",
+      "bytes": 2786,
+      "sha256": "d561ab5ac4c5207ea18573bedd9936bcfa0f4b50119dea2adc9fe334d963ff1e"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/privacy_diagnostic_resolved.yaml",
+      "bytes": 2948,
+      "sha256": "5825e53b356ce7b8a1047dc6558a5a4fd88c0cdfdce6de53883b8fa92b8efc9c"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/privacy_evidence/evidence_index.json",
+      "bytes": 4151,
+      "sha256": "d83c13eecfef4e76f4f612fa238daf94f30472a318659aa9b5b54416fe64ee96"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/statistical_baseline/prepared/prepared_metadata.json",
+      "bytes": 3730,
+      "sha256": "7c673b0e00f74a5e491fbb0903a246ca431a428b3c9c917c6b9d5f55c2942fa6"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/statistical_baseline/prepared/config.resolved.yaml",
+      "bytes": 2763,
+      "sha256": "b968eb6b0187ce8d33c1f387b4dfefe75f427543d529ecd05138e25c6c35d65e"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/statistical_baseline/statistical_baseline.npz",
+      "bytes": 72476,
+      "sha256": "0d5da370ce358da619a38f77c9b007c6ca73800b9fbd0202abcdad22f38b21bf"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/statistical_baseline/baseline_evaluation.json",
+      "bytes": 9601,
+      "sha256": "72396657c1de2685258f8d9dac08ca3f6c7977967742ac700d1b7f4e88b2ed25"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/capacity_matched_single/prepared/prepared_metadata.json",
+      "bytes": 3730,
+      "sha256": "7c673b0e00f74a5e491fbb0903a246ca431a428b3c9c917c6b9d5f55c2942fa6"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/capacity_matched_single/prepared/config.resolved.yaml",
+      "bytes": 2763,
+      "sha256": "b968eb6b0187ce8d33c1f387b4dfefe75f427543d529ecd05138e25c6c35d65e"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/capacity_matched_single/model/best_model.pt",
+      "bytes": 1437557,
+      "sha256": "41cb050f60230625f9ec626b90f4e1453c3f573794b6eeba119169195d164233"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/capacity_matched_single/model/training_report.json",
+      "bytes": 18204,
+      "sha256": "32a48b66b3f094f29be2d1b71cb7284a31ef038841b12cdd89a9afc458e5d319"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/capacity_matched_single/model/training_participation.json",
+      "bytes": 3769,
+      "sha256": "85b836bb0620f332a12be5a044ffedf95c32716e4fa75ffa3528ce05cf309d6b"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/capacity_matched_single/embeddings.npz",
+      "bytes": 208570,
+      "sha256": "1dd93884dcb314c3bcf5953d5a1e9e2bb49b7486229e43d3778cb36ab284d213"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/capacity_matched_single/evaluation.json",
+      "bytes": 398916,
+      "sha256": "3e0c8f88ec17932a295e274c4818abf0aff26f5cb28a4dc2f141adf7d9d87c52"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/utility_reports/statistical_baseline.json",
+      "bytes": 2661,
+      "sha256": "9f4055765fda5f568f6a59150a70ba9676820a45b77548861e2ef240b61ee20c"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/utility_reports/capacity_matched_single.json",
+      "bytes": 425222,
+      "sha256": "5288f14dc0a394cb4694694e53132a9ebc18c6edc8301994a67958096f988932"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/privacy_audit/audits/privacy.json",
+      "bytes": 505174,
+      "sha256": "9c1cef281e95bea15d86cad6be42a45d0872aba4b9b5e4991d913b2a1ca201eb"
+    },
+    {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/privacy_audit/audits/privacy.md",
+      "bytes": 505342,
+      "sha256": "47dc369782326ecc61d1adce56beb67fd56e12ede9764ee4d5393dc2c2c2b98f"
+    }
+  ],
+  "source_hashes": {
+    "observed_events.csv.gz": "f5535f4ba59efe077e1e47697c3f41ed6f4073a7dfc25a66c1cbc61463b9b82a",
+    "users_observed.csv.gz": "e0f94bff03b599607a664449693306c1724e36fec56bce6b4114dd84c20708c5"
+  },
+  "preparation_identity": {
+    "sha256": "7c673b0e00f74a5e491fbb0903a246ca431a428b3c9c917c6b9d5f55c2942fa6",
+    "definition": {
+      "train_end": "2026-04-05T11:48:00+00:00",
+      "validation_end": "2026-04-06T12:56:00+00:00",
+      "categorical_fields": [
+        "service_id",
+        "action_type",
+        "observation_mode",
+        "object_category",
+        "region_id",
+        "geohash_5",
+        "geohash_7"
+      ],
+      "continuous_fields": [
+        "latitude",
+        "longitude",
+        "log_delta_minutes",
+        "hour_sin",
+        "hour_cos",
+        "dow_sin",
+        "dow_cos",
+        "log_location_accuracy_m"
+      ]
+    }
+  },
+  "user_role_protocol": {
+    "assignment_sha256": "aedc517c6e7663e9213aee318c2b0d23c9dc0b92e86dedd90e125174fee25e87",
+    "fractions": {
+      "target_test": 0.25,
+      "target_train": 0.5,
+      "target_validation": 0.25
+    },
+    "roles": {
+      "all_target_users": {
+        "count": 200,
+        "identity_sha256": "a8ba8053cbaade2b60f3c102ba61b5f8a1434ede0a44f10bfb4087efc2d6fe52"
+      },
+      "target_test": {
+        "count": 49,
+        "identity_sha256": "83442bec6d11667c04b5cd13b9eb0e4206b72ee760a2c68d93b14857df8b812d"
+      },
+      "target_train": {
+        "count": 103,
+        "identity_sha256": "9a2447377eaf98ef358b7fe5d2c432170cb23eace571b55a8314b7cfe999c32b"
+      },
+      "target_validation": {
+        "count": 48,
+        "identity_sha256": "c8948a9fd09013068b1eb34af12642d39700cb89ed87b3eeb83603e38e7f268c"
+      }
+    },
+    "schema_version": "geoembeddings-user-role-protocol/1.0",
+    "seed": 20260813
+  },
+  "participation": {
+    "authenticated": true,
+    "artifact_sha256": "85b836bb0620f332a12be5a044ffedf95c32716e4fa75ffa3528ce05cf309d6b",
+    "eligible_target_training_windows": {
+      "count": 92,
+      "identity_sha256": "c560ae611a7aa7243d4b2a69fc20dc576421b18fd14cf7337a02746aa8cc44e9",
+      "window_count": 1377
+    },
+    "validation_checkpoint_selection_windows": {
+      "count": 42,
+      "identity_sha256": "c80e50d2d1d744017685d479bdcaa78215c92e477a7e86d59aa3450b650f5ece",
+      "window_count": 179
+    },
+    "preprocessing_participants": {
+      "count": 94,
+      "identity_sha256": "3de0023779cc8f4e609bd115499b6d9cdcaab7d366a6a43a7e6c91d03b158523",
+      "event_count": 3098
+    },
+    "clean_whole_pipeline_nonparticipants": {
+      "count": 49,
+      "identity_sha256": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512"
+    },
+    "target_test_intersection_with_preprocessing": 0,
+    "target_test_intersection_with_target_fitting": 0,
+    "target_test_intersection_with_checkpoint_selection": 0
+  },
+  "exports": {
+    "statistical_baseline": {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/statistical_baseline/statistical_baseline.npz",
+      "sha256": "0d5da370ce358da619a38f77c9b007c6ca73800b9fbd0202abcdad22f38b21bf"
+    },
+    "capacity_matched_single": {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/capacity_matched_single/embeddings.npz",
+      "sha256": "1dd93884dcb314c3bcf5953d5a1e9e2bb49b7486229e43d3778cb36ab284d213"
+    }
+  },
+  "utility_reports": {
+    "statistical_baseline": {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/utility_reports/statistical_baseline.json",
+      "sha256": "9f4055765fda5f568f6a59150a70ba9676820a45b77548861e2ef240b61ee20c"
+    },
+    "capacity_matched_single": {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/utility_reports/capacity_matched_single.json",
+      "sha256": "5288f14dc0a394cb4694694e53132a9ebc18c6edc8301994a67958096f988932"
+    }
+  },
+  "split_hashes": {
+    "membership": {
+      "status": "available",
+      "user_grouped": true,
+      "user_set_hashes": {
+        "eligible": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+        "excluded": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+        "matched": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "test": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "train": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "validation": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    },
+    "sensitive_probe": {
+      "split_seed": 20260814,
+      "status": "available",
+      "user_grouped": true,
+      "user_set_hashes": {
+        "eligible": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+        "split_assignment": "4d1afcc5b6b0d04e20e579f63f5303cda305a1673ca18064e8d434e430f88f6b",
+        "test": "01cb388d8fefdfc0bdb624c71ea9eb278f96cd664cabb85fa7bf9d655f6424be",
+        "train": "6965976f3b94e087beecbb58c9954a5be77af8d62ea957ee2089b270ebbf7b0d",
+        "validation": "9bf7aeea2249801254d2a76a42ba79ea6ad68ab8f5a4f32a03b652f276de8cfc"
+      }
+    }
+  },
+  "membership": {
+    "common_support": false,
+    "exact_population_constraint": "All 49 users in the exact common export population are predeclared target_test clean whole-pipeline nonparticipants; target_train members are intentionally absent from both frozen exports. The realized population therefore has 0 members and 49 nonmembers before matching, so minimum_total=100, minimum_per_class=20, and minimum_per_stratum=10 cannot pass.",
+    "population": {
+      "capacity_matched_single": {
+        "reason": "membership_classes_inadequate",
+        "status": "unavailable",
+        "supported": false,
+        "user_set_hashes": {
+          "eligible": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+          "excluded": "10050827c68922da92a7ec6f92798eef6f8f5c698e642691faf6f0be8e8bf512",
+          "matched": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "test": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "train": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "validation": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      },
+      "statistical_baseline": {
+        "reason": "no_learned_target_parameters",
+        "status": "not_applicable"
+      }
+    },
+    "metrics": {
+      "capacity_matched_single": {
+        "attacks": {},
+        "reason": "membership_classes_inadequate",
+        "status": "unavailable"
+      }
+    },
+    "thresholds": {
+      "minimum_total": 100,
+      "minimum_per_class": 20,
+      "minimum_per_stratum": 10,
+      "minimum_sensitive_label_cell": 20
+    },
+    "thresholds_relaxed_post_hoc": false
+  },
+  "sensitive_attributes": {
+    "independent_of_membership_gate": true,
+    "population": {
+      "age_group": {
+        "bin_boundaries": [],
+        "counts": [],
+        "derivation_method": "observed_identity",
+        "derivation_version": "age-group-observed-identity/1.0",
+        "eligible_count": 0,
+        "fit_split": null,
+        "labels": [],
+        "missing_count": 0,
+        "name": "age_group",
+        "privacy_rationale": "Synthetic age band is demographic information.",
+        "reason": "public_or_observed_not_a_protected_leakage_target",
+        "status": "excluded",
+        "unsupported_count": 200,
+        "visibility": "public_or_observed"
+      },
+      "household_type": {
+        "bin_boundaries": [],
+        "counts": [],
+        "derivation_method": "observed_identity",
+        "derivation_version": "household-type-observed-identity/1.0",
+        "eligible_count": 0,
+        "fit_split": null,
+        "labels": [],
+        "missing_count": 0,
+        "name": "household_type",
+        "privacy_rationale": "Synthetic household type is demographic information.",
+        "reason": "public_or_observed_not_a_protected_leakage_target",
+        "status": "excluded",
+        "unsupported_count": 200,
+        "visibility": "public_or_observed"
+      },
+      "leisure_preference_group": {
+        "derivation_version": "leisure-preference-fixed-edges/1.0",
+        "eligible_count": 49,
+        "missing_count": 0,
+        "reason": "unsupported_protected_attribute",
+        "status": "unavailable",
+        "unsupported_count": 49
+      }
+    },
+    "metrics": {
+      "age_group": {
+        "capacity_matched_single": {
+          "combined": {
+            "attacks": {},
+            "reason": "public_or_observed_not_a_protected_leakage_target",
+            "status": "unavailable"
+          },
+          "context": {
+            "attacks": {},
+            "reason": "public_or_observed_not_a_protected_leakage_target",
+            "status": "unavailable"
+          },
+          "persistent": {
+            "attacks": {},
+            "reason": "public_or_observed_not_a_protected_leakage_target",
+            "status": "unavailable"
+          }
+        },
+        "statistical_baseline": {
+          "combined": {
+            "attacks": {},
+            "reason": "public_or_observed_not_a_protected_leakage_target",
+            "status": "unavailable"
+          },
+          "context": {
+            "attacks": {},
+            "reason": "public_or_observed_not_a_protected_leakage_target",
+            "status": "unavailable"
+          },
+          "persistent": {
+            "attacks": {},
+            "reason": "public_or_observed_not_a_protected_leakage_target",
+            "status": "unavailable"
+          }
+        }
+      },
+      "household_type": {
+        "capacity_matched_single": {
+          "combined": {
+            "attacks": {},
+            "reason": "public_or_observed_not_a_protected_leakage_target",
+            "status": "unavailable"
+          },
+          "context": {
+            "attacks": {},
+            "reason": "public_or_observed_not_a_protected_leakage_target",
+            "status": "unavailable"
+          },
+          "persistent": {
+            "attacks": {},
+            "reason": "public_or_observed_not_a_protected_leakage_target",
+            "status": "unavailable"
+          }
+        },
+        "statistical_baseline": {
+          "combined": {
+            "attacks": {},
+            "reason": "public_or_observed_not_a_protected_leakage_target",
+            "status": "unavailable"
+          },
+          "context": {
+            "attacks": {},
+            "reason": "public_or_observed_not_a_protected_leakage_target",
+            "status": "unavailable"
+          },
+          "persistent": {
+            "attacks": {},
+            "reason": "public_or_observed_not_a_protected_leakage_target",
+            "status": "unavailable"
+          }
+        }
+      },
+      "leisure_preference_group": {
+        "derivation_version": "leisure-preference-fixed-edges/1.0",
+        "eligible_count": 49,
+        "missing_count": 0,
+        "reason": "unsupported_protected_attribute",
+        "status": "unavailable",
+        "unsupported_count": 49
+      }
+    }
+  },
+  "coverage": {
+    "authenticated_controls": 2,
+    "membership_evaluated_controls": 0,
+    "sensitive_probe_common_users": 49,
+    "sensitive_probe_supported_attributes": 2
+  },
+  "exclusions": [],
+  "selection": {
+    "roles": {
+      "capacity_matched_single": "diagnostic_control",
+      "statistical_baseline": "diagnostic_control"
+    },
+    "selection_dependent_privacy_conclusion": {
+      "reason": "no_selected_candidate",
+      "status": "unavailable"
+    }
+  },
+  "privacy_outputs": {
+    "json": {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/privacy_audit/audits/privacy.json",
+      "sha256": "9c1cef281e95bea15d86cad6be42a45d0872aba4b9b5e4991d913b2a1ca201eb"
+    },
+    "markdown": {
+      "path": "experiments/t4.3-user-role-diagnostic-v2-20260813-s20260813-r2/privacy_audit/audits/privacy.md",
+      "sha256": "47dc369782326ecc61d1adce56beb67fd56e12ede9764ee4d5393dc2c2c2b98f"
+    }
+  }
+}
