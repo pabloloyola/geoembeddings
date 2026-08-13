@@ -867,6 +867,14 @@ gated by T1.6.
       this audit must not select the least-bad diagnostic control, relabel any
       input as `selected_candidate`, or treat factorized branch names as
       established semantics.
+    - **Configuration note (2026-08-13):**
+      `configs/privacy/diagnostic_v1.yaml` now freezes the R12 diagnostic attack,
+      split, matching, support, sensitive-label, uncertainty, and reporting
+      protocol. `geoembeddings.privacy_evaluation.load_privacy_config` provides
+      a strict typed boundary and rejects unknown or unfrozen protocol fields
+      before an evaluator opens protected labels. No privacy baseline artifact
+      exists; the authenticated matched input lineage remains unavailable, so
+      this does not make T4.3a executable or complete.
 
 - [x] **T4.4 — Online incremental-update benchmarks.**
   - **Requirement IDs:** R13.
