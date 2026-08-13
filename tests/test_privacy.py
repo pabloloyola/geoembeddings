@@ -61,6 +61,42 @@ def _export(rows):
                                  components, "test", "test")
 
 
+@pytest.fixture
+def small_synthetic_exports(tmp_path: Path) -> tuple[Path, Path]:
+    """Two equivalent on-disk exports avoid dependence on historical artifact bytes."""
+    rows = [(f"u{i}", cutoff) for i in range(8)
+            for cutoff in ("train_end", "test_end")]
+    paths = (tmp_path / "forward.npz", tmp_path / "reversed.npz")
+    for path, ordered in zip(paths, (rows, list(reversed(rows))), strict=True):
+        np.savez_compressed(
+            path,
+            user_id=np.asarray([user for user, _ in ordered]),
+            cutoff=np.asarray([cutoff for _, cutoff in ordered]),
+            embedding=np.asarray([
+                [float(user.removeprefix("u")), float(cutoff == "test_end")]
+                for user, cutoff in ordered
+            ], dtype=np.float32),
+        )
+    return paths
+
+
+def test_on_disk_synthetic_exports_have_order_independent_population_identity(
+        small_synthetic_exports: tuple[Path, Path]) -> None:
+    membership = {f"u{i}": i % 2 == 0 for i in range(8)}
+    kwargs = dict(
+        target_model_lineage="fixture-lineage", membership_by_user=membership,
+        provenance_by_user={user: {"history": 1.0} for user in membership},
+        cutoff_order=("train_end", "test_end"), component_order=("combined",),
+        matching_boundaries={"history": (0, 2)}, audit_seed=31, split_seed=32,
+    )
+    forward = construct_privacy_population(small_synthetic_exports[0], **kwargs)
+    reversed_rows = construct_privacy_population(small_synthetic_exports[1], **kwargs)
+    assert forward.user_set_hashes == reversed_rows.user_set_hashes
+    assert sorted((r.user_id, r.membership, r.split) for r in forward.records) == sorted(
+        (r.user_id, r.membership, r.split) for r in reversed_rows.records
+    )
+
+
 def test_population_groups_cutoffs_masks_matches_and_splits_whole_users() -> None:
     export = _export([("m1", "train_end"), ("m1", "test_end"), ("n1", "train_end"),
                       ("m2", "train_end"), ("n2", "train_end")])
@@ -192,3 +228,103 @@ def test_primary_attack_metrics_include_frozen_bootstrap_protocol() -> None:
     assert bootstrap["method"] == "stratified_user_percentile"
     assert bootstrap["replicate_count"] == 1000
     assert bootstrap["successful_replicates"] == 1000
+
+
+def test_membership_population_is_deterministic_under_export_and_mapping_order() -> None:
+    """Membership is a user property; neither NPZ rows nor dict order may derive it."""
+    rows = [(f"u{i}", cutoff) for i in range(12)
+            for cutoff in ("train_end", "test_end")]
+    membership = {f"u{i}": i % 2 == 0 for i in range(12)}
+    provenance = {user: {"history": float(index % 3)}
+                  for index, user in enumerate(membership)}
+    kwargs = dict(
+        target_model_lineage="frozen-checkpoint", cutoff_order=("train_end", "test_end"),
+        component_order=("combined",), matching_boundaries={"history": (0, 1, 2, 3)},
+        audit_seed=19, split_seed=23,
+    )
+    first = construct_privacy_population(
+        _export(rows), membership_by_user=membership,
+        provenance_by_user=provenance, **kwargs,
+    )
+    second = construct_privacy_population(
+        _export(list(reversed(rows))),
+        membership_by_user=dict(reversed(list(membership.items()))),
+        provenance_by_user=dict(reversed(list(provenance.items()))), **kwargs,
+    )
+    identity = lambda population: sorted(
+        (r.user_id, r.membership, r.split, r.vector, r.missing_cutoff_mask)
+        for r in population.records
+    )
+    assert identity(first) == identity(second)
+    assert first.user_set_hashes == second.user_set_hashes
+
+
+def test_matching_is_balanced_without_replacement_and_splits_are_disjoint() -> None:
+    membership = {**{f"m{i}": True for i in range(8)},
+                  **{f"n{i}": False for i in range(5)}}
+    population = construct_privacy_population(
+        _export([(user, "train_end") for user in membership]),
+        target_model_lineage="lineage", membership_by_user=membership,
+        provenance_by_user={user: {"history": 1.0} for user in membership},
+        cutoff_order=("train_end",), component_order=("combined",),
+        matching_boundaries={"history": (0, 2)}, audit_seed=2, split_seed=3,
+    )
+    records = population.records
+    assert len(records) == 10
+    assert sum(record.membership for record in records) == 5
+    assert len({record.user_id for record in records}) == len(records)
+    split_sets = {
+        split: {record.user_id for record in records if record.split == split}
+        for split in ("train", "validation", "test")
+    }
+    assert split_sets["train"].isdisjoint(split_sets["validation"])
+    assert split_sets["train"].isdisjoint(split_sets["test"])
+    assert split_sets["validation"].isdisjoint(split_sets["test"])
+    assert set().union(*split_sets.values()) == {record.user_id for record in records}
+
+
+def test_attack_is_unavailable_for_imbalanced_or_missing_split_classes() -> None:
+    population = _attack_population()
+    all_members = PrivacyPopulation(
+        population.schema_version, population.status, population.reason,
+        population.target_model_lineage, population.cutoff_order,
+        population.component_order, population.vector_feature_names,
+        population.provenance_feature_names,
+        tuple(PrivacyPopulationRecord(
+            r.user_id, True, r.split, r.vector, r.missing_cutoff_mask,
+            r.missing_component_mask, r.provenance, r.stratum,
+        ) for r in population.records), population.excluded_users,
+        population.user_set_hashes,
+    )
+    result = run_privacy_attacks_from_config(all_members, None, load_privacy_config(CONFIG))
+    assert result == {
+        "status": "unavailable", "reason": "attack_split_support_inadequate", "attacks": {}
+    }
+
+
+def test_common_support_threshold_returns_explicit_unavailable_result() -> None:
+    membership = {f"u{i}": i % 2 == 0 for i in range(8)}
+    population = construct_privacy_population(
+        _export([(user, "train_end") for user in membership]),
+        target_model_lineage="lineage", membership_by_user=membership,
+        provenance_by_user={user: {"history": 1.0} for user in membership},
+        cutoff_order=("train_end",), component_order=("combined",),
+        matching_boundaries={"history": (0, 2)}, audit_seed=5, split_seed=6,
+        minimum_total=10,
+    )
+    assert population.status == "unavailable"
+    assert population.reason == "common_support_inadequate"
+
+
+def test_bootstrap_reports_degenerate_replicates_instead_of_hiding_them() -> None:
+    result = seeded_stratified_user_bootstrap(
+        ["u0", "u1"], np.asarray([0, 1]), np.asarray([0.1, 0.9]),
+        strata=["only", "only"], metric=lambda y, score: (
+            float(score[y == 1].mean() - score[y == 0].mean())
+            if len(np.unique(y)) == 2 else float("nan")
+        ), replicates=40, seed=9,
+    )
+    assert result["requested_replicates"] == 40
+    assert result["degenerate_replicates"] > 0
+    assert result["excluded_replicates"] == result["degenerate_replicates"]
+    assert result["successful_replicates"] + result["excluded_replicates"] == 40
