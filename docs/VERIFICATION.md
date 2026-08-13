@@ -136,6 +136,54 @@ artifact paths, and unresolved limitations. Checking this list records software
 and contract readiness at that immutable revision only; it does not reverse a
 model-selection decision or expand the evidence scope.
 
+### Release-candidate audit (2026-08-13 UTC)
+
+**Decision: do not label stable.** Reviewer: Codex automated release reviewer.
+Requirements R1--R13 are in release-verification scope, but this is a
+documentation-only audit: it changes neither simulator, observed contract,
+model, nor evaluator. The prior bounded artifact at
+`docs/artifacts/release-cli-integration-smoke-20260813.json` is useful baseline
+history, but it identifies an earlier source revision and therefore is not
+current-revision evidence for this gate.
+
+The immutable candidate is the commit tagged `v0.5.0-rc.1`; its full SHA is
+recorded by the annotated tag and the attached `refs/notes/release-verification`
+note. The note is the current-revision command-output record. It records the
+review date, runtime identity, exact commands, exit states, and lockfile hash
+without changing the candidate tree after verification.
+
+The blocking command, `uv sync --locked --extra dev`, failed while fetching a
+locked development dependency because the package-index tunnel was unavailable.
+An offline diagnostic also found that required locked artifacts were absent
+from the cache. The partially
+modified environment then could not collect the suite because required runtime
+packages were absent. In accordance with the exact gates above:
+
+- every stable-release checkbox remains unchecked;
+- package build, wheel/sdist/CLI agreement, bounded workflow, comparison,
+  benchmark, and privacy publication were not credited;
+- targeted information-boundary and output-immutability tests were not credited;
+- quantitative release-note claims were not added, so no new scientific number
+  requires an evidence-index entry;
+- CUDA is **not tested** on this candidate;
+- Apple MPS is **not tested** on this candidate, and no historical MPS result is
+  carried forward;
+- no stable tag is created.
+
+Package version `0.5.0` remains appropriate because this audit changes no
+distributed behavior or contract. The candidate tag is `v0.5.0-rc.1`, not a
+stable release tag. The release evidence-index path remains **unavailable**
+until a clean locked CPU rerun can produce a current-revision index. Consequently
+the workflow, comparison, online workload/report, and privacy artifact paths are
+also **unavailable for release sign-off**; earlier-revision paths are not
+silently relabeled.
+
+Unresolved limitations are the unavailable clean locked CPU environment, all
+unexecuted downstream gates, and untested CUDA/MPS devices. Independently of
+those blockers, the allowed future stable label remains only **synthetic
+research harness** and excludes selected-candidate success, privacy
+certification, external validity, and production readiness.
+
 ## Continuous integration scope
 
 `.github/workflows/ci.yml` runs the locked development environment and test
