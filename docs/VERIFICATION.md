@@ -710,3 +710,19 @@ and `unimplemented` declarations in `docs/CURRENT_STATUS.md` and
 `docs/AGENT_HANDOFF.md`. Its regression fixture specifically rejects the stale
 claims that completed T3.5 is next or completed T3.7 is unimplemented. This is
 a documentation-integrity check, not experimental evidence for R5, R8, or R9.
+
+## T4.3 participation diagnostic lineage (2026-08-13)
+
+A new 100-user, seven-day immutable diagnostic lineage was generated with
+simulator seed `20260813`. The exact commands and SHA-256 identities are indexed
+in `docs/artifacts/t4.3-participation-diagnostic-20260813.json`. Deep validation
+passed all 22 integrity/mechanism checks and retained one expected small-cohort
+travel-volume warning. All six learned controls produced immutable
+`training_participation.json` records and frozen exports; the statistical
+baseline was generated on the same observed sources and preparation definition.
+
+The frozen privacy strata yield no exported clean nonmembers and no common
+support. The attack gate records eligible/matched/unmatched/excluded counts of
+100/0/100/100 and realized member/nonmember counts of 0/0; no membership attack
+was run. See `docs/decisions/t4.3-participation-diagnostic-20260813.md` for the
+bounded interpretation and held-out-user next task.

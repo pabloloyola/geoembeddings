@@ -990,3 +990,20 @@ Regression axes:
 Known limitation or blocker:
 Next decision:
 ```
+
+## Latest immutable diagnostic lineage (2026-08-13)
+
+The new fixed-seed R12 participation lineage is indexed at
+`docs/artifacts/t4.3-participation-diagnostic-20260813.json` and interpreted at
+`docs/decisions/t4.3-participation-diagnostic-20260813.md`. Across every learned
+diagnostic control, 90 users contribute training windows, 89 contribute
+validation/checkpoint-selection windows, and 10 contribute no target-fitting
+data. Three of those 10 were still seen by preprocessing; the seven clean
+pipeline nonparticipants have no observed histories or exports. Frozen
+public-history/coverage matching therefore realizes zero common-support pairs,
+so all membership attacks are gated off and membership remains explicitly
+unavailable. The statistical baseline remains not applicable. The current
+temporal contract cannot provide training membership without reserving a
+held-out-user cohort before preprocessing and training; proceed to that
+separately scoped task without treating this unavailable result as privacy
+evidence.
