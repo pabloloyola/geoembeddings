@@ -24,6 +24,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"geoembed {__version__}")
     commands = parser.add_subparsers(dest="command", required=True)
 
+    inspect_evidence = commands.add_parser(
+        "inspect-evidence", help="Read-only verification of documentation evidence indexes"
+    )
+    inspect_evidence.add_argument("--index-dir", type=Path, default=Path("docs/artifacts"))
+
     simulate = commands.add_parser("simulate", help="Generate one versioned simulator run")
     _add_simulation_arguments(simulate)
 
@@ -497,6 +502,9 @@ def main() -> None:
     args = build_parser().parse_args()
     if args.command == "simulate":
         result = _simulate(args)
+    elif args.command == "inspect-evidence":
+        from .artifact_index import inspect_evidence_indexes
+        result = inspect_evidence_indexes(args.index_dir)
     elif args.command == "simulate-pair":
         from .simulate_pair import simulate_pair
         result = simulate_pair(args.config, args.reference_run_dir, args.intervention_run_dir,

@@ -974,6 +974,27 @@ simulate -> validate -> prepare -> train -> export -> evaluate learned
 
 ## Inspecting artifacts
 
+### `inspect-evidence`
+
+Audit every JSON evidence index in `docs/artifacts` without downloading an
+artifact or modifying an immutable index:
+
+```bash
+uv run geoembed inspect-evidence
+```
+
+Use `--index-dir DIRECTORY` to inspect another index collection. The command
+recursively discovers indexed path/identifier plus SHA-256 records, reports
+local presence, byte-count and digest matches (or `null` when an older index
+does not record bytes), and distinguishes intentionally external, locally
+absent, and historically lost artifacts. Missing bytes are an availability
+state, not a failed scientific result. Each index also reports its claim
+sufficiency, recorded rerun commands for a newly named lineage, and the
+historical task/index/commit/root identity that must not be reused. The JSON
+schema `geoembeddings-evidence-inspection/1.0`, top-level `summary`, and
+`ci_status` provide a concise CI surface; `ci_status=mismatch` means locally
+present bytes disagree with their index.
+
 ### `scripts/index_artifacts.py`
 
 Create the T0.1a evidence inventory only after the baseline and learned
