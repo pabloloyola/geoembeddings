@@ -287,6 +287,105 @@ def _multiclass_metrics(y: np.ndarray, probabilities: np.ndarray, classes: np.nd
     return result
 
 
+def seeded_stratified_user_bootstrap(
+    user_ids: Sequence[str], labels: Sequence[Any], values: np.ndarray, *,
+    strata: Sequence[Any] | None = None, metric: Any, replicates: int,
+    seed: int, confidence_level: float = 0.95,
+) -> dict[str, Any]:
+    """Bootstrap a user-level metric while keeping each user's row intact.
+
+    ``values`` may contain a score, a probability vector, or an entire feature
+    row.  The metric callable receives ``(sampled_labels, sampled_values)``.
+    Sampling is independently performed within the supplied strata; class is
+    always included in the effective stratum so the natural test-set class
+    counts are preserved.  Canonical user ordering makes the result independent
+    of the caller's row ordering.
+    """
+    if replicates <= 0:
+        raise ValueError("bootstrap replicates must be positive")
+    if not 0 < confidence_level < 1:
+        raise ValueError("bootstrap confidence_level must be between zero and one")
+    users = np.asarray(list(map(str, user_ids)), dtype=str)
+    y = np.asarray(labels)
+    value = np.asarray(values)
+    if len(users) != len(y) or len(users) != len(value):
+        raise ValueError("bootstrap users, labels, and values must have equal length")
+    if len(set(users.tolist())) != len(users):
+        raise ValueError("bootstrap requires exactly one joined row per user")
+    supplied = np.asarray(["all"] * len(users), dtype=object) if strata is None else np.asarray(strata, dtype=object)
+    if len(supplied) != len(users):
+        raise ValueError("bootstrap strata must have one value per user")
+    order = np.argsort(users, kind="stable")
+    users, y, value, supplied = users[order], y[order], value[order], supplied[order]
+    # repr handles tuple-valued matching strata without relying on NumPy's
+    # sometimes surprising multidimensional coercion of a list of tuples.
+    effective = np.asarray([_canonical_hash([str(label), repr(stratum)])
+                            for label, stratum in zip(y, supplied)], dtype=str)
+    groups = [np.flatnonzero(effective == name) for name in sorted(set(effective.tolist()))]
+    expected_classes = set(y.tolist())
+    try:
+        point_estimate = float(metric(y, value)) if len(expected_classes) >= 2 else None
+        if point_estimate is not None and not np.isfinite(point_estimate):
+            point_estimate = None
+    except (ArithmeticError, ValueError, IndexError, TypeError):
+        point_estimate = None
+    rng = np.random.default_rng(seed)
+    estimates: list[float] = []
+    degenerate = excluded = 0
+    for _ in range(replicates):
+        sampled = np.concatenate([rng.choice(group, size=len(group), replace=True) for group in groups])
+        if set(y[sampled].tolist()) != expected_classes or len(expected_classes) < 2:
+            degenerate += 1
+            continue
+        try:
+            estimate = float(metric(y[sampled], value[sampled]))
+        except (ArithmeticError, ValueError, IndexError, TypeError):
+            excluded += 1
+            continue
+        if not np.isfinite(estimate):
+            excluded += 1
+            continue
+        estimates.append(estimate)
+    alpha = (1.0 - confidence_level) / 2.0
+    interval = ([float(np.quantile(estimates, alpha)), float(np.quantile(estimates, 1.0 - alpha))]
+                if estimates else None)
+    return {
+        "method": "stratified_user_percentile", "seed": int(seed),
+        "confidence_level": float(confidence_level), "replicate_count": int(replicates),
+        "requested_replicates": int(replicates), "successful_replicates": len(estimates),
+        "degenerate_replicates": degenerate, "excluded_replicates": excluded,
+        "point_estimate": point_estimate, "interval": interval,
+        "undefined_reason": None if interval is not None else "no_successful_bootstrap_replicates",
+    }
+
+
+def seeded_matched_representation_delta_bootstrap(
+    user_ids: Sequence[str], labels: Sequence[Any], control_values: Mapping[str, np.ndarray], *,
+    reference: str, strata: Sequence[Any] | None = None, metric: Any,
+    replicates: int, seed: int, confidence_level: float = 0.95,
+) -> dict[str, Any]:
+    """Compute paired control-minus-reference intervals from identical users."""
+    if reference not in control_values:
+        raise ValueError(f"Unknown reference control {reference!r}")
+    lengths = {name: len(np.asarray(values)) for name, values in control_values.items()}
+    if any(length != len(user_ids) for length in lengths.values()):
+        raise ValueError("matched controls must contain the same ordered users")
+    stacked = np.stack([np.asarray(control_values[name]) for name in control_values], axis=1)
+    names = tuple(control_values)
+    result: dict[str, Any] = {}
+    for name in names:
+        if name == reference:
+            continue
+        left, right = names.index(name), names.index(reference)
+        def delta(sample_y: np.ndarray, sample_values: np.ndarray, a: int = left, b: int = right) -> float:
+            return float(metric(sample_y, sample_values[:, a]) - metric(sample_y, sample_values[:, b]))
+        result[name] = seeded_stratified_user_bootstrap(
+            user_ids, labels, stacked, strata=strata, metric=delta, replicates=replicates,
+            seed=seed, confidence_level=confidence_level,
+        )
+    return {"reference": reference, "deltas": result}
+
+
 def _fit_preprocessor(x: np.ndarray, pca_components: int | None) -> tuple[dict[str, np.ndarray], np.ndarray]:
     median = np.nanmedian(x, axis=0); median = np.where(np.isfinite(median), median, 0.0)
     clean = np.where(np.isfinite(x), x, median)
@@ -330,7 +429,7 @@ def run_privacy_attacks(
     inverse_regularization_strengths: Sequence[float], hidden_units: Sequence[int],
     nonlinear_epochs: int, nonlinear_tuning_budget: int, maximum_parameters: int,
     seed: int, task: Literal["membership", "sensitive_attribute"] = "membership",
-    pca_components: int | None = None,
+    pca_components: int | None = None, bootstrap: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run the frozen attack families with train/validation/test isolation.
 
@@ -362,11 +461,34 @@ def run_privacy_attacks(
 
     output: dict[str, Any] = {}
     test = indices["test"]; validation = indices["validation"]
+    test_users = [records[i].user_id for i in test]
+    test_strata = [records[i].matching_stratum for i in test]
+
+    def add_uncertainty(metrics: dict[str, Any], probability: np.ndarray) -> None:
+        if bootstrap is None:
+            return
+        if task == "membership":
+            test_labels = (labels[test] == classes[-1]).astype(int)
+            primary_name = "roc_auc"
+            primary_metric = lambda yy, vv: _binary_metrics(yy.astype(int), vv, 0.5)["roc_auc"]["value"]
+            primary_values = probability[:, 1] if probability.ndim == 2 else probability
+        else:
+            test_labels = labels[test]
+            primary_name = "macro_f1"
+            primary_metric = lambda yy, vv: _multiclass_metrics(yy, vv, classes)["macro_f1"]["value"]
+            primary_values = probability
+        metrics[primary_name]["bootstrap"] = seeded_stratified_user_bootstrap(
+            test_users, test_labels, primary_values, strata=test_strata, metric=primary_metric,
+            replicates=int(bootstrap["replicates"]), seed=int(bootstrap["seed"]),
+            confidence_level=float(bootstrap["confidence_level"]),
+        )
     prevalence = float(np.mean(labels[indices["train"]] == classes[-1]))
     random_scores = np.asarray([int(_seeded_user_hash(seed, population.target_model_lineage, records[i].user_id, "random-control"), 16) / 2**256 for i in test])
     if task == "membership":
         output["deterministic_random"] = _binary_metrics((labels[test] == classes[-1]).astype(int), random_scores, 0.5)
         output["majority_base_rate"] = _binary_metrics((labels[test] == classes[-1]).astype(int), np.full(len(test), prevalence), 0.5)
+        add_uncertainty(output["deterministic_random"], random_scores)
+        add_uncertainty(output["majority_base_rate"], np.full(len(test), prevalence))
     else:
         priors = np.asarray([train_counts[c] for c in classes], float); priors /= priors.sum()
         output["majority_prior"] = _multiclass_metrics(labels[test], np.tile(priors, (len(test), 1)), classes)
@@ -375,6 +497,8 @@ def run_privacy_attacks(
                                           for column in range(len(classes))] for i in test])
         random_probability /= random_probability.sum(axis=1, keepdims=True)
         output["deterministic_random"] = _multiclass_metrics(labels[test], random_probability, classes)
+        add_uncertainty(output["majority_prior"], np.tile(priors, (len(test), 1)))
+        add_uncertainty(output["deterministic_random"], random_probability)
     for name, raw in features.items():
         state, train_x = _fit_preprocessor(raw[indices["train"]], pca_components)
         val_x = _transform(raw[validation], state); test_x = _transform(raw[test], state)
@@ -421,6 +545,7 @@ def run_privacy_attacks(
             output[name] = {**_binary_metrics((labels[test] == classes[-1]).astype(int), score, threshold), "selected_hyperparameters": selected}
         else:
             output[name] = {**_multiclass_metrics(labels[test], probability, classes), "selected_hyperparameters": selected}
+        add_uncertainty(output[name], probability)
         output[name]["preprocessing_fit_split"] = "train"; output[name]["selection_split"] = "validation"
         output[name]["test_scoring_passes"] = 1; output[name]["pca_components"] = pca_components
     return {"status": "available", "task": task, "class_order": classes.tolist(), "attacks": output}
@@ -440,6 +565,7 @@ def run_privacy_attacks_from_config(
         nonlinear_tuning_budget=nonlinear["tuning_budget"],
         maximum_parameters=nonlinear["maximum_parameters"], seed=config.audit_seed,
         task=task, pca_components=reduction.get("components") if reduction.get("enabled", False) else None,
+        bootstrap=config.bootstrap,
     )
 
 
