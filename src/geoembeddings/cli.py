@@ -13,6 +13,7 @@ from .layout import DatasetLayout, ExperimentLayout, PairLayout
 
 DEFAULT_SIMULATION_CONFIG = Path("configs/simulation/kanto_v1.yaml")
 DEFAULT_EMBEDDING_CONFIG = Path("configs/embedding/single_vector.yaml")
+DEFAULT_PRIVACY_CONFIG = Path("configs/privacy/diagnostic_v1.yaml")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -74,6 +75,15 @@ def build_parser() -> argparse.ArgumentParser:
     audit_change.add_argument("--adaptation-threshold", type=float, default=0.1)
     audit_change.add_argument("--recovery-threshold", type=float, default=0.05)
     audit_change.add_argument("--overwrite", action="store_true")
+
+    audit_privacy = commands.add_parser("audit-privacy", help="Run the authenticated R12 diagnostic-control audit")
+    audit_privacy.add_argument("--run-dir", required=True, type=Path)
+    audit_privacy.add_argument("--experiment-dir", required=True, action="append", metavar="NAME=ROOT")
+    audit_privacy.add_argument("--evidence-dir", required=True, type=Path)
+    audit_privacy.add_argument("--utility-report-dir", required=True, type=Path)
+    audit_privacy.add_argument("--config", type=Path, default=DEFAULT_PRIVACY_CONFIG)
+    audit_privacy.add_argument("--output-dir", required=True, type=Path)
+    audit_privacy.add_argument("--overwrite", action="store_true")
 
     prepare = commands.add_parser("prepare", help="Fit leakage-safe preprocessing")
     _add_embedding_arguments(prepare)
@@ -182,6 +192,16 @@ def _add_embedding_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--config", type=Path, default=DEFAULT_EMBEDDING_CONFIG)
     parser.add_argument("--run-dir", required=True, type=Path)
     parser.add_argument("--experiment-dir", required=True, type=Path)
+
+
+def _named_roots(values: list[str]) -> dict[str, Path]:
+    result: dict[str, Path] = {}
+    for value in values:
+        name, separator, root = value.partition("=")
+        if not separator or not name or not root or name in result:
+            raise ValueError("--experiment-dir must use unique NAME=ROOT values")
+        result[name] = Path(root)
+    return result
 
 
 def _simulate(args: argparse.Namespace) -> dict[str, Any]:
@@ -513,6 +533,11 @@ def main() -> None:
             args.sustained_report, args.output_dir,
             adaptation_threshold=args.adaptation_threshold,
             recovery_threshold=args.recovery_threshold, overwrite=args.overwrite)
+    elif args.command == "audit-privacy":
+        from .privacy_audit import audit_privacy
+        result = audit_privacy(run_dir=args.run_dir, experiments=_named_roots(args.experiment_dir),
+            evidence_dir=args.evidence_dir, utility_report_dir=args.utility_report_dir,
+            config_path=args.config, output_dir=args.output_dir, overwrite=args.overwrite)
     elif args.command in {"prepare", "train", "baseline", "export", "export-dense", "evaluate", "robustness", "benchmark"}:
         run = DatasetLayout.from_path(args.run_dir)
         experiment = ExperimentLayout.from_path(args.experiment_dir)
