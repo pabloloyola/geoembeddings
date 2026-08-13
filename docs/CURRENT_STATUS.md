@@ -146,9 +146,10 @@ T4.2 adaptation/forgetting auditing and T4.5 external-validity claim boundaries
 are complete. Because no representation has the `selected_candidate` role,
 T4.2 currently supplies diagnostic-control evidence only; the
 selection-dependent R11 conclusion remains unavailable. The remaining open
-tasks are **T4.1 uncertainty calibration** and **T4.3 privacy audits**. T4.4
-online incremental-update benchmarking is implemented as diagnostic-control
-evidence and does not relax the negative T2.7
+tasks are the selection-dependent **T4.1 uncertainty-calibration** and **T4.3
+privacy conclusions**; the bounded T4.1a and T4.3a diagnostic-control surfaces
+are complete. T4.4 online incremental-update benchmarking is implemented as
+diagnostic-control evidence and does not relax the negative T2.7
 routine-branch gate.
 
 ## Evidence limitations

@@ -168,8 +168,10 @@ It still cannot establish:
 - persistent/routine/context separation;
 - causal invariance or calibration to real GPS/timestamp/missingness processes;
 - externally valid unseen-POI or candidate-aware geographic transfer;
-- calibrated uncertainty, privacy, training efficiency, or comparable
-  hardware/reference-scale online-efficiency evidence;
+- selection-dependent calibrated uncertainty or privacy conclusions, training
+  efficiency, or comparable hardware/reference-scale online-efficiency
+  evidence (the bounded T4.1a and T4.3a diagnostic-control surfaces are
+  executable);
 - real-world candidate-aware new-context recommendation utility.
 
 Matched exposure/opportunity/observation and temporary/sustained/schedule
@@ -188,8 +190,9 @@ diagnostic-control evidence only because no representation has the
 `selected_candidate` role; a selection-dependent R11 conclusion remains
 unavailable. T4.4's online benchmark harness is also complete, but its current
 diagnostic-control measurements are hardware-specific and are not comparable
-hardware/reference-scale evidence. The remaining open top-level tasks are T4.1
-uncertainty calibration and T4.3 privacy audits.
+hardware/reference-scale evidence. The remaining open top-level tasks are the
+selection-dependent T4.1 uncertainty-calibration and T4.3 privacy conclusions;
+the bounded T4.1a and T4.3a diagnostic-control surfaces are complete.
 
 ## Recommendation data contract
 
