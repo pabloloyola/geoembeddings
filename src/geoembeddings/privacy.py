@@ -10,7 +10,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import os
 from pathlib import Path
+import tempfile
 from typing import Any, Literal, Mapping, Sequence
 
 import numpy as np
@@ -20,6 +22,7 @@ import torch
 from .artifact_index import SCHEMA_VERSION as EVIDENCE_INDEX_SCHEMA_VERSION
 from .contract import TRUTH_FILES
 from .io import read_json, sha256_file
+from .layout import PairLayout
 from .representation_schema import COMPONENT_NAMES, EXPORT_SCHEMA_VERSION, load_embedding_export
 from .runtime_metadata import RuntimeMetadata
 
@@ -30,6 +33,116 @@ SELECTION_ROLE = "diagnostic_control"
 BASELINE_CHECKPOINT_IDENTITY = "not_applicable"
 PRIVACY_POPULATION_SCHEMA_VERSION = "geoembeddings-privacy-population/1.0"
 PROTECTED_LABEL_SCHEMA_VERSION = "geoembeddings-protected-labels/1.0"
+PRIVACY_AUDIT_SCHEMA_VERSION = "geoembeddings-privacy-audit/1.0"
+
+PRIVACY_AUDIT_SECTIONS = (
+    "threat_model", "inputs", "lineage", "splits", "membership_population",
+    "sensitive_attributes", "attacks", "membership_metrics",
+    "sensitive_probe_metrics", "utility_privacy_axes", "coverage", "exclusions",
+    "selection", "limitations", "command", "timestamps", "runtime_metadata",
+)
+
+
+def _validate_privacy_audit(report: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate the immutable report envelope and prohibited conclusions."""
+    value = dict(report)
+    if value.get("schema_version") != PRIVACY_AUDIT_SCHEMA_VERSION:
+        raise ValueError(f"privacy audit schema_version must be {PRIVACY_AUDIT_SCHEMA_VERSION!r}")
+    missing = [section for section in PRIVACY_AUDIT_SECTIONS if section not in value]
+    if missing:
+        raise ValueError(f"privacy audit is missing required sections: {missing}")
+    prohibited = {"aggregate_score", "aggregate_privacy_score", "aggregate_utility_score", "aggregate_winner", "winner"}
+
+    def inspect(item: Any, path: str = "report") -> None:
+        if isinstance(item, Mapping):
+            found = prohibited.intersection(map(str, item))
+            if found:
+                raise ValueError(f"privacy audit must not emit aggregate scores or winners ({path}: {sorted(found)})")
+            for key, child in item.items():
+                inspect(child, f"{path}.{key}")
+        elif isinstance(item, (list, tuple)):
+            for index, child in enumerate(item):
+                inspect(child, f"{path}[{index}]")
+
+    inspect(value)
+    membership = value["membership_population"]
+    if not isinstance(membership, Mapping):
+        raise ValueError("membership_population must be an object")
+    statistical = membership.get("statistical_baseline")
+    if not isinstance(statistical, Mapping) or statistical.get("status") != "not_applicable":
+        raise ValueError("statistical baseline membership must be not_applicable")
+    # An unsupported analysis is absence of evidence, never a failed or numeric result.
+    for name, result in membership.items():
+        if name == "statistical_baseline" or not isinstance(result, Mapping):
+            continue
+        if result.get("supported") is False and result.get("status") != "unavailable":
+            raise ValueError(f"unsupported membership analysis {name!r} must be unavailable")
+    selection = value["selection"]
+    conclusion = selection.get("selection_dependent_privacy_conclusion") if isinstance(selection, Mapping) else None
+    if conclusion != {"status": "unavailable", "reason": "no_selected_candidate"}:
+        raise ValueError("selection-dependent privacy conclusion must be unavailable: no_selected_candidate")
+    return value
+
+
+def render_privacy_markdown(report: Mapping[str, Any]) -> str:
+    """Render the authoritative JSON content without deriving alternate results."""
+    value = _validate_privacy_audit(report)
+    # Embedding the complete canonical payload makes omissions and drift between
+    # the human and machine views mechanically detectable.
+    payload = json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False)
+    return (
+        "# R12 privacy audit\n\n"
+        "The JSON artifact is authoritative. This document renders the same results. "
+        "No aggregate privacy/utility score or winner is reported.\n\n"
+        "```json\n" + payload + "\n```\n"
+    )
+
+
+def write_privacy_audit(report: Mapping[str, Any], audit_dir: str | Path, *,
+                        overwrite: bool = False) -> tuple[Path, Path]:
+    """Atomically publish canonical JSON and Markdown privacy-audit outputs.
+
+    Both complete byte strings are staged before either destination changes.
+    On any publication failure, prior regular files are restored and newly
+    created output is removed, so callers never observe a partial final pair.
+    """
+    value = _validate_privacy_audit(report)
+    layout = PairLayout.from_path(audit_dir)
+    destinations = (layout.privacy_audit_json, layout.privacy_audit_markdown)
+    if any(path.exists() for path in destinations):
+        if not overwrite:
+            raise FileExistsError("Refusing to overwrite immutable privacy audit")
+        if any(path.exists() and (path.is_symlink() or not path.is_file()) for path in destinations):
+            raise ValueError("--overwrite targets must be regular privacy audit files")
+    contents = (
+        json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        render_privacy_markdown(value),
+    )
+    destinations[0].parent.mkdir(parents=True, exist_ok=True)
+    staged: list[Path] = []
+    originals: list[bytes | None] = [path.read_bytes() if path.exists() else None for path in destinations]
+    try:
+        for destination, content in zip(destinations, contents):
+            fd, name = tempfile.mkstemp(prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent)
+            temporary = Path(name); staged.append(temporary)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(content); handle.flush(); os.fsync(handle.fileno())
+        for temporary, destination in zip(staged, destinations):
+            os.replace(temporary, destination)
+    except BaseException:
+        for destination, original in zip(destinations, originals):
+            try:
+                if original is None:
+                    destination.unlink(missing_ok=True)
+                else:
+                    destination.write_bytes(original)
+            except OSError:
+                pass
+        raise
+    finally:
+        for temporary in staged:
+            temporary.unlink(missing_ok=True)
+    return destinations
 
 
 @dataclass(frozen=True)
