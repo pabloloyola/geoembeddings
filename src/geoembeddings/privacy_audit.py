@@ -15,12 +15,16 @@ from .io import read_json, sha256_file
 from .layout import DatasetLayout, ExperimentLayout, PrivacyEvidenceLayout, UtilityReportLayout
 from .privacy import (BASELINE_CHECKPOINT_IDENTITY, PRIVACY_AUDIT_SCHEMA_VERSION,
                       SUPPORTED_PROTECTED_ATTRIBUTES, PrivacyInput,
-                      authenticate_privacy_inputs, construct_sensitive_probe_population,
+                      authenticate_privacy_inputs, construct_privacy_population,
+                      construct_sensitive_probe_population,
                       load_protected_labels, run_protected_attribute_attacks,
+                      run_privacy_attacks_from_config,
                       write_privacy_audit)
 from .privacy_evaluation import load_privacy_config
 from .representation_schema import load_embedding_export
 from .runtime_metadata import collect_runtime_metadata
+from .user_roles import (PROTOCOL_SCHEMA as USER_ROLE_SCHEMA, assign_users,
+                         assignment_hash, role_summary)
 
 
 def _parameter_count(path: Path) -> int:
@@ -55,6 +59,42 @@ def _declaration(name: str, experiment: ExperimentLayout,
     )
 
 
+def _authenticated_membership(experiment: ExperimentLayout, declaration: PrivacyInput,
+                              evidence_index: Mapping[str, Any]) -> dict[str, bool] | None:
+    """Recover membership only from an indexed, checkpoint-bound role protocol."""
+    path = experiment.training_participation
+    if not path.is_file():
+        return None
+    artifacts = evidence_index.get("artifacts", {})
+    indexed = next((artifacts[key] for key in (str(path), str(path.resolve()))
+                    if key in artifacts), None) if isinstance(artifacts, Mapping) else None
+    if not isinstance(indexed, Mapping) or indexed.get("sha256") != sha256_file(path):
+        return None
+    value = read_json(path)
+    protocol = value.get("user_role_protocol")
+    if (value.get("schema_version") != "geoembeddings-training-participation/1.0"
+            or not isinstance(protocol, Mapping)
+            or protocol.get("schema_version") != USER_ROLE_SCHEMA):
+        return None
+    if value.get("checkpoint_identity", {}).get("sha256") != declaration.checkpoint_identity:
+        return None
+    if value.get("preparation_identity", {}).get("prepared_metadata_sha256") != sha256_file(declaration.prepared_metadata_path):
+        return None
+    assignments = assign_users(declaration.eligible_users, protocol)
+    expected = {
+        "schema_version": USER_ROLE_SCHEMA, "seed": int(protocol["seed"]),
+        "fractions": {name: float(protocol["fractions"][name])
+                      for name in ("target_train", "target_validation", "target_test")},
+        "assignment_sha256": assignment_hash(assignments), "roles": role_summary(assignments),
+    }
+    if dict(protocol) != expected:
+        return None
+    # Validation users selected the checkpoint and are therefore neither clean
+    # members nor clean non-members under the frozen threat model.
+    return {user: role == "target_train" for user, role in assignments.items()
+            if role != "target_validation"}
+
+
 def audit_privacy(*, run_dir: str | Path, experiments: Mapping[str, str | Path],
                   evidence_dir: str | Path, utility_report_dir: str | Path,
                   config_path: str | Path, output_dir: str | Path,
@@ -86,17 +126,21 @@ def audit_privacy(*, run_dir: str | Path, experiments: Mapping[str, str | Path],
     # are independent: export coverage is never repurposed as participation.
     membership: dict[str, Any] = {}
     membership_metrics: dict[str, Any] = {}
+    evidence_value = read_json(evidence.evidence_index)
+    membership_labels: dict[str, dict[str, bool]] = {}
     for identity in authenticated.inputs:
         if identity.kind == "statistical_baseline":
             membership[identity.name] = {"status": "not_applicable", "reason": "no_learned_target_parameters"}
         else:
-            membership[identity.name] = {
-                "supported": False, "status": "unavailable",
-                "reason": "authenticated_training_membership_labels_unavailable",
-            }
-            membership_metrics[identity.name] = {
-                "status": "unavailable", "reason": "authenticated_training_membership_labels_unavailable"
-            }
+            declaration = next(item for item in declarations if item.name == identity.name)
+            labels = _authenticated_membership(layouts[identity.name], declaration, evidence_value)
+            if labels is None:
+                membership[identity.name] = {"supported": False, "status": "unavailable",
+                                             "reason": "authenticated_training_membership_labels_unavailable"}
+                membership_metrics[identity.name] = {"status": "unavailable",
+                                                     "reason": "authenticated_training_membership_labels_unavailable"}
+            else:
+                membership_labels[identity.name] = labels
     exports = {declaration.name: load_embedding_export(declaration.export_path)
                for declaration in declarations}
     common_users = sorted(set.intersection(*(
@@ -113,6 +157,26 @@ def audit_privacy(*, run_dir: str | Path, experiments: Mapping[str, str | Path],
             # the public covariate explicit rather than deriving it from truth.
             "service_coverage_count": 0.0,
         }
+    membership_populations: dict[str, Any] = {}
+    boundaries = {item.name: item.bin_boundaries for item in config.matching_variables}
+    for name, labels in membership_labels.items():
+        eligible = {user: value for user, value in labels.items() if user in common_users}
+        population = construct_privacy_population(
+            exports[name], target_model_lineage=next(item.checkpoint_identity for item in authenticated.inputs if item.name == name),
+            membership_by_user=eligible,
+            provenance_by_user={user: provenance_by_user[user] for user in eligible},
+            cutoff_order=config.cutoff_order, component_order=config.component_order,
+            matching_boundaries=boundaries, audit_seed=config.audit_seed,
+            split_seed=config.split_seed, split_fractions=(config.split.train_fraction,
+                config.split.validation_fraction, config.split.test_fraction),
+            minimum_total=config.support.minimum_total,
+            minimum_per_class=config.support.minimum_per_class,
+            minimum_per_stratum=config.support.minimum_per_stratum,
+        )
+        membership_populations[name] = population
+        membership[name] = {"supported": population.status == "available", "status": population.status,
+                            "reason": population.reason, "user_set_hashes": dict(population.user_set_hashes)}
+        membership_metrics[name] = run_privacy_attacks_from_config(population, None, config)
     fractions = (config.split.train_fraction, config.split.validation_fraction,
                  config.split.test_fraction)
     lineage = authenticated.evidence_index_sha256
@@ -176,7 +240,10 @@ def audit_privacy(*, run_dir: str | Path, experiments: Mapping[str, str | Path],
         "lineage": {"dataset_contract": identities[0]["dataset_contract"],
                     "observed_source_hashes": identities[0]["observed_source_hashes"],
                     "preparation_definition_sha256": identities[0]["preparation_definition_sha256"]},
-        "splits": {"membership": {"status": "unavailable", "reason": "authenticated_training_membership_labels_unavailable"},
+        "splits": {"membership": ({"status": "available", "user_grouped": True,
+                                      "user_set_hashes": dict(next(iter(membership_populations.values())).user_set_hashes)}
+                                     if membership_populations else
+                                    {"status": "unavailable", "reason": "authenticated_training_membership_labels_unavailable"}),
                    "sensitive_probe": {"status": "available", "split_seed": config.split_seed,
                                        "user_grouped": True, "user_set_hashes": dict(reference_population.user_set_hashes)}},
         "membership_population": membership,
@@ -185,11 +252,13 @@ def audit_privacy(*, run_dir: str | Path, experiments: Mapping[str, str | Path],
         "membership_metrics": membership_metrics,
         "sensitive_probe_metrics": sensitive_metrics,
         "utility_privacy_axes": utility_axes,
-        "coverage": {"authenticated_controls": len(identities), "membership_evaluated_controls": 0,
+        "coverage": {"authenticated_controls": len(identities), "membership_evaluated_controls": sum(
+                         result.get("status") == "available" for result in membership_metrics.values()),
                      "sensitive_probe_common_users": len(common_users),
                      "sensitive_probe_supported_attributes": len(supported)},
-        "exclusions": [{"reason": "authenticated_training_membership_labels_unavailable",
-                        "count": sum(item["kind"] == "learned" for item in identities)}],
+        "exclusions": ([{"reason": "authenticated_training_membership_labels_unavailable",
+                         "count": sum(item["kind"] == "learned" for item in identities) - len(membership_labels)}]
+                       if len(membership_labels) < sum(item["kind"] == "learned" for item in identities) else []),
         "selection": {"roles": {item["name"]: item["selection_role"] for item in identities},
                       "selection_dependent_privacy_conclusion": {
                           "status": "unavailable", "reason": "no_selected_candidate"}},
