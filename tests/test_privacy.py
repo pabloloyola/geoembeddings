@@ -5,7 +5,8 @@ import pytest
 import numpy as np
 import yaml
 
-from geoembeddings.privacy import construct_privacy_population
+from geoembeddings.privacy import (PrivacyPopulation, PrivacyPopulationRecord,
+                                   construct_privacy_population, run_privacy_attacks_from_config)
 from geoembeddings.privacy_evaluation import PRIVACY_CONFIG_SCHEMA, load_privacy_config, validate_privacy_config
 from geoembeddings.representation_schema import LoadedEmbeddingExport
 
@@ -101,3 +102,42 @@ def test_population_is_unavailable_without_common_support_and_authenticates_sets
             matching_boundaries={"history": (0, 10)}, audit_seed=1, split_seed=2,
             expected_user_set_hashes={"matched": "changed"},
         )
+
+
+def _attack_population() -> PrivacyPopulation:
+    records = []
+    splits = ["train"] * 12 + ["validation"] * 6 + ["test"] * 6
+    for index, split in enumerate(splits):
+        member = index % 2 == 0
+        records.append(PrivacyPopulationRecord(
+            f"u{index}", member, split, (float(member), float(index % 3)), (0,), (0,),
+            (float(index % 4),), (0,),
+        ))
+    return PrivacyPopulation("test", "available", None, "lineage", ("test",), ("combined",),
+                             ("v0", "v1"), ("history",), tuple(records), (), ())
+
+
+def test_attack_families_report_frozen_test_metrics_and_undefined_values() -> None:
+    result = run_privacy_attacks_from_config(_attack_population(), None, load_privacy_config(CONFIG))
+    assert result["status"] == "available"
+    assert set(result["attacks"]) == {"deterministic_random", "majority_base_rate",
+                                      "provenance_logistic", "vector_logistic",
+                                      "vector_plus_provenance_logistic", "bounded_nonlinear"}
+    vector = result["attacks"]["vector_logistic"]
+    assert vector["test_scoring_passes"] == 1
+    assert vector["preprocessing_fit_split"] == "train"
+    assert vector["selection_split"] == "validation"
+    assert vector["roc_auc"]["value"] == pytest.approx(1.0)
+    assert vector["threshold_rule"] == "score_greater_than_or_equal_to_threshold"
+
+
+def test_sensitive_binary_metrics_and_undefined_auc_are_explicit() -> None:
+    population = _attack_population()
+    labels = {record.user_id: ("a" if record.split == "test" else ("a" if i % 2 else "b"))
+              for i, record in enumerate(population.records)}
+    result = run_privacy_attacks_from_config(population, labels, load_privacy_config(CONFIG),
+                                             task="sensitive_attribute")
+    metric = result["attacks"]["majority_prior"]
+    assert metric["roc_auc"]["value"] is None
+    assert metric["roc_auc"]["undefined_reason"] == "test_split_lacks_both_classes"
+    assert metric["per_class_support"] == {"a": 6, "b": 0}

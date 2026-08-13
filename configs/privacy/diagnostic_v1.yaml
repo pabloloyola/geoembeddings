@@ -58,6 +58,10 @@ sensitive_attributes:
       bin_boundaries: [-1000000, -0.5, 0.5, 1000000]
       labels: [low, medium, high]
 attacks:
+  dimensionality_reduction:
+    enabled: false
+    method: train_fitted_pca
+    components: 32
   linear:
     family: logistic_regression
     regularization: l2

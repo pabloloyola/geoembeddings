@@ -875,6 +875,15 @@ gated by T1.6.
       before an evaluator opens protected labels. No privacy baseline artifact
       exists; the authenticated matched input lineage remains unavailable, so
       this does not make T4.3a executable or complete.
+    - **Attack-family note (2026-08-13):** `geoembeddings.privacy` now provides
+      deterministic random/prior controls, provenance-only, vector-only,
+      vector-plus-provenance regularized logistic attacks, and the YAML-bounded
+      one-hidden-layer nonlinear attack. Attack-train alone fits preprocessing,
+      class weights, and parameters; validation selects hyperparameters and
+      membership thresholds before one test scoring pass. Undefined membership
+      and sensitive-attribute metrics remain explicit. Authenticated report
+      orchestration and matched utility/privacy artifacts remain blockers, so
+      T4.3a stays open.
 
 - [x] **T4.4 — Online incremental-update benchmarks.**
   - **Requirement IDs:** R13.
