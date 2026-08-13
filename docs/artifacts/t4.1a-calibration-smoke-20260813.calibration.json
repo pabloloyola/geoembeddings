@@ -1,0 +1,423 @@
+{
+  "controls": {
+    "capacity_matched_single": {
+      "calibrated": {
+        "coverage_risk": [
+          {
+            "count": 3,
+            "realized_coverage": 0.5,
+            "requested_coverage": 0.5,
+            "risk": 0.1348159398230511,
+            "status": "ok"
+          },
+          {
+            "count": 6,
+            "realized_coverage": 1.0,
+            "requested_coverage": 1.0,
+            "risk": 0.12334090716167201,
+            "status": "ok"
+          }
+        ],
+        "reliability_error_bins": [
+          {
+            "bin": 0,
+            "count": 2,
+            "mean_error": 0.1310105636800092,
+            "mean_uncertainty": 0.23939100821098402,
+            "status": "ok"
+          },
+          {
+            "bin": 1,
+            "count": 2,
+            "mean_error": 0.11663000336712921,
+            "mean_uncertainty": 0.23939100821098402,
+            "status": "ok"
+          },
+          {
+            "bin": 2,
+            "count": 2,
+            "mean_error": 0.12238215443787759,
+            "mean_uncertainty": 0.23939100821098402,
+            "status": "ok"
+          }
+        ]
+      },
+      "coverage": {
+        "calibration_users_used": 6,
+        "eligible_users": 12,
+        "excluded_users": [],
+        "test_users_used": 6
+      },
+      "fitted_calibration_parameters": {
+        "intercept": 0.23939100821098402,
+        "method": "nonnegative_monotone_affine_least_squares",
+        "slope": 0.0
+      },
+      "identity": {
+        "dense_export": "/tmp/t41a-smoke/capacity_matched_single/dense_embeddings.npz",
+        "dense_export_sha256": "6bf29c86ff8c16595c4010fbd42b9157e151bd1d73ff8a6099406075b79d6570",
+        "experiment_dir": "/tmp/t41a-smoke/capacity_matched_single",
+        "name": "capacity_matched_single",
+        "prepared_metadata_sha256": "14492656a2426c3bd4c68b5bae758e3cbb6cd2fea8c0712653efc654eb283336",
+        "source_hashes": {
+          "users_observed.csv.gz": "cde1925e8f892f5ddaadebfecbdd060398f5d76d3d19224f60d08343d3bbde20"
+        }
+      },
+      "raw": {
+        "coverage_risk": [
+          {
+            "count": 3,
+            "realized_coverage": 0.5,
+            "requested_coverage": 0.5,
+            "risk": 0.12215811812994863,
+            "status": "ok"
+          },
+          {
+            "count": 6,
+            "realized_coverage": 1.0,
+            "requested_coverage": 1.0,
+            "risk": 0.12334090716167201,
+            "status": "ok"
+          }
+        ],
+        "reliability_error_bins": [
+          {
+            "bin": 0,
+            "count": 2,
+            "mean_error": 0.12287195589841128,
+            "mean_uncertainty": 0.0012931955968761588,
+            "status": "ok"
+          },
+          {
+            "bin": 1,
+            "count": 2,
+            "mean_error": 0.11392048639067137,
+            "mean_uncertainty": 0.003239332988402307,
+            "status": "ok"
+          },
+          {
+            "bin": 2,
+            "count": 2,
+            "mean_error": 0.13323027919593336,
+            "mean_uncertainty": 0.004025125933365577,
+            "status": "ok"
+          }
+        ]
+      },
+      "role": "diagnostic_control"
+    },
+    "factorized_pc": {
+      "calibrated": {
+        "coverage_risk": [
+          {
+            "count": 3,
+            "realized_coverage": 0.5,
+            "requested_coverage": 0.5,
+            "risk": 0.1818710519011539,
+            "status": "ok"
+          },
+          {
+            "count": 6,
+            "realized_coverage": 1.0,
+            "requested_coverage": 1.0,
+            "risk": 0.15874260613993402,
+            "status": "ok"
+          }
+        ],
+        "reliability_error_bins": [
+          {
+            "bin": 0,
+            "count": 2,
+            "mean_error": 0.1983297714353812,
+            "mean_uncertainty": 0.13291276838638116,
+            "status": "ok"
+          },
+          {
+            "bin": 1,
+            "count": 2,
+            "mean_error": 0.14795220094861566,
+            "mean_uncertainty": 0.14236196845716076,
+            "status": "ok"
+          },
+          {
+            "bin": 2,
+            "count": 2,
+            "mean_error": 0.12994584603580525,
+            "mean_uncertainty": 0.1689571228173214,
+            "status": "ok"
+          }
+        ]
+      },
+      "coverage": {
+        "calibration_users_used": 6,
+        "eligible_users": 12,
+        "excluded_users": [],
+        "test_users_used": 6
+      },
+      "fitted_calibration_parameters": {
+        "intercept": 0.09030504188925334,
+        "method": "nonnegative_monotone_affine_least_squares",
+        "slope": 20.044688097018177
+      },
+      "identity": {
+        "dense_export": "/tmp/t41a-smoke/factorized_pc/dense_embeddings.npz",
+        "dense_export_sha256": "435c07b1ca222756b248e53ce1f4a038deeaea668898330c8281c50c65601f37",
+        "experiment_dir": "/tmp/t41a-smoke/factorized_pc",
+        "name": "factorized_pc",
+        "prepared_metadata_sha256": "14492656a2426c3bd4c68b5bae758e3cbb6cd2fea8c0712653efc654eb283336",
+        "source_hashes": {
+          "users_observed.csv.gz": "cde1925e8f892f5ddaadebfecbdd060398f5d76d3d19224f60d08343d3bbde20"
+        }
+      },
+      "raw": {
+        "coverage_risk": [
+          {
+            "count": 3,
+            "realized_coverage": 0.5,
+            "requested_coverage": 0.5,
+            "risk": 0.1818710519011539,
+            "status": "ok"
+          },
+          {
+            "count": 6,
+            "realized_coverage": 1.0,
+            "requested_coverage": 1.0,
+            "risk": 0.15874260613993402,
+            "status": "ok"
+          }
+        ],
+        "reliability_error_bins": [
+          {
+            "bin": 0,
+            "count": 2,
+            "mean_error": 0.1983297714353812,
+            "mean_uncertainty": 0.0021256367916977505,
+            "status": "ok"
+          },
+          {
+            "bin": 1,
+            "count": 2,
+            "mean_error": 0.14795220094861566,
+            "mean_uncertainty": 0.0025970434818415227,
+            "status": "ok"
+          },
+          {
+            "bin": 2,
+            "count": 2,
+            "mean_error": 0.12994584603580525,
+            "mean_uncertainty": 0.003923836606854871,
+            "status": "ok"
+          }
+        ]
+      },
+      "role": "diagnostic_control"
+    },
+    "statistical_baseline": {
+      "calibrated": {
+        "coverage_risk": [
+          {
+            "count": 3,
+            "realized_coverage": 0.5,
+            "requested_coverage": 0.5,
+            "risk": 0.1334287287489283,
+            "status": "ok"
+          },
+          {
+            "count": 6,
+            "realized_coverage": 1.0,
+            "requested_coverage": 1.0,
+            "risk": 0.13704891412802472,
+            "status": "ok"
+          }
+        ],
+        "reliability_error_bins": [
+          {
+            "bin": 0,
+            "count": 2,
+            "mean_error": 0.12412731291555246,
+            "mean_uncertainty": 0.1528350575571149,
+            "status": "ok"
+          },
+          {
+            "bin": 1,
+            "count": 2,
+            "mean_error": 0.16454286698928883,
+            "mean_uncertainty": 0.1528350575571149,
+            "status": "ok"
+          },
+          {
+            "bin": 2,
+            "count": 2,
+            "mean_error": 0.12247656247923286,
+            "mean_uncertainty": 0.1528350575571149,
+            "status": "ok"
+          }
+        ]
+      },
+      "coverage": {
+        "calibration_users_used": 6,
+        "eligible_users": 12,
+        "excluded_users": [],
+        "test_users_used": 6
+      },
+      "fitted_calibration_parameters": {
+        "intercept": 0.1528350575571149,
+        "method": "nonnegative_monotone_affine_least_squares",
+        "slope": 0.0
+      },
+      "identity": {
+        "dense_export": "/tmp/t41a-smoke/statistical_baseline/dense_statistical_baseline.npz",
+        "dense_export_sha256": "3cc5292446855668bde545bd60f9af87de06390921b282a0b86e1d2ba4eb1866",
+        "experiment_dir": "/tmp/t41a-smoke/statistical_baseline",
+        "name": "statistical_baseline",
+        "prepared_metadata_sha256": "14492656a2426c3bd4c68b5bae758e3cbb6cd2fea8c0712653efc654eb283336",
+        "source_hashes": {
+          "users_observed.csv.gz": "cde1925e8f892f5ddaadebfecbdd060398f5d76d3d19224f60d08343d3bbde20"
+        }
+      },
+      "raw": {
+        "coverage_risk": [
+          {
+            "count": 3,
+            "realized_coverage": 0.5,
+            "requested_coverage": 0.5,
+            "risk": 0.12468783312534852,
+            "status": "ok"
+          },
+          {
+            "count": 6,
+            "realized_coverage": 1.0,
+            "requested_coverage": 1.0,
+            "risk": 0.1370489141280247,
+            "status": "ok"
+          }
+        ],
+        "reliability_error_bins": [
+          {
+            "bin": 0,
+            "count": 2,
+            "mean_error": 0.1110159694801828,
+            "mean_uncertainty": 0.0018955828078380458,
+            "status": "ok"
+          },
+          {
+            "bin": 1,
+            "count": 2,
+            "mean_error": 0.1263768438060799,
+            "mean_uncertainty": 0.002602986789912123,
+            "status": "ok"
+          },
+          {
+            "bin": 2,
+            "count": 2,
+            "mean_error": 0.17375392909781145,
+            "mean_uncertainty": 0.002841842186623536,
+            "status": "ok"
+          }
+        ]
+      },
+      "role": "diagnostic_control"
+    }
+  },
+  "inputs": {
+    "capacity_matched_single": {
+      "dense_export": "/tmp/t41a-smoke/capacity_matched_single/dense_embeddings.npz",
+      "dense_export_sha256": "6bf29c86ff8c16595c4010fbd42b9157e151bd1d73ff8a6099406075b79d6570",
+      "experiment_dir": "/tmp/t41a-smoke/capacity_matched_single",
+      "prepared_metadata_sha256": "14492656a2426c3bd4c68b5bae758e3cbb6cd2fea8c0712653efc654eb283336",
+      "source_hashes": {
+        "users_observed.csv.gz": "cde1925e8f892f5ddaadebfecbdd060398f5d76d3d19224f60d08343d3bbde20"
+      }
+    },
+    "factorized_pc": {
+      "dense_export": "/tmp/t41a-smoke/factorized_pc/dense_embeddings.npz",
+      "dense_export_sha256": "435c07b1ca222756b248e53ce1f4a038deeaea668898330c8281c50c65601f37",
+      "experiment_dir": "/tmp/t41a-smoke/factorized_pc",
+      "prepared_metadata_sha256": "14492656a2426c3bd4c68b5bae758e3cbb6cd2fea8c0712653efc654eb283336",
+      "source_hashes": {
+        "users_observed.csv.gz": "cde1925e8f892f5ddaadebfecbdd060398f5d76d3d19224f60d08343d3bbde20"
+      }
+    },
+    "statistical_baseline": {
+      "dense_export": "/tmp/t41a-smoke/statistical_baseline/dense_statistical_baseline.npz",
+      "dense_export_sha256": "3cc5292446855668bde545bd60f9af87de06390921b282a0b86e1d2ba4eb1866",
+      "experiment_dir": "/tmp/t41a-smoke/statistical_baseline",
+      "prepared_metadata_sha256": "14492656a2426c3bd4c68b5bae758e3cbb6cd2fea8c0712653efc654eb283336",
+      "source_hashes": {
+        "users_observed.csv.gz": "cde1925e8f892f5ddaadebfecbdd060398f5d76d3d19224f60d08343d3bbde20"
+      }
+    }
+  },
+  "limitations": [
+    "diagnostic controls only; does not complete selection-dependent T4.1",
+    "factorized branch names do not establish semantics",
+    "synthetic calibration may not transfer to real users"
+  ],
+  "requirement_id": "R10",
+  "resampling": {
+    "method": "seeded_window_bootstrap",
+    "minimum_windows": 2,
+    "replacement": true,
+    "replicates": 40,
+    "sampling_unit": "dense observed-history window",
+    "seed": 20260813
+  },
+  "schema_version": "geoembeddings-diagnostic-calibration/1.0",
+  "selection": {
+    "aggregate_winner": null,
+    "role": "diagnostic_control",
+    "roles_immutable": true,
+    "selected_candidate_conclusion": {
+      "reason": "no_selected_candidate_after_negative_T2.7_gate",
+      "status": "unavailable"
+    }
+  },
+  "split": {
+    "algorithm": "sha256-seeded-user-order/1.0",
+    "calibration_users": {
+      "count": 6,
+      "sha256": "67e5150cc0836d54f75bfea3718421f4ea3a99c7cef88c6f3b9f2dd8f03abbd1",
+      "users": [
+        "u04",
+        "u05",
+        "u06",
+        "u08",
+        "u09",
+        "u10"
+      ]
+    },
+    "overlap_count": 0,
+    "seed": 20260813,
+    "test_users": {
+      "count": 6,
+      "sha256": "c86c5aa078d3f7d7e079b6015323ba6f19016e834ccf29a323f984a4af02b04b",
+      "users": [
+        "u00",
+        "u01",
+        "u02",
+        "u03",
+        "u07",
+        "u11"
+      ]
+    }
+  },
+  "task_id": "T4.1a",
+  "user_set": {
+    "count": 12,
+    "sha256": "1928cac917604ad797102e9210e371fcd0bb85c036a7943ce69914bb962fbf7e",
+    "users": [
+      "u00",
+      "u01",
+      "u02",
+      "u03",
+      "u04",
+      "u05",
+      "u06",
+      "u07",
+      "u08",
+      "u09",
+      "u10",
+      "u11"
+    ]
+  }
+}

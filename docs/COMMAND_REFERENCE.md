@@ -1169,8 +1169,32 @@ reports are rejected unless `--overwrite` is explicit. Schema
 representation kind, source hashes, preparation and cutoff identities,
 resampling settings, per-user sample counts, insufficient users/bins, seeded
 cutoff-bootstrap embedding variance, reliability-error bins, and coverage-risk
-points. This is a repeatability diagnostic over the three frozen cutoffs, not
-calibrated real-world uncertainty; event/window bootstrap is future work.
+points. This remains a repeatability diagnostic over the three frozen cutoffs,
+not calibrated uncertainty; the separate T4.1a command below uses window
+bootstrap and held-out users.
+
+## Diagnostic-control calibration (`calibrate-reliability`)
+
+```bash
+uv run geoembed calibrate-reliability --run-dir RUN_DIR \
+  --experiment-dir statistical_baseline=BASELINE_EXPERIMENT \
+  --experiment-dir capacity_matched_single=SINGLE_EXPERIMENT \
+  --experiment-dir factorized_pc=FACTORIZED_EXPERIMENT \
+  --output-dir CALIBRATION_EXPERIMENT
+```
+
+The command writes the immutable
+`CALIBRATION_EXPERIMENT/reliability/calibration.json`. All supplied controls
+must have identical users and authenticated observed-source, preparation, and
+dense-export identities. Eligible factorized loss/branch ablations may be
+added with repeated `--experiment-dir NAME=ROOT` arguments. The frozen seeded
+user split is shared by every control and disjoint between calibration and
+test. Uncertainty comes from replacement bootstrap samples of chronological
+observed-history dense windows; the last window is reserved as the realized
+error target. Calibration parameters are fit only on calibration users, while
+raw/calibrated reliability bins and coverage-risk curves are reported only on
+test users. Every role remains `diagnostic_control`; there is no aggregate
+winner and no selected-candidate conclusion.
 
 ## Offline and online benchmarks (`benchmark`)
 

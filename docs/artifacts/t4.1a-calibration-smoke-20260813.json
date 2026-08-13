@@ -1,0 +1,18 @@
+{
+  "artifact": {
+    "bytes": 12737,
+    "path": "docs/artifacts/t4.1a-calibration-smoke-20260813.calibration.json",
+    "sha256": "ca158b39ae2d5e01a72e77b1ea9f74de666af651ab6bdd8c826936f5d3b75b5d"
+  },
+  "command": "uv run geoembed calibrate-reliability --run-dir /tmp/t41a-smoke/run --experiment-dir statistical_baseline=/tmp/t41a-smoke/statistical_baseline --experiment-dir capacity_matched_single=/tmp/t41a-smoke/capacity_matched_single --experiment-dir factorized_pc=/tmp/t41a-smoke/factorized_pc --config /tmp/t41a-smoke/config.yaml --output-dir /tmp/t41a-smoke/output",
+  "controls": [
+    "capacity_matched_single",
+    "factorized_pc",
+    "statistical_baseline"
+  ],
+  "schema_version": "geoembeddings-evidence-index/1.0",
+  "scope": "small synthetic execution/contract smoke; no scientific or selection conclusion",
+  "seed": 20260813,
+  "selection_conclusion": "unavailable",
+  "task_id": "T4.1a"
+}

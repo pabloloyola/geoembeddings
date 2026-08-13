@@ -44,9 +44,11 @@ the old modeling path, but recommendation consumers must require 2.0 tables.
   training with integrity-gated protected regret/probability-recovery
   evaluation, and T3.7 observed-only frozen seen/unseen region/POI and
   early/late slices. T3.7 has no truth input and cannot report utility regret.
-- Seeded three-cutoff reliability/repeatability evaluation and an observed-only
-  frozen-export/offline-evaluation benchmark. These are not calibrated
-  uncertainty or hardware-normalized online/training benchmarks.
+- Seeded three-cutoff reliability/repeatability evaluation plus T4.1a
+  held-out-user window-bootstrap calibration for immutable diagnostic controls,
+  and an observed-only frozen-export/offline-evaluation benchmark. No selected
+  candidate exists, so selection-dependent calibrated uncertainty and
+  hardware-normalized online/training benchmarks remain unavailable.
 - The T4.2 nonstationarity audit authenticates matched no-change, temporary,
   and sustained change reports and reports adaptation, recovery, forgetting,
   permanent drift, uncertainty, censoring, exclusions, and coverage separately.
@@ -84,7 +86,7 @@ accepted matched evidence, or external validity remain absent.
 | R7 | partial | `robustness`; `simulate-pair --intervention observation`; `evaluate-pair` | Deterministic corruptions and controlled observation pairs are executable. They are not calibration to real GPS, timestamp, or missingness processes. |
 | R8 | partial | `evaluate --transfer`; `evaluate-ranking` | Held-out-region/geohash diagnostics and T3.7 frozen seen/unseen region/POI plus early/late observed slices report explicit coverage. T3.7 cannot report utility regret, and reference-scale and external geographic evidence remain absent. |
 | R9 | partial | dataset 2.0 simulation/validation; `rank`; `evaluate-ranking`; protected `evaluate-pair` | T3.4 controls, T3.5 frozen ranking, T3.6 exposure-aware training/protected evaluation, and T3.7 observed transfer slices are executable. Protected regret/probability recovery require pair authentication; T3.7 cannot report regret. One small synthetic T3.5 lineage is archived, but reference-scale, real-world causal, and external-validity evidence are absent. |
-| R10 | partial | `evaluate --reliability` | Seeded cutoff-bootstrap variance, reliability-error bins, and coverage-risk diagnostics are executable. This is repeatability over three cutoffs, not calibrated uncertainty; T4.1 remains pending. |
+| R10 | partial | `evaluate --reliability`; `calibrate-reliability` | Seeded cutoff repeatability remains distinct from T4.1a's held-out-user window bootstrap. Raw/calibrated reliability bins and coverage-risk curves are executable for authenticated diagnostic controls, but no selected candidate exists and selection-dependent T4.1 remains pending. |
 | R11 | partial | `simulate-pair --intervention {temporary-trip,sustained-preference}`; `evaluate-change`; `audit-nonstationarity` | T4.2 is complete: authenticated matched-control adaptation, recovery, forgetting, permanent drift, uncertainty, coverage, and censoring are executable in the simulator. Because no representation has the `selected_candidate` role, the audit currently provides diagnostic-control evidence only and no selection-dependent or external nonstationarity conclusion follows. |
 | R12 | pending | — | Membership and sensitive-attribute/privacy audit harnesses remain unimplemented. |
 | R13 | partial | `benchmark` | Frozen artifact work plus atomic cold-start, steady single-event, frozen batch, and serialization online workloads are executable for baseline and learned diagnostic controls with mandatory recomputation. Training and hardware-normalized benchmarks remain pending. |
