@@ -255,3 +255,25 @@ Every result report should include:
   reproduce both representations under one preparation contract.
 - If a requirement cannot be measured from existing exports, extend exports or
   mark it unavailable. Do not infer it from unrelated metrics.
+# Diagnostic target-user role protocol
+
+`configs/embedding/user_role_diagnostic_v2.yaml` opts into preparation schema
+`geoembeddings-preparation/2.0` and the seeded
+`geoembeddings-user-role-protocol/1.0`. It canonically assigns observed users to
+disjoint `target_train`, `target_validation`, and `target_test` roles before
+fitting. Temporal training, checkpoint-selection, and test targets are then
+restricted to their declared role. Vocabularies and normalization use only
+target-training users' events at or before `train_end`; the frozen encoder may
+encode target-test histories, but those histories never refit preprocessing or
+model parameters.
+
+Preparation, checkpoint, export, and participation lineage carry counts and
+canonical user-set hashes. Every consuming stage recomputes the seeded roles
+and rejects changed observed sources, configuration drift, or post-hoc role
+reassignment. Users who fit preprocessing are named preprocessing participants
+and are not clean whole-pipeline non-members. Configurations without the role
+section retain the readable temporal-only preparation/1.0 behavior.
+
+This split exists only to make the diagnostic privacy threat model executable.
+Its configured fractions are not evidence about deployment membership
+prevalence and must not be described as such.

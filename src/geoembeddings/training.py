@@ -128,6 +128,7 @@ def train_model(
                     "preparation_identity": {
                         "prepared_metadata_sha256": sha256_file(prepared_metadata_path),
                         "source_files": dict(prepared_metadata["source_files"]),
+                        "user_role_protocol": prepared_metadata.get("user_role_protocol"),
                     },
                 },
                 checkpoint_path,
@@ -153,6 +154,7 @@ def train_model(
             "source_files": dict(prepared_metadata["source_files"]),
             "train_end": str(prepared_metadata["train_end"]),
             "validation_end": str(prepared_metadata["validation_end"]),
+            "user_role_protocol": prepared_metadata.get("user_role_protocol"),
         },
         "artifact_lineage": {
             "checkpoint_sha256": sha256_file(checkpoint_path),
@@ -174,7 +176,8 @@ def train_model(
             "eligible_training_windows": "A user is included iff at least one observed target event is in the train split and has min_history_events strictly earlier observed events.",
             "validation_checkpoint_selection_windows": "A user is included iff at least one observed target event is in the validation split and has min_history_events strictly earlier observed events.",
             "train_fitted_preprocessing": "Users with at least one observed event at or before train_end; vocabularies and normalization consume those events only.",
-            "exported_only_after_checkpoint_freezing": "Users with an observed history eligible for a named cutoff export but no eligible train or validation target window; these users do not update or select the checkpoint.",
+            "exported_only_after_checkpoint_freezing": "Under preparation/2.0 these are declared target-test users encoded by the frozen checkpoint; their histories do not fit preprocessing, update parameters, or select the checkpoint.",
+            "preprocessing_caveat": "Preprocessing participants fit vocabularies or normalization and must not be described as clean whole-pipeline non-members.",
             "exclusions": "Export availability, cutoff presence, test windows, and evaluator/probe splits never imply training or checkpoint-selection participation.",
         },
         "roles": participation_roles(train_dataset, validation_dataset),
@@ -186,6 +189,7 @@ def train_model(
             "train_end": str(prepared_metadata["train_end"]),
             "validation_end": str(prepared_metadata["validation_end"]),
         },
+        "user_role_protocol": prepared_metadata.get("user_role_protocol"),
         "configuration_sha256": _canonical_config_hash(config),
         "checkpoint_identity": {
             "path": checkpoint_path.name,

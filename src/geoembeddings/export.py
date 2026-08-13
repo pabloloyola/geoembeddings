@@ -13,6 +13,7 @@ from .io import read_json, sha256_file
 from .model import build_model
 from .representation_schema import COMPONENT_NAMES, EXPORT_SCHEMA_VERSION
 from .training import _checkpoint_categorical_fields, resolve_device
+from .user_roles import protocol_config
 
 
 def export_embeddings(
@@ -27,6 +28,8 @@ def export_embeddings(
 ) -> dict[str, Any]:
     device = resolve_device(str(config["training"].get("device", "auto")))
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    if protocol_config(config) != protocol_config(checkpoint["config"]):
+        raise ValueError("Export user-role configuration drifted from the frozen checkpoint")
     dataset = UserCutoffDataset(observed_dir, prepared_dir, checkpoint["config"], events=events,
                                 min_history_events=min_history_events)
     model = build_model(
@@ -82,6 +85,7 @@ def export_embeddings(
         "users": len(set(user_ids)),
         "embedding_dim": int(matrix.shape[1]),
         "cutoffs": sorted(set(cutoffs)),
+        "user_role_protocol": dataset.base.metadata.get("user_role_protocol"),
     }
 
 
@@ -97,6 +101,8 @@ def export_dense_embeddings(
     """Export event-aligned histories using observed timestamps and no truth labels."""
     device = resolve_device(str(config["training"].get("device", "auto")))
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    if protocol_config(config) != protocol_config(checkpoint["config"]):
+        raise ValueError("Export user-role configuration drifted from the frozen checkpoint")
     dataset = DenseUserCutoffDataset(
         observed_dir, prepared_dir, checkpoint["config"], event_stride=event_stride
     )
@@ -162,6 +168,7 @@ def export_dense_embeddings(
         "event_stride": event_stride,
         "cutoff_kinds": sorted(set(cutoff_kinds)),
         "information_boundary": "observed/ only; protected episode labels are not exported",
+        "user_role_protocol": dataset.base.metadata.get("user_role_protocol"),
     }
 
 
@@ -202,4 +209,6 @@ def _export_metadata(
         "validation_end": np.asarray(str(prepared["validation_end"])),
         "export_cutoffs": np.asarray(cutoffs, dtype=str),
         "compatibility": np.asarray("embedding aliases component_combined"),
+        "user_role_protocol": np.asarray(__import__("json").dumps(
+            prepared.get("user_role_protocol"), sort_keys=True, separators=(",", ":"))),
     }
