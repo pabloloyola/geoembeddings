@@ -6,7 +6,9 @@ import numpy as np
 import yaml
 
 from geoembeddings.privacy import (PrivacyPopulation, PrivacyPopulationRecord,
-                                   construct_privacy_population, run_privacy_attacks_from_config)
+                                   construct_privacy_population, run_privacy_attacks_from_config,
+                                   seeded_matched_representation_delta_bootstrap,
+                                   seeded_stratified_user_bootstrap)
 from geoembeddings.privacy_evaluation import PRIVACY_CONFIG_SCHEMA, load_privacy_config, validate_privacy_config
 from geoembeddings.representation_schema import LoadedEmbeddingExport
 
@@ -141,3 +143,52 @@ def test_sensitive_binary_metrics_and_undefined_auc_are_explicit() -> None:
     assert metric["roc_auc"]["value"] is None
     assert metric["roc_auc"]["undefined_reason"] == "test_split_lacks_both_classes"
     assert metric["per_class_support"] == {"a": 6, "b": 0}
+
+
+def test_seeded_user_bootstrap_is_deterministic_and_preserves_classes() -> None:
+    users = [f"u{i}" for i in range(12)]
+    labels = np.asarray([i % 2 for i in range(12)])
+    scores = labels * 0.7 + np.asarray([i % 3 for i in range(12)]) * 0.05
+    strata = [(i % 2, i % 3) for i in range(12)]
+    auc = lambda y, score: float(np.mean(score[y == 1]) - np.mean(score[y == 0]))
+    first = seeded_stratified_user_bootstrap(
+        users, labels, scores, strata=strata, metric=auc, replicates=100, seed=91,
+    )
+    second = seeded_stratified_user_bootstrap(
+        list(reversed(users)), labels[::-1], scores[::-1], strata=list(reversed(strata)),
+        metric=auc, replicates=100, seed=91,
+    )
+    assert first == second
+    assert first["interval"] == second["interval"]
+    assert first["successful_replicates"] == 100
+    assert first["degenerate_replicates"] == first["excluded_replicates"] == 0
+    assert first["requested_replicates"] == first["replicate_count"] == 100
+    assert first["confidence_level"] == 0.95
+
+
+def test_matched_delta_bootstrap_resamples_identical_users_deterministically() -> None:
+    users = [f"u{i}" for i in range(10)]
+    labels = np.asarray([i % 2 for i in range(10)])
+    reference = labels * 0.4 + np.arange(10) * 0.01
+    candidate = reference + labels * 0.2
+    metric = lambda y, score: float(np.mean(score[y == 1]) - np.mean(score[y == 0]))
+    kwargs = dict(reference="baseline", strata=labels, metric=metric,
+                  replicates=80, seed=1234, confidence_level=0.95)
+    first = seeded_matched_representation_delta_bootstrap(
+        users, labels, {"baseline": reference, "learned": candidate}, **kwargs,
+    )
+    second = seeded_matched_representation_delta_bootstrap(
+        users, labels, {"baseline": reference, "learned": candidate}, **kwargs,
+    )
+    assert first == second
+    assert first["deltas"]["learned"]["point_estimate"] == pytest.approx(0.2)
+    assert first["deltas"]["learned"]["interval"] == pytest.approx([0.2, 0.2])
+
+
+def test_primary_attack_metrics_include_frozen_bootstrap_protocol() -> None:
+    result = run_privacy_attacks_from_config(_attack_population(), None, load_privacy_config(CONFIG))
+    bootstrap = result["attacks"]["vector_logistic"]["roc_auc"]["bootstrap"]
+    assert bootstrap["seed"] == 20260818
+    assert bootstrap["method"] == "stratified_user_percentile"
+    assert bootstrap["replicate_count"] == 1000
+    assert bootstrap["successful_replicates"] == 1000

@@ -884,6 +884,12 @@ gated by T1.6.
       and sensitive-attribute metrics remain explicit. Authenticated report
       orchestration and matched utility/privacy artifacts remain blockers, so
       T4.3a stays open.
+    - **Bootstrap note (2026-08-13):** primary attack metrics now use the frozen
+      seeded stratified user-percentile protocol, preserving whole users and
+      class/matching strata while reporting successful, degenerate, and
+      excluded replicates. The shared utility also computes paired control
+      deltas from identical resampled users. Full audit-report orchestration and
+      matched utility/privacy artifacts remain blockers, so T4.3a stays open.
     - **Protected-label note (2026-08-13):** the evaluator now gates canonical
       `truth/user_latents.csv.gz` loading on successful representation
       authentication and implements a small code-versioned attribute allowlist.
