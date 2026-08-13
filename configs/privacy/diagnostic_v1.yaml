@@ -1,0 +1,87 @@
+schema_version: geoembeddings-privacy-diagnostic-config/1.0
+seeds:
+  audit: 20260813
+  split: 20260814
+membership:
+  unit: target_encoder_training_user
+  member_definition: contributed_at_least_one_eligible_training_event_or_window
+  nonmember_definition: same_lineage_user_excluded_from_parameter_fitting_and_checkpoint_selection
+  statistical_baseline:
+    training_membership_status: not_applicable
+    reason: no_learned_target_parameters
+features:
+  cutoff_order: [train_end, validation_end, test_end]
+  component_order: [combined, persistent, context]
+  construction: concatenate_cutoff_then_component
+  missingness: append_binary_mask
+matching:
+  without_replacement: true
+  variables:
+    - name: history_event_count
+      bin_boundaries: [0, 10, 30, 100, 1000000000]
+    - name: cutoff_availability_count
+      bin_boundaries: [0, 1, 2, 3, 4]
+    - name: service_coverage_count
+      bin_boundaries: [0, 1, 2, 3, 4, 5]
+splits:
+  train_fraction: 0.60
+  validation_fraction: 0.20
+  test_fraction: 0.20
+support:
+  minimum_total: 100
+  minimum_per_class: 20
+  minimum_per_stratum: 10
+  minimum_sensitive_label_cell: 20
+sensitive_attributes:
+  - name: age_group
+    source: evaluator_truth
+    derivation:
+      version: age-group-fixed-edges/1.0
+      method: fixed_edges
+      source_field: age
+      bin_boundaries: [18, 30, 45, 65, 121]
+      labels: ["18_29", "30_44", "45_64", "65_plus"]
+  - name: household_type
+    source: evaluator_truth
+    derivation:
+      version: household-type-identity/1.0
+      method: categorical_mapping
+      source_field: household_type
+      categories: [single, couple, family]
+      labels: [single, couple, family]
+  - name: leisure_preference_group
+    source: evaluator_truth
+    derivation:
+      version: leisure-preference-fixed-edges/1.0
+      method: fixed_edges
+      source_field: leisure_preference
+      bin_boundaries: [-1000000, -0.5, 0.5, 1000000]
+      labels: [low, medium, high]
+attacks:
+  linear:
+    family: logistic_regression
+    regularization: l2
+    inverse_regularization_strengths: [0.01, 0.1, 1.0, 10.0]
+  nonlinear:
+    family: one_hidden_layer_mlp
+    hidden_units: [16, 32]
+    maximum_parameters: 10000
+    epochs: 50
+    tuning_budget: 4
+imbalance:
+  class_weighting: inverse_frequency_from_attack_train
+  secondary_one_to_one:
+    enabled: true
+    policy: deterministic_downsample_without_replacement
+    seeds: [20260815, 20260816, 20260817]
+bootstrap:
+  method: stratified_user_percentile
+  replicates: 1000
+  confidence_level: 0.95
+  seed: 20260818
+reporting:
+  primary_endpoints:
+    membership: test_roc_auc
+    sensitive_attribute: test_macro_f1
+  aggregate_selection: prohibited
+  aggregate_winner: null
