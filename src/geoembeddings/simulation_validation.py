@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .contract import OBSERVED_FILES, TRUTH_FILES, validate_identity_manifest
-from .simulator import RANDOM_STREAM_NAMES, identity_set_hash
+from .simulator import RANDOM_STREAM_NAMES, haversine_km, identity_set_hash
 
 
 TABLES = {
@@ -83,14 +83,6 @@ def pearson(xs: list[float], ys: list[float]) -> float:
     numerator = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
     denominator = math.sqrt(sum((x - mx) ** 2 for x in xs) * sum((y - my) ** 2 for y in ys))
     return numerator / denominator if denominator else 0.0
-
-
-def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlambda = math.radians(lon2 - lon1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlambda / 2) ** 2
-    return 6371.0 * 2 * math.atan2(math.sqrt(a), math.sqrt(max(0.0, 1.0 - a)))
 
 
 def percentile(values: list[float], fraction: float) -> float:
