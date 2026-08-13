@@ -32,6 +32,18 @@ class DatasetLayout:
     def truth(self) -> Path:
         return self.root / "truth"
 
+    def observed_file(self, name: str) -> Path:
+        """Resolve a named public table without duplicating contract filenames."""
+        if name not in OBSERVED_FILES:
+            raise KeyError(f"Unknown observed table: {name}")
+        return self.observed / OBSERVED_FILES[name]
+
+    def truth_file(self, name: str) -> Path:
+        """Resolve a named evaluator-only table without duplicating filenames."""
+        if name not in TRUTH_FILES:
+            raise KeyError(f"Unknown truth table: {name}")
+        return self.truth / TRUTH_FILES[name]
+
     @property
     def user_latents_truth(self) -> Path:
         """Canonical evaluator-only protected-label source."""

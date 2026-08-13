@@ -99,33 +99,34 @@ EXPERIMENT_DIR/
     └── embedding_comparison.md
 ```
 
-## Observed trajectory explorer
+## Folium trajectory explorer
 
-The standalone explorer is an optional visualization script rather than a
-`geoembed` pipeline stage. It reads only the canonical public demographics and
-events tables below `RUN_DIR/observed/`, remains usable with a noninteractive
-Matplotlib backend, and does not modify immutable run artifacts:
+The standalone evaluator visualization resolves every table through
+`DatasetLayout`. By default it opens only public tables under `observed/`; the
+protected latent trajectory and home/work layers require the explicit
+`--include-truth` evaluator switch (anchors also require `--include-anchors`).
 
 ```bash
 uv run --extra viz python scripts/kanto_trajectory_explorer.py \
   --run-dir runs/local_baseline_50u_7d \
-  --household-type family --service location --observation-mode passive \
-  --start-date 2026-01-02 --end-date 2026-01-05 \
-  --color-by time --max-gap 4h --max-trajectories 75 \
-  --output outputs/local_family_trajectories.png
+  --age-group 20-29 --service location --region tokyo --date 2026-01-02 \
+  --max-users 25 --seed 1729 --output visualizations/local_map.html
 ```
 
-Available filters are `age_group`, `household_type`, `user_id`, local inclusive
-date range, service, action type, observation mode, and region when their source
-columns exist. Repeat a categorical option or pass comma-separated values for
-OR matching within that field; distinct fields compose with AND. Values are
-validated against the loaded tables, and the command reports selected users,
-events, and Asia/Tokyo dates before rendering. The default output is
-`RUN_DIR/exploration_artifacts/observed_trajectories.png`; `--output` may place
-the disposable visualization outside the immutable run. Start/end symbols and
-arrowheads show ordering, while per-user and large-gap splitting prevents false
-connections. Use `notebook_explorer(RUN_DIR)` for the optional dataset-derived
-`ipywidgets` controls.
+The Folium HTML uses an OpenStreetMap base layer. **Loading map tiles normally
+requires network access when the generated HTML is opened.** Feature controls
+separate observed paths and clustered events, synthetic POIs, public request
+locations, and optional evaluator-only layers. Service colors and active/passive
+styles remain distinct. Tooltips contain only sanitized timestamps, demographic
+bands, regions, actions, and accuracy descriptions.
+
+User selection and timestamp-aware point reduction are deterministic under
+`--seed`; `--max-users`, `--max-markers`, and `--max-path-points` bound browser
+work. The terminal, HTML banner, and companion `.metadata.json` report
+truncation. Metadata also records the contract and manifest identity, filters,
+selection counts, limits, seed, and truth-access status. Outputs default to
+`visualizations/` outside the run and existing outputs or any destination inside
+the immutable run are rejected.
 
 
 Protected matched-run declarations use a third canonical root:
