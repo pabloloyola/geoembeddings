@@ -216,6 +216,24 @@ GEOEMBED_RUN_DIR=runs/local_baseline_50u_7d \
 
 The visualization reads protected truth and is evaluator-only.
 
+For an observed-only, headless-safe trajectory view with dataset-derived
+filters, run:
+
+```bash
+uv run --extra viz python scripts/kanto_trajectory_explorer.py \
+  --run-dir runs/local_baseline_50u_7d \
+  --age-group 20-29 --service location --region tokyo \
+  --start-date 2026-01-01 --end-date 2026-01-07 \
+  --color-by service --max-gap 6h --max-trajectories 50
+```
+
+The command validates every categorical value against the loaded run, prints
+selected user/event/local-date counts before rendering, and writes
+`RUN_DIR/exploration_artifacts/observed_trajectories.png` by default. It never
+opens `truth/`. In Jupyter, import and call
+`notebook_explorer("RUN_DIR")` from `scripts.kanto_trajectory_explorer` for an
+`ipywidgets` control surface whose choices also come from the loaded tables.
+
 ## Artifact checklist
 
 Artifacts are immutable stage outputs; absence often means the preceding stage

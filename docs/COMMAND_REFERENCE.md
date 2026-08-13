@@ -99,6 +99,35 @@ EXPERIMENT_DIR/
     └── embedding_comparison.md
 ```
 
+## Observed trajectory explorer
+
+The standalone explorer is an optional visualization script rather than a
+`geoembed` pipeline stage. It reads only the canonical public demographics and
+events tables below `RUN_DIR/observed/`, remains usable with a noninteractive
+Matplotlib backend, and does not modify immutable run artifacts:
+
+```bash
+uv run --extra viz python scripts/kanto_trajectory_explorer.py \
+  --run-dir runs/local_baseline_50u_7d \
+  --household-type family --service location --observation-mode passive \
+  --start-date 2026-01-02 --end-date 2026-01-05 \
+  --color-by time --max-gap 4h --max-trajectories 75 \
+  --output outputs/local_family_trajectories.png
+```
+
+Available filters are `age_group`, `household_type`, `user_id`, local inclusive
+date range, service, action type, observation mode, and region when their source
+columns exist. Repeat a categorical option or pass comma-separated values for
+OR matching within that field; distinct fields compose with AND. Values are
+validated against the loaded tables, and the command reports selected users,
+events, and Asia/Tokyo dates before rendering. The default output is
+`RUN_DIR/exploration_artifacts/observed_trajectories.png`; `--output` may place
+the disposable visualization outside the immutable run. Start/end symbols and
+arrowheads show ordering, while per-user and large-gap splitting prevents false
+connections. Use `notebook_explorer(RUN_DIR)` for the optional dataset-derived
+`ipywidgets` controls.
+
+
 Protected matched-run declarations use a third canonical root:
 
 ```text
