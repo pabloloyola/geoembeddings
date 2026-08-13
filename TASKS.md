@@ -8,6 +8,12 @@ documenting that command. Artifact paths are relative to `RUN_DIR` or
 
 ## Completed and verified
 
+The bounded CLI integration smoke now covers the canonical disposable CPU path
+from simulation through privacy auditing, including dataset-2.0 naive ranking
+and reduced offline/online benchmarks. It authenticates schemas, source and
+preparation identities, finite arrays, output immutability, and the observed/
+truth boundary while remaining explicitly separate from scientific evidence.
+
 Training participation provenance for R12 is now emitted as immutable learned
 experiment metadata at `model/training_participation.json`. It separates users
 with actual eligible train targets, validation/checkpoint-selection targets,
