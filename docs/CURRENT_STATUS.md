@@ -4,6 +4,38 @@ External-validity claim boundaries, accepted/unavailable evidence distinctions,
 and the evidence needed to change every requirement status are maintained in
 [`EXTERNAL_VALIDITY.md`](EXTERNAL_VALIDITY.md).
 
+## Release readiness
+
+- **Assessment source:** commit
+  `d2c3f6652f84d6320ba8b4fb2564ad2f190885d1`; evidence from older commits is
+  identified below as historical and is not current-revision verification.
+- **Implementation:** T4.1a diagnostic-control uncertainty calibration and
+  T4.3a diagnostic-control privacy auditing are implemented. Full,
+  selection-dependent T4.1 and T4.3 remain unavailable.
+- **Full suite:** the latest authoritative executed-suite record is `218
+  passed in 22.00s` after the repairs recorded at
+  `f8a1f73d8833174e170266ab7f5f9f5d8c723248`. That run was not produced by a
+  successful `uv sync --locked --extra dev`, is not locked release evidence,
+  and must not be attributed to the assessment commit.
+- **Stable gate:** all stable-release checklist items remain unchecked. The CI
+  workflow defines the bounded smoke plus the Python 3.11--3.14 CPU matrix and
+  immutable verification record, but no successful current-assessment workflow
+  record exists; the release-candidate matrix has not passed.
+- **Bounded CLI evidence:** the latest indexed smoke is
+  `docs/artifacts/release-cli-integration-smoke-20260813.json`, a successful
+  50-user/seven-day CPU contract run associated with source
+  `4dcba63462570fda439e24e4e4812a85c6854753`. It used `UV_NO_SYNC=1` after a
+  package-index failure, so it is historical bounded execution evidence, not a
+  clean locked or current-revision release baseline.
+- **Blockers and decision:** release blockers are a clean locked CPU sync and
+  full suite, successful package/CLI and bounded-workflow gates, a passing CI
+  matrix with an immutable verification record, and completion of the remaining
+  stable-release checklist evidence. No `selected_candidate` exists. Preserve
+  the T2.7 **do not advance** decision and open no routine branch.
+- **Next action:** obtain a clean release verification baseline for the
+  assessment revision (or a newly identified immutable successor) before
+  claiming release readiness.
+
 ## Release and contracts
 
 - Package/repository version: `0.5.0`
