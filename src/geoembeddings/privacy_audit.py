@@ -14,7 +14,10 @@ import torch
 from .io import read_json, sha256_file
 from .layout import DatasetLayout, ExperimentLayout, PrivacyEvidenceLayout, UtilityReportLayout
 from .privacy import (BASELINE_CHECKPOINT_IDENTITY, PRIVACY_AUDIT_SCHEMA_VERSION,
-                      PrivacyInput, authenticate_privacy_inputs, write_privacy_audit)
+                      SUPPORTED_PROTECTED_ATTRIBUTES, PrivacyInput,
+                      authenticate_privacy_inputs, construct_sensitive_probe_population,
+                      load_protected_labels, run_protected_attribute_attacks,
+                      write_privacy_audit)
 from .privacy_evaluation import load_privacy_config
 from .representation_schema import load_embedding_export
 from .runtime_metadata import collect_runtime_metadata
@@ -79,9 +82,8 @@ def audit_privacy(*, run_dir: str | Path, experiments: Mapping[str, str | Path],
         if not source.is_file() or sha256_file(source) != expected:
             raise ValueError(f"Dataset observed-source authentication failed: {filename}")
 
-    # Authentication has succeeded. This lineage has no canonical, authenticated
-    # participation artifact, so opening protected labels cannot produce a valid
-    # membership experiment and is intentionally avoided.
+    # Authentication has succeeded. Membership and sensitive-label applicability
+    # are independent: export coverage is never repurposed as participation.
     membership: dict[str, Any] = {}
     membership_metrics: dict[str, Any] = {}
     for identity in authenticated.inputs:
@@ -95,11 +97,62 @@ def audit_privacy(*, run_dir: str | Path, experiments: Mapping[str, str | Path],
             membership_metrics[identity.name] = {
                 "status": "unavailable", "reason": "authenticated_training_membership_labels_unavailable"
             }
-    sensitive = {
-        item.name: {"status": "unavailable", "reason": "authenticated_privacy_population_unavailable",
-                    "derivation_version": item.derivation.version}
-        for item in config.sensitive_attributes
-    }
+    exports = {declaration.name: load_embedding_export(declaration.export_path)
+               for declaration in declarations}
+    common_users = sorted(set.intersection(*(
+        set(export.arrays["user_id"].astype(str)) for export in exports.values())))
+    provenance_by_user: dict[str, dict[str, float]] = {}
+    for user in common_users:
+        rows = np.flatnonzero(exports[declarations[0].name].arrays["user_id"].astype(str) == user)
+        history = exports[declarations[0].name].arrays.get("history_event_count", np.zeros(len(rows)))
+        history_value = float(np.max(history[rows])) if len(history) == len(exports[declarations[0].name].arrays["user_id"]) else 0.0
+        provenance_by_user[user] = {
+            "history_event_count": history_value,
+            "cutoff_availability_count": float(len(rows)),
+            # Service coverage is not embedded in the authenticated export. Keep
+            # the public covariate explicit rather than deriving it from truth.
+            "service_coverage_count": 0.0,
+        }
+    fractions = (config.split.train_fraction, config.split.validation_fraction,
+                 config.split.test_fraction)
+    lineage = authenticated.evidence_index_sha256
+    probe_populations: dict[str, dict[str, Any]] = {}
+    for declaration in declarations:
+        probe_populations[declaration.name] = {}
+        for component in config.component_order:
+            probe_populations[declaration.name][component] = construct_sensitive_probe_population(
+                exports[declaration.name], target_model_lineage=lineage,
+                eligible_users=common_users, provenance_by_user=provenance_by_user,
+                cutoff_order=config.cutoff_order, component_order=(component,),
+                split_seed=config.split_seed, split_fractions=fractions,
+            )
+    reference_population = next(iter(next(iter(probe_populations.values())).values()))
+    split_by_user = {record.user_id: record.split for record in reference_population.records}
+    requested = tuple(item.name for item in config.sensitive_attributes)
+    supported = tuple(name for name in requested if name in SUPPORTED_PROTECTED_ATTRIBUTES)
+    bundle = load_protected_labels(
+        authenticated, run.user_latents_truth, split_by_user=split_by_user,
+        attributes=supported or ("age_group",), minimum_total=config.support.minimum_total,
+        minimum_per_class=config.support.minimum_per_class,
+        minimum_cell_support=config.support.minimum_sensitive_label_cell,
+    )
+    summaries = {summary.name: asdict(summary) for summary in bundle.summaries}
+    sensitive: dict[str, Any] = {}
+    sensitive_metrics: dict[str, Any] = {}
+    for item in config.sensitive_attributes:
+        if item.name not in supported:
+            summary = {"status": "unavailable", "reason": "unsupported_protected_attribute",
+                       "derivation_version": item.derivation.version, "eligible_count": len(common_users),
+                       "missing_count": 0, "unsupported_count": len(common_users)}
+            sensitive[item.name] = summary; sensitive_metrics[item.name] = summary
+            continue
+        sensitive[item.name] = summaries[item.name]
+        sensitive_metrics[item.name] = {
+            declaration.name: {
+                component: run_protected_attribute_attacks(population, bundle, item.name, config)
+                for component, population in probe_populations[declaration.name].items()
+            } for declaration in declarations
+        }
     utility_axes = {}
     for declaration in declarations:
         value = read_json(declaration.utility_report_path)
@@ -123,16 +176,18 @@ def audit_privacy(*, run_dir: str | Path, experiments: Mapping[str, str | Path],
         "lineage": {"dataset_contract": identities[0]["dataset_contract"],
                     "observed_source_hashes": identities[0]["observed_source_hashes"],
                     "preparation_definition_sha256": identities[0]["preparation_definition_sha256"]},
-        "splits": {"status": "unavailable", "reason": "authenticated_training_membership_labels_unavailable",
-                   "split_seed": config.split_seed},
+        "splits": {"membership": {"status": "unavailable", "reason": "authenticated_training_membership_labels_unavailable"},
+                   "sensitive_probe": {"status": "available", "split_seed": config.split_seed,
+                                       "user_grouped": True, "user_set_hashes": dict(reference_population.user_set_hashes)}},
         "membership_population": membership,
         "sensitive_attributes": sensitive,
-        "attacks": {"status": "not_run", "reason": "authenticated_privacy_population_unavailable",
-                    "configuration": config.attacks},
+        "attacks": {"status": "run_for_supported_sensitive_attributes", "configuration": config.attacks},
         "membership_metrics": membership_metrics,
-        "sensitive_probe_metrics": sensitive,
+        "sensitive_probe_metrics": sensitive_metrics,
         "utility_privacy_axes": utility_axes,
-        "coverage": {"authenticated_controls": len(identities), "membership_evaluated_controls": 0},
+        "coverage": {"authenticated_controls": len(identities), "membership_evaluated_controls": 0,
+                     "sensitive_probe_common_users": len(common_users),
+                     "sensitive_probe_supported_attributes": len(supported)},
         "exclusions": [{"reason": "authenticated_training_membership_labels_unavailable",
                         "count": sum(item["kind"] == "learned" for item in identities)}],
         "selection": {"roles": {item["name"]: item["selection_role"] for item in identities},

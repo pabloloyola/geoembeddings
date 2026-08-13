@@ -303,7 +303,7 @@ class PrivacyPopulationRecord:
     """One attack example: all of a user's vectors, masks, and public strata."""
 
     user_id: str
-    membership: bool
+    membership: bool | None
     split: Literal["train", "validation", "test"]
     vector_features: tuple[float, ...]
     missing_cutoff_mask: tuple[int, ...]
@@ -851,6 +851,57 @@ def construct_privacy_population(
 
 # Public spelling retained for callers that describe this phase as population building.
 build_privacy_population = construct_privacy_population
+
+
+def construct_sensitive_probe_population(
+    export: LoadedEmbeddingExport | str | Path, *, target_model_lineage: str,
+    eligible_users: Sequence[str], provenance_by_user: Mapping[str, Mapping[str, float]],
+    cutoff_order: Sequence[str], component_order: Sequence[str], split_seed: int,
+    split_fractions: tuple[float, float, float] = (0.6, 0.2, 0.2),
+) -> PrivacyPopulation:
+    """Build a grouped sensitive-probe population without membership labels."""
+    loaded = load_embedding_export(export) if isinstance(export, (str, Path)) else export
+    users = tuple(sorted(map(str, eligible_users)))
+    if len(users) != len(set(users)) or set(users) != set(provenance_by_user):
+        raise ValueError("Sensitive-probe eligible/provenance user identities differ")
+    cutoffs, components = tuple(cutoff_order), tuple(component_order)
+    if any(name not in loaded.components for name in components):
+        raise ValueError("Sensitive-probe component is absent from export")
+    fractions = tuple(map(float, split_fractions))
+    if len(fractions) != 3 or any(v <= 0 for v in fractions) or not np.isclose(sum(fractions), 1):
+        raise ValueError("Sensitive-probe split fractions must be positive and sum to one")
+    rows: dict[tuple[str, str], int] = {}
+    for i, key in enumerate(zip(loaded.arrays["user_id"].astype(str), loaded.arrays["cutoff"].astype(str))):
+        if key in rows: raise ValueError(f"Duplicate export user/cutoff key: {key!r}")
+        rows[key] = i
+    feature_names = tuple(f"vector:{cutoff}:{component}:{i}" for cutoff in cutoffs
+                          for component in components for i in range(loaded.components[component].shape[1]))
+    provenance_names = tuple(next(iter(provenance_by_user.values())).keys()) if users else ()
+    split_users = {name: [] for name in ("train", "validation", "test")}
+    records = []
+    thresholds = (fractions[0], fractions[0] + fractions[1])
+    for user in users:
+        if tuple(provenance_by_user[user]) != provenance_names:
+            raise ValueError("Sensitive-probe provenance schema/order mismatch")
+        values, cutoff_mask, component_mask = [], [], []
+        for cutoff in cutoffs:
+            row = rows.get((user, cutoff)); cutoff_mask.append(int(row is None))
+            for component in components:
+                component_mask.append(int(row is None)); dimension = loaded.components[component].shape[1]
+                values.extend([0.0] * dimension if row is None else loaded.components[component][row].astype(float).tolist())
+        unit = int(_seeded_user_hash(split_seed, target_model_lineage, user, "sensitive-probe-split"), 16) / 2**256
+        split = "train" if unit < thresholds[0] else "validation" if unit < thresholds[1] else "test"
+        split_users[split].append(user)
+        provenance = tuple(float(provenance_by_user[user][name]) for name in provenance_names)
+        records.append(PrivacyPopulationRecord(user, None, split, tuple(values), tuple(cutoff_mask),
+                                               tuple(component_mask), provenance, ()))
+    hashes = tuple((name, _user_set_hash(value)) for name, value in
+                   {"eligible": users, **split_users}.items()) + (
+                       ("split_assignment", _canonical_hash(sorted(
+                           (record.user_id, record.split) for record in records))),
+                   )
+    return PrivacyPopulation(PRIVACY_POPULATION_SCHEMA_VERSION, "available", None, target_model_lineage,
+                             cutoffs, components, feature_names, provenance_names, tuple(records), (), hashes)
 
 
 def _indexed_artifact(index: dict[str, Any], path: Path) -> dict[str, Any]:

@@ -33,6 +33,11 @@ class DatasetLayout:
         return self.root / "truth"
 
     @property
+    def user_latents_truth(self) -> Path:
+        """Canonical evaluator-only protected-label source."""
+        return self.truth / TRUTH_FILES["user_latents"]
+
+    @property
     def manifest_path(self) -> Path:
         return self.root / "manifest.json"
 
