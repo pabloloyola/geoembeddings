@@ -16,20 +16,24 @@ people, places, services, or deployments.
 
 ## For a Codex agent
 
-For a concise operational checklist and current-state transfer, start with the
-**[next-agent handoff](docs/NEXT_AGENT_HANDOFF.md)**, then complete the required
-reading below before editing.
+The root **[agent instructions](AGENTS.md)** are the binding policy for Codex
+work in this repository. This document is the first document in the required
+reading sequence; do not restart the sequence after arriving here.
 
 Read these files in order before editing code:
 
-1. `AGENTS.md`
+1. `START_HERE.md` (this document)
 2. `docs/AGENT_HANDOFF.md`
-3. `docs/OBJECTIVES_AND_EVALUATION.md`
-4. `docs/REQUIREMENTS_MATRIX.md`
-5. `docs/EXPERIMENT_PROTOCOL.md`
-6. `docs/ROADMAP.md`
-7. `docs/VERIFICATION.md`
-8. `TASKS.md`
+3. `docs/SIMULATION_FLOW.md`
+4. `docs/OBJECTIVES_AND_EVALUATION.md`
+5. `docs/REQUIREMENTS_MATRIX.md`
+6. `docs/EXPERIMENT_PROTOCOL.md`
+7. `docs/ROADMAP.md`
+8. `docs/VERIFICATION.md`
+9. `TASKS.md`
+
+For a concise operational checklist and current-state transfer after completing
+the required reading, see the **[next-agent handoff](docs/NEXT_AGENT_HANDOFF.md)**.
 
 Then inspect the implementation and tests associated with the first selected
 task. Do not start by replacing the model. The evaluator foundations are now
