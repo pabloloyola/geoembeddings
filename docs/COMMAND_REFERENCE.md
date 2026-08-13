@@ -10,6 +10,29 @@ uv run geoembed --version
 Default configuration paths are relative to the current working directory, so
 run from the repository root or pass explicit `--config` paths.
 
+## Exit status and report contract
+
+All commands use the same outcome contract. Successful commands write their
+JSON result to standard output and exit zero. A diagnostic report also exits
+zero when one or more sections explicitly have `status: "unavailable"` because
+coverage or scientific support is insufficient; unavailable is a reported
+scientific result, not an authentication or software failure. Other available
+sections remain in the successful report.
+
+Failures write one concise, actionable message to standard error without
+echoing supplied artifact paths or protected data. Exit codes are stable:
+
+| Exit code | Category | Action |
+|---:|---|---|
+| `1` | Unexpected internal error | Retry with validated inputs; report a reproducible failure. |
+| `2` | Schema or identity authentication failure | Check schema versions, hashes, and matching roots. |
+| `3` | Existing immutable output conflict | Choose a new destination or use that command's validated `--overwrite`. |
+| `4` | Missing source artifact | Run the prerequisite stage and verify the supplied root. |
+
+Argument-parser usage errors remain standard `argparse` exit-code `2` errors.
+The CLI deliberately does not include exception text in its error message,
+because such text can contain protected internal paths or record values.
+
 ## Path model
 
 Two roots identify all artifacts:
