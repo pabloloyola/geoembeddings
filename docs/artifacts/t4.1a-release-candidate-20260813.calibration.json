@@ -1,0 +1,530 @@
+{
+  "controls": {
+    "capacity_matched_single": {
+      "calibrated": {
+        "coverage_risk": [
+          {
+            "count": 6,
+            "realized_coverage": 0.25,
+            "requested_coverage": 0.25,
+            "risk": 0.6014856097967414,
+            "status": "ok"
+          },
+          {
+            "count": 12,
+            "realized_coverage": 0.5,
+            "requested_coverage": 0.5,
+            "risk": 0.5773000710458119,
+            "status": "ok"
+          },
+          {
+            "count": 18,
+            "realized_coverage": 0.75,
+            "requested_coverage": 0.75,
+            "risk": 0.611533658049725,
+            "status": "ok"
+          },
+          {
+            "count": 24,
+            "realized_coverage": 1.0,
+            "requested_coverage": 1.0,
+            "risk": 0.6280101547745274,
+            "status": "ok"
+          }
+        ],
+        "reliability_error_bins": [
+          {
+            "bin": 0,
+            "count": 4,
+            "mean_error": 0.43762606922479774,
+            "mean_uncertainty": 0.5901000009610841,
+            "status": "insufficient_coverage"
+          },
+          {
+            "bin": 1,
+            "count": 5,
+            "mean_error": 0.7642904743996936,
+            "mean_uncertainty": 0.6046269487230329,
+            "status": "ok"
+          },
+          {
+            "bin": 2,
+            "count": 5,
+            "mean_error": 0.5012207808056524,
+            "mean_uncertainty": 0.6212289380248878,
+            "status": "ok"
+          },
+          {
+            "bin": 3,
+            "count": 5,
+            "mean_error": 0.6591160737903157,
+            "mean_uncertainty": 0.645178347904809,
+            "status": "ok"
+          },
+          {
+            "bin": 4,
+            "count": 5,
+            "mean_error": 0.7397205585422316,
+            "mean_uncertainty": 0.7372745035661182,
+            "status": "ok"
+          }
+        ]
+      },
+      "coverage": {
+        "calibration_users_used": 22,
+        "eligible_users": 49,
+        "excluded_users": [
+          {
+            "reason": "insufficient_windows",
+            "user_id": "user_4ee0953e8970f3dc4f6d64d4",
+            "window_count": 2
+          },
+          {
+            "reason": "insufficient_windows",
+            "user_id": "user_612b0ebcd7f3cb8bbf4c67bf",
+            "window_count": 2
+          },
+          {
+            "reason": "insufficient_windows",
+            "user_id": "user_e561ab44f1e6f24638192012",
+            "window_count": 2
+          }
+        ],
+        "test_users_used": 24
+      },
+      "fitted_calibration_parameters": {
+        "intercept": 0.559653203298561,
+        "method": "nonnegative_monotone_affine_least_squares",
+        "slope": 0.989916993574847
+      },
+      "identity": {
+        "dense_export": "/tmp/geoembeddings-release-candidate-20260813/experiment/dense_embeddings.npz",
+        "dense_export_sha256": "926a4706fd72a8ecc611341c6f62fec370558ccc4246bd6b6cc2c963ec214bca",
+        "experiment_dir": "/tmp/geoembeddings-release-candidate-20260813/experiment",
+        "name": "capacity_matched_single",
+        "prepared_metadata_sha256": "983c4751b87561c74aae529687754f2e34376e17dad004edb94646868a635e9b",
+        "source_hashes": {
+          "observed_events.csv.gz": "ed9907fb874d49494db65fd09a2ac31b8f68fef50efb878ccad111bad63e0467",
+          "users_observed.csv.gz": "38fecea5177dce38afe3e39f32926fe27c25ebd2b836452208cbb774a140c9c4"
+        }
+      },
+      "raw": {
+        "coverage_risk": [
+          {
+            "count": 6,
+            "realized_coverage": 0.25,
+            "requested_coverage": 0.25,
+            "risk": 0.6014856097967414,
+            "status": "ok"
+          },
+          {
+            "count": 12,
+            "realized_coverage": 0.5,
+            "requested_coverage": 0.5,
+            "risk": 0.5773000710458119,
+            "status": "ok"
+          },
+          {
+            "count": 18,
+            "realized_coverage": 0.75,
+            "requested_coverage": 0.75,
+            "risk": 0.611533658049725,
+            "status": "ok"
+          },
+          {
+            "count": 24,
+            "realized_coverage": 1.0,
+            "requested_coverage": 1.0,
+            "risk": 0.6280101547745274,
+            "status": "ok"
+          }
+        ],
+        "reliability_error_bins": [
+          {
+            "bin": 0,
+            "count": 4,
+            "mean_error": 0.43762606922479774,
+            "mean_uncertainty": 0.03075691988332454,
+            "status": "insufficient_coverage"
+          },
+          {
+            "bin": 1,
+            "count": 5,
+            "mean_error": 0.7642904743996936,
+            "mean_uncertainty": 0.04543183490775323,
+            "status": "ok"
+          },
+          {
+            "bin": 2,
+            "count": 5,
+            "mean_error": 0.5012207808056524,
+            "mean_uncertainty": 0.06220292724136463,
+            "status": "ok"
+          },
+          {
+            "bin": 3,
+            "count": 5,
+            "mean_error": 0.6591160737903157,
+            "mean_uncertainty": 0.08639627884091021,
+            "status": "ok"
+          },
+          {
+            "bin": 4,
+            "count": 5,
+            "mean_error": 0.7397205585422316,
+            "mean_uncertainty": 0.17943049914328746,
+            "status": "ok"
+          }
+        ]
+      },
+      "role": "diagnostic_control"
+    },
+    "statistical_baseline": {
+      "calibrated": {
+        "coverage_risk": [
+          {
+            "count": 6,
+            "realized_coverage": 0.25,
+            "requested_coverage": 0.25,
+            "risk": 1.7634069825426062,
+            "status": "ok"
+          },
+          {
+            "count": 12,
+            "realized_coverage": 0.5,
+            "requested_coverage": 0.5,
+            "risk": 1.763638208023037,
+            "status": "ok"
+          },
+          {
+            "count": 18,
+            "realized_coverage": 0.75,
+            "requested_coverage": 0.75,
+            "risk": 1.8019041562632536,
+            "status": "ok"
+          },
+          {
+            "count": 24,
+            "realized_coverage": 1.0,
+            "requested_coverage": 1.0,
+            "risk": 1.844710088442131,
+            "status": "ok"
+          }
+        ],
+        "reliability_error_bins": [
+          {
+            "bin": 0,
+            "count": 4,
+            "mean_error": 1.8201565394178458,
+            "mean_uncertainty": 1.6904806098063694,
+            "status": "insufficient_coverage"
+          },
+          {
+            "bin": 1,
+            "count": 5,
+            "mean_error": 1.7176018301370994,
+            "mean_uncertainty": 1.7019068469902923,
+            "status": "ok"
+          },
+          {
+            "bin": 2,
+            "count": 5,
+            "mean_error": 1.7227644738112748,
+            "mean_uncertainty": 1.716381905667869,
+            "status": "ok"
+          },
+          {
+            "bin": 3,
+            "count": 5,
+            "mean_error": 1.9045767827112923,
+            "mean_uncertainty": 1.7367051260409236,
+            "status": "ok"
+          },
+          {
+            "bin": 4,
+            "count": 5,
+            "mean_error": 2.0535401063282857,
+            "mean_uncertainty": 2.033017092112437,
+            "status": "ok"
+          }
+        ]
+      },
+      "coverage": {
+        "calibration_users_used": 22,
+        "eligible_users": 49,
+        "excluded_users": [
+          {
+            "reason": "insufficient_windows",
+            "user_id": "user_4ee0953e8970f3dc4f6d64d4",
+            "window_count": 2
+          },
+          {
+            "reason": "insufficient_windows",
+            "user_id": "user_612b0ebcd7f3cb8bbf4c67bf",
+            "window_count": 2
+          },
+          {
+            "reason": "insufficient_windows",
+            "user_id": "user_e561ab44f1e6f24638192012",
+            "window_count": 2
+          }
+        ],
+        "test_users_used": 24
+      },
+      "fitted_calibration_parameters": {
+        "intercept": 1.5906363909028811,
+        "method": "nonnegative_monotone_affine_least_squares",
+        "slope": 0.3235679787834119
+      },
+      "identity": {
+        "dense_export": "/tmp/geoembeddings-release-candidate-20260813/statistical-baseline-calibration/dense_statistical_baseline.npz",
+        "dense_export_sha256": "f495caeb3a0ed7eaee8b212451b974b38bea3d34d6dd28f654ff8cab1fb4cb6e",
+        "experiment_dir": "/tmp/geoembeddings-release-candidate-20260813/statistical-baseline-calibration",
+        "name": "statistical_baseline",
+        "prepared_metadata_sha256": "983c4751b87561c74aae529687754f2e34376e17dad004edb94646868a635e9b",
+        "source_hashes": {
+          "observed_events.csv.gz": "ed9907fb874d49494db65fd09a2ac31b8f68fef50efb878ccad111bad63e0467",
+          "users_observed.csv.gz": "38fecea5177dce38afe3e39f32926fe27c25ebd2b836452208cbb774a140c9c4"
+        }
+      },
+      "raw": {
+        "coverage_risk": [
+          {
+            "count": 6,
+            "realized_coverage": 0.25,
+            "requested_coverage": 0.25,
+            "risk": 1.7634069825426062,
+            "status": "ok"
+          },
+          {
+            "count": 12,
+            "realized_coverage": 0.5,
+            "requested_coverage": 0.5,
+            "risk": 1.763638208023037,
+            "status": "ok"
+          },
+          {
+            "count": 18,
+            "realized_coverage": 0.75,
+            "requested_coverage": 0.75,
+            "risk": 1.8019041562632536,
+            "status": "ok"
+          },
+          {
+            "count": 24,
+            "realized_coverage": 1.0,
+            "requested_coverage": 1.0,
+            "risk": 1.844710088442131,
+            "status": "ok"
+          }
+        ],
+        "reliability_error_bins": [
+          {
+            "bin": 0,
+            "count": 4,
+            "mean_error": 1.8201565394178458,
+            "mean_uncertainty": 0.30857261982132445,
+            "status": "insufficient_coverage"
+          },
+          {
+            "bin": 1,
+            "count": 5,
+            "mean_error": 1.7176018301370994,
+            "mean_uncertainty": 0.3438858706160562,
+            "status": "ok"
+          },
+          {
+            "bin": 2,
+            "count": 5,
+            "mean_error": 1.7227644738112748,
+            "mean_uncertainty": 0.38862162825190705,
+            "status": "ok"
+          },
+          {
+            "bin": 3,
+            "count": 5,
+            "mean_error": 1.9045767827112923,
+            "mean_uncertainty": 0.4514313674896037,
+            "status": "ok"
+          },
+          {
+            "bin": 4,
+            "count": 5,
+            "mean_error": 2.0535401063282857,
+            "mean_uncertainty": 1.3671955515279026,
+            "status": "ok"
+          }
+        ]
+      },
+      "role": "diagnostic_control"
+    }
+  },
+  "inputs": {
+    "capacity_matched_single": {
+      "dense_export": "/tmp/geoembeddings-release-candidate-20260813/experiment/dense_embeddings.npz",
+      "dense_export_sha256": "926a4706fd72a8ecc611341c6f62fec370558ccc4246bd6b6cc2c963ec214bca",
+      "experiment_dir": "/tmp/geoembeddings-release-candidate-20260813/experiment",
+      "prepared_metadata_sha256": "983c4751b87561c74aae529687754f2e34376e17dad004edb94646868a635e9b",
+      "source_hashes": {
+        "observed_events.csv.gz": "ed9907fb874d49494db65fd09a2ac31b8f68fef50efb878ccad111bad63e0467",
+        "users_observed.csv.gz": "38fecea5177dce38afe3e39f32926fe27c25ebd2b836452208cbb774a140c9c4"
+      }
+    },
+    "statistical_baseline": {
+      "dense_export": "/tmp/geoembeddings-release-candidate-20260813/statistical-baseline-calibration/dense_statistical_baseline.npz",
+      "dense_export_sha256": "f495caeb3a0ed7eaee8b212451b974b38bea3d34d6dd28f654ff8cab1fb4cb6e",
+      "experiment_dir": "/tmp/geoembeddings-release-candidate-20260813/statistical-baseline-calibration",
+      "prepared_metadata_sha256": "983c4751b87561c74aae529687754f2e34376e17dad004edb94646868a635e9b",
+      "source_hashes": {
+        "observed_events.csv.gz": "ed9907fb874d49494db65fd09a2ac31b8f68fef50efb878ccad111bad63e0467",
+        "users_observed.csv.gz": "38fecea5177dce38afe3e39f32926fe27c25ebd2b836452208cbb774a140c9c4"
+      }
+    }
+  },
+  "limitations": [
+    "diagnostic controls only; does not complete selection-dependent T4.1",
+    "factorized branch names do not establish semantics",
+    "synthetic calibration may not transfer to real users"
+  ],
+  "requirement_id": "R10",
+  "resampling": {
+    "method": "seeded_window_bootstrap",
+    "minimum_windows": 2,
+    "replacement": true,
+    "replicates": 200,
+    "sampling_unit": "dense observed-history window",
+    "seed": 20260813
+  },
+  "schema_version": "geoembeddings-diagnostic-calibration/1.0",
+  "selection": {
+    "aggregate_winner": null,
+    "role": "diagnostic_control",
+    "roles_immutable": true,
+    "selected_candidate_conclusion": {
+      "reason": "no_selected_candidate_after_negative_T2.7_gate",
+      "status": "unavailable"
+    }
+  },
+  "split": {
+    "algorithm": "sha256-seeded-user-order/1.0",
+    "calibration_users": {
+      "count": 24,
+      "sha256": "c02776971129e72a0e1edd1fe4121f2cc024929505013ea1226129f03d6a6283",
+      "users": [
+        "user_00c1907f853da05d025a78fa",
+        "user_06e043310e520673853096a2",
+        "user_083786aec1ec2eb60994be12",
+        "user_14bdc26a74f78b93d1c40696",
+        "user_16d131d90fb4b6bf1cda0027",
+        "user_295ae38123d4da3ade5b088f",
+        "user_39522c4e6eeaa3a5d1198773",
+        "user_4b54ac7eae04d4e6842d99e3",
+        "user_4ee0953e8970f3dc4f6d64d4",
+        "user_571c52db251508fa6ff30b6f",
+        "user_5f2f05a3ff2e0fe273b93847",
+        "user_612b0ebcd7f3cb8bbf4c67bf",
+        "user_622f8bd120d90879517fdbc6",
+        "user_66b212acde24e908175211f7",
+        "user_73ec02f29509f99f9d94d576",
+        "user_964cb86e2a17c85d51db939c",
+        "user_b20a18fd565f85f3855ab4bd",
+        "user_b40f5ec15b4f828b9a5cc0ce",
+        "user_b87391fb1c53df1bf4bd8e68",
+        "user_b8fdbfe750aa6919c5f9469a",
+        "user_c4b71c729e2da2469e733e6e",
+        "user_cae94869abc87c79fe4fbd1f",
+        "user_deeadcaf9b865fccc6b77698",
+        "user_f2b0ae41d8a16ebc0b6a9e1c"
+      ]
+    },
+    "overlap_count": 0,
+    "seed": 20260813,
+    "test_users": {
+      "count": 25,
+      "sha256": "b80070b6b0de76ff2bafaaecdd2ee3a37d286000d9172b15c232cbb7c101c3ae",
+      "users": [
+        "user_0dce08d810d52034bb110532",
+        "user_16b1f8403d970dec375ac75f",
+        "user_17883eedf8ba1c8c2e3052fa",
+        "user_1bfae8a6a53fd251ff23c673",
+        "user_2abbfaa9cb64c2ee09956f0b",
+        "user_2fe99dc6c6b66212eb381dc4",
+        "user_3e2f137961043f09985ad97c",
+        "user_563a324db4bf02e6f4405b4f",
+        "user_5e74cd5ba8ed6894af86b6f3",
+        "user_67fc28ebb12e765cb50147ee",
+        "user_823a1f7153e9577ab7be37d1",
+        "user_9a2e29de540852875980066e",
+        "user_a8c53e50412ddc8c6c3007e2",
+        "user_b5d934a08257ef73d3926a74",
+        "user_b7d3421f283db9291a95f8d4",
+        "user_c5f17ba15569335cbec9a062",
+        "user_cb4d9bded175d95ccc2599b7",
+        "user_ce7bc58572c43d4f5638d4b9",
+        "user_d9c0a7e15b2ba9f3ea2dd577",
+        "user_de41a94eaf9f4e6f9691b326",
+        "user_deb99985fa61ca560a6f7a41",
+        "user_e0a4e2e74cb50340cbf28416",
+        "user_e561ab44f1e6f24638192012",
+        "user_ebb4982f53fe669b5a4ae87e",
+        "user_fdb4c6bd6be07dea9e162924"
+      ]
+    }
+  },
+  "task_id": "T4.1a",
+  "user_set": {
+    "count": 49,
+    "sha256": "dd8c73351f057f1a0d1401ecd0fc83357323f62b57a06837d27e48835371558a",
+    "users": [
+      "user_00c1907f853da05d025a78fa",
+      "user_06e043310e520673853096a2",
+      "user_083786aec1ec2eb60994be12",
+      "user_0dce08d810d52034bb110532",
+      "user_14bdc26a74f78b93d1c40696",
+      "user_16b1f8403d970dec375ac75f",
+      "user_16d131d90fb4b6bf1cda0027",
+      "user_17883eedf8ba1c8c2e3052fa",
+      "user_1bfae8a6a53fd251ff23c673",
+      "user_295ae38123d4da3ade5b088f",
+      "user_2abbfaa9cb64c2ee09956f0b",
+      "user_2fe99dc6c6b66212eb381dc4",
+      "user_39522c4e6eeaa3a5d1198773",
+      "user_3e2f137961043f09985ad97c",
+      "user_4b54ac7eae04d4e6842d99e3",
+      "user_4ee0953e8970f3dc4f6d64d4",
+      "user_563a324db4bf02e6f4405b4f",
+      "user_571c52db251508fa6ff30b6f",
+      "user_5e74cd5ba8ed6894af86b6f3",
+      "user_5f2f05a3ff2e0fe273b93847",
+      "user_612b0ebcd7f3cb8bbf4c67bf",
+      "user_622f8bd120d90879517fdbc6",
+      "user_66b212acde24e908175211f7",
+      "user_67fc28ebb12e765cb50147ee",
+      "user_73ec02f29509f99f9d94d576",
+      "user_823a1f7153e9577ab7be37d1",
+      "user_964cb86e2a17c85d51db939c",
+      "user_9a2e29de540852875980066e",
+      "user_a8c53e50412ddc8c6c3007e2",
+      "user_b20a18fd565f85f3855ab4bd",
+      "user_b40f5ec15b4f828b9a5cc0ce",
+      "user_b5d934a08257ef73d3926a74",
+      "user_b7d3421f283db9291a95f8d4",
+      "user_b87391fb1c53df1bf4bd8e68",
+      "user_b8fdbfe750aa6919c5f9469a",
+      "user_c4b71c729e2da2469e733e6e",
+      "user_c5f17ba15569335cbec9a062",
+      "user_cae94869abc87c79fe4fbd1f",
+      "user_cb4d9bded175d95ccc2599b7",
+      "user_ce7bc58572c43d4f5638d4b9",
+      "user_d9c0a7e15b2ba9f3ea2dd577",
+      "user_de41a94eaf9f4e6f9691b326",
+      "user_deb99985fa61ca560a6f7a41",
+      "user_deeadcaf9b865fccc6b77698",
+      "user_e0a4e2e74cb50340cbf28416",
+      "user_e561ab44f1e6f24638192012",
+      "user_ebb4982f53fe669b5a4ae87e",
+      "user_f2b0ae41d8a16ebc0b6a9e1c",
+      "user_fdb4c6bd6be07dea9e162924"
+    ]
+  }
+}

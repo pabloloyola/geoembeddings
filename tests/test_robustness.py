@@ -3,12 +3,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 import pytest
 
-from geoembeddings.baseline import export_statistical_baseline
+from geoembeddings.baseline import export_dense_statistical_baseline, export_statistical_baseline
 from geoembeddings.config import load_config
 from geoembeddings.robustness import deterministic_event_removal, export_robustness_views, perturb_view
 from geoembeddings.representation_schema import EXPORT_SCHEMA_VERSION, load_embedding_export
+from geoembeddings.io import sha256_file
 
 
 def _events(n: int = 40) -> pd.DataFrame:
@@ -104,3 +106,20 @@ def test_statistical_baseline_uses_authenticated_component_export_schema(tmp_pat
     assert loaded.arrays["model_variant"].item() == "statistical_baseline"
     assert loaded.components["persistent"].shape == loaded.components["combined"].shape
     assert not loaded.components["context"].any()
+
+
+def test_dense_statistical_baseline_carries_calibration_identity(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    prepared = root / "smoke/experiment/prepared"
+    path = tmp_path / "dense-baseline.npz"
+    export_dense_statistical_baseline(
+        root / "smoke/run/observed", prepared, path,
+        load_config(root / "configs/embedding/single_vector.yaml"), event_stride=4,
+    )
+
+    with np.load(path, allow_pickle=False) as payload:
+        assert str(payload["preparation_hash"].item()) == sha256_file(
+            prepared / "prepared_metadata.json"
+        )
+        assert len(payload["source_file_names"]) == len(payload["source_hashes"])
+        assert len(payload["source_file_names"]) > 0
