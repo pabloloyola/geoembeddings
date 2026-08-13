@@ -118,11 +118,12 @@ SHA-256, never Python `hash()`.
 Across an observation-only pair, users, regions, POIs, episodes, choices, and
 trajectories must all retain count and identity hash even though recorded event
 rows, GPS/timestamps, adoption, and observation-process values may change.
-Across later exposure/opportunity pairs, users, regions, POIs, episodes, and
+Across exposure/opportunity pairs, users, regions, POIs, episodes, and
 decision keys are the matching backbone; chosen POI, exposure, utilities,
 candidate membership under opportunity changes, and resulting true/observed
-values are allowed to change. T1.11c/d will encode and enforce those
-intervention-specific rules; T1.11b does not itself establish pair validity.
+values are allowed to change. The implemented T1.11c pair declaration encodes
+those intervention-specific rules, and the T1.11d integrity validator enforces
+them; stable identity metadata alone does not establish pair validity.
 
 ### Versioned pair declaration (T1.11c; R5/R7)
 
@@ -139,8 +140,8 @@ fields that later pair-integrity validation may permit to differ.
 The pair declaration lives under a separate `PAIR_DIR/pair_manifest.json` and
 is simulator/evaluator-side. Modeling commands have no pair-manifest argument
 and continue to receive only a run root resolved to `observed/`. T1.11c validates
-the declaration and hashes but does not inspect field-level equality; that
-executable integrity check remains T1.11d.
+the declaration and hashes but does not inspect field-level equality; the
+implemented T1.11d `validate-pair` stage performs that separate integrity check.
 
 ### Pair integrity validation (T1.11d; R5/R7)
 
