@@ -24,6 +24,53 @@ uv run pytest
 uv run geoembed --version
 ```
 
+## Integration verification: `c64611e` (2026-08-13 UTC)
+
+This run verified source commit
+`c64611e5e5bebf03ef306e37fdd0c284019857e9` on
+`Linux-6.18.35-x86_64-with-glibc2.39` with `uv 0.7.22`. The lockfile identity
+was SHA-256
+`b95e1b4e89d7a1c3296f5c059888f0ee42371202b4a2ad1ff0e0b4a15da0415f`
+(`uv.lock`); the accompanying `pyproject.toml` identity was
+`37220d156e98b653d06d73e32f87666116f943a9f32b168bbccceadbeceb0634`.
+
+Runtime identity before the failed sync was Python `3.14.4` (GCC `13.3.0`),
+PyTorch `2.13.0+cu130`, NumPy `2.5.2`, pandas `2.3.3`, and CPU device. CUDA was
+not available to PyTorch in this container.
+
+The required `uv sync --locked --extra dev` did **not** complete: the package
+index tunnel failed after three retries while fetching `packaging==26.3`.
+An offline retry also failed because the locked `pygments==2.20.0` artifact was
+not in uv's cache. Consequently, the following pytest result is an integration
+diagnostic from a locally repaired environment using pytest `9.0.3`, **not** a
+successful locked-environment verification. The complete suite reported `185
+passed, 13 failed, 0 skipped, 1 warning in 49.27s` (53.526 seconds measured
+wall-clock). The warning was an unregistered `integration` marker. The failed
+tests were:
+
+- `tests/test_artifact_index.py::test_index_rejects_mismatched_preparation_source_metadata`
+- `tests/test_dense_export.py::test_dense_dataset_uses_only_observed_prepared_contract`
+- both cases of `tests/test_episode_evaluation.py::test_rejects_invalid_embedding_values_or_dimensions`
+- `tests/test_pair_evaluation.py::test_local_ridge_probe_fits_an_intercept_and_variance_weighted_r2`
+- `tests/test_pair_evaluation.py::test_full_paired_run_evaluation`
+- `tests/test_pair_manifest.py::test_pair_manifest_rejects_incompatible_contract`
+- `tests/test_privacy.py::test_membership_population_is_deterministic_under_export_and_mapping_order`
+- `tests/test_privacy.py::test_attack_is_unavailable_for_imbalanced_or_missing_split_classes`
+- `tests/test_privacy.py::test_bootstrap_reports_degenerate_replicates_instead_of_hiding_them`
+- `tests/test_privacy_protected_labels.py::test_continuous_bins_fit_train_only_and_emit_aggregate_metadata`
+- `tests/test_ranking.py::test_rankers_share_sets_reject_v1_and_never_open_truth`
+- `tests/test_simulate_pair.py::test_configured_intervention_changes_only_declared_fields[opportunity]`
+
+The initial collection attempt after the interrupted sync additionally had 35
+dependency import errors; those are an environment consequence and are not
+counted as a separate software-suite result. The CLI version and privacy help
+commands passed. Both documentation checks passed, reporting 35 completed
+tasks across two status documents and a valid external-validity evidence file.
+
+This record is software-integration verification only. It is not evidence that
+T2.7 or any scientific gate passed. The T2.7 **do not advance** decision remains
+binding, and no evaluator or model feature was added.
+
 ## Historical evidence: initial release smoke
 
 Verification date: 2026-08-11 UTC.

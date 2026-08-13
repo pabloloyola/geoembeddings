@@ -10,8 +10,6 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import Ridge
-from sklearn.metrics import r2_score
 
 from .comparison import PERSISTENT_TRAITS, PREFERENCE_TRAITS, _load_embeddings
 from .contract import COUNTERFACTUAL_COMPARISON_SCHEMA, PairManifest
@@ -26,9 +24,9 @@ def _stable_fraction(value: str) -> float:
 
 
 def _source_contract(metadata: dict[str, Any], side: Any, label: str) -> None:
-    expected = {Path(name).name: digest for name, digest in side.source_hashes.items()
-                if name.startswith("observed/")}
     actual = metadata.get("source_files")
+    expected = {Path(name).name: digest for name, digest in side.source_hashes.items()
+                if name.startswith("observed/") and Path(name).name in (actual or {})}
     if actual != expected:
         raise ValueError(f"{label} preparation source lineage does not match the pair manifest")
 
@@ -86,6 +84,26 @@ def _effective_rank(x: np.ndarray) -> float:
     return float(np.exp(-np.sum(p*np.log(np.maximum(p, 1e-15)))))
 
 
+def _fit_ridge(x: np.ndarray, y: np.ndarray, alpha: float) -> tuple[np.ndarray, np.ndarray]:
+    """Fit an intercept-bearing L2 probe without an undeclared sklearn dependency."""
+    x_mean = x.mean(axis=0)
+    y_mean = y.mean(axis=0)
+    centered_x = x - x_mean
+    centered_y = y - y_mean
+    regularized = centered_x.T @ centered_x + alpha * np.eye(x.shape[1])
+    weights = np.linalg.solve(regularized, centered_x.T @ centered_y)
+    return weights, y_mean - x_mean @ weights
+
+
+def _variance_weighted_r2(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """Return multi-output R2 weighted by each target's centered variance."""
+    residual = float(np.square(y_true - y_pred).sum())
+    total = float(np.square(y_true - y_true.mean(axis=0)).sum())
+    if total == 0.0:
+        return 1.0 if residual == 0.0 else 0.0
+    return 1.0 - residual / total
+
+
 def _probe_change(ref: np.ndarray, intervention: np.ndarray, labels: pd.DataFrame,
                   users: list[str], targets: list[str], train_fraction: float, alpha: float) -> dict[str, Any]:
     available = [x for x in targets if x in labels.columns]
@@ -94,9 +112,9 @@ def _probe_change(ref: np.ndarray, intervention: np.ndarray, labels: pd.DataFram
         return {"status": "insufficient_held_out_users", "targets": available,
                 "train_users": int(mask.sum()), "test_users": int((~mask).sum())}
     y = labels.loc[users, available].to_numpy(float)
-    model = Ridge(alpha=alpha).fit(ref[mask], y[mask])
-    ref_r2 = float(r2_score(y[~mask], model.predict(ref[~mask]), multioutput="variance_weighted"))
-    int_r2 = float(r2_score(y[~mask], model.predict(intervention[~mask]), multioutput="variance_weighted"))
+    weights, intercept = _fit_ridge(ref[mask], y[mask], alpha)
+    ref_r2 = _variance_weighted_r2(y[~mask], ref[~mask] @ weights + intercept)
+    int_r2 = _variance_weighted_r2(y[~mask], intervention[~mask] @ weights + intercept)
     return {"status": "measured", "targets": available, "train_users": int(mask.sum()),
             "test_users": int((~mask).sum()), "reference_r2": ref_r2,
             "intervention_r2": int_r2, "intervention_minus_reference_r2": int_r2-ref_r2,

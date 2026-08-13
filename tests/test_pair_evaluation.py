@@ -10,7 +10,13 @@ from geoembeddings.baseline import export_statistical_baseline
 from geoembeddings.config import load_config
 from geoembeddings.export import export_embeddings
 from geoembeddings.layout import ExperimentLayout
-from geoembeddings.pair_evaluation import evaluate_pair, match_pair_keys, representation_metrics
+from geoembeddings.pair_evaluation import (
+    _fit_ridge,
+    _variance_weighted_r2,
+    evaluate_pair,
+    match_pair_keys,
+    representation_metrics,
+)
 from geoembeddings.prepare import prepare_data
 from geoembeddings.simulate_pair import simulate_pair
 from geoembeddings.training import train_model
@@ -42,6 +48,18 @@ def test_identical_pair_metrics_have_zero_drift_and_perfect_retrieval() -> None:
     assert result["embedding_drift"]["mean_cosine_distance"] == pytest.approx(0.0, abs=1e-12)
     assert result["retrieval"]["cross_run_user_top1"] == 1.0
     assert result["effective_rank"]["reference"] == result["effective_rank"]["intervention"]
+
+
+def test_local_ridge_probe_fits_an_intercept_and_variance_weighted_r2() -> None:
+    x = np.asarray([[0.0], [1.0], [2.0]])
+    y = np.asarray([[2.0], [5.0], [8.0]])
+    weights, intercept = _fit_ridge(x, y, alpha=0.0)
+    prediction = x @ weights + intercept
+
+    assert weights.ravel().tolist() == pytest.approx([3.0])
+    assert intercept == pytest.approx([2.0])
+    assert _variance_weighted_r2(y, prediction) == pytest.approx(1.0)
+    assert _variance_weighted_r2(y, np.full_like(y, y.mean())) == pytest.approx(0.0)
 
 
 def test_pair_evaluator_is_only_modeling_module_that_names_pair_truth() -> None:
