@@ -1092,3 +1092,11 @@ excluded or unavailable under the frozen allowlist. See
 `docs/decisions/t4.3-user-role-diagnostic-v2-20260813.md` for the exact
 population constraint. This does not relax thresholds, select a diagnostic
 control, change the T2.7 decision, or complete selection-dependent T4.3.
+
+
+### Visualization entry point (2026-08-13)
+
+- Added an observed-only-by-default Folium diagnostic using canonical dataset paths.
+- This is inspection tooling, not a new R1--R13 metric or baseline result; no baseline artifact applies.
+- Protected trajectory and anchor overlays remain evaluator-only and explicitly gated.
+- Browser display is deliberately sampled and is not suitable for quantitative trajectory inference.
