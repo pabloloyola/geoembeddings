@@ -24,6 +24,37 @@ Do not claim disentanglement from next-event accuracy or cosine stability. Do
 not claim causal invariance from observational probes, and do not present
 synthetic Kanto/Hakone results as evidence about real users or deployments.
 
+## Release readiness
+
+- **Assessment source:** commit
+  `d2c3f6652f84d6320ba8b4fb2564ad2f190885d1`; do not treat historical results
+  as verification of this revision.
+- **Implementation:** T4.1a diagnostic-control uncertainty calibration and
+  T4.3a diagnostic-control privacy auditing are implemented, while full
+  selection-dependent T4.1 and T4.3 remain unavailable.
+- **Full suite:** the latest authoritative executed-suite record is `218
+  passed in 22.00s` after repairs at
+  `f8a1f73d8833174e170266ab7f5f9f5d8c723248`. It was not run after a successful
+  locked dev sync and is neither locked nor current-assessment evidence.
+- **Stable gate and CI:** every stable-release checklist item remains
+  unchecked. CI is configured for the bounded CPU smoke and Python 3.11--3.14
+  CPU matrix with an immutable verification-record job, but no successful
+  current-assessment workflow record exists; the release-candidate matrix has
+  not passed.
+- **Bounded CLI evidence:**
+  `docs/artifacts/release-cli-integration-smoke-20260813.json` records the
+  latest indexed successful 50-user/seven-day CPU contract smoke at source
+  `4dcba63462570fda439e24e4e4812a85c6854753`. It used `UV_NO_SYNC=1` after a
+  package-index failure and is historical bounded evidence, not a clean locked
+  release baseline for this revision.
+- **Blockers and scientific decision:** a clean locked CPU sync/full suite,
+  the remaining package/CLI and bounded-workflow gates, a passing CI matrix and
+  immutable workflow record, and all remaining checklist evidence block a
+  stable release. No `selected_candidate` exists. Preserve T2.7's **do not
+  advance** decision and do not open a routine branch.
+- **Recommended next action:** obtain a clean release verification baseline for
+  the assessment revision or a newly identified immutable successor.
+
 ## Mandatory reading before edits
 
 Read these files in order:
