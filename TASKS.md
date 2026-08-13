@@ -812,6 +812,19 @@ gated by T1.6.
     for the statistical baseline, capacity-matched single vector, and
     factorized variants only when each is labeled `diagnostic_control` and its
     required audit provenance is recorded.
+  - **Artifact-readiness audit (2026-08-13):**
+    [`docs/artifacts/t4.3-t2.7-membership-readiness-20260813.md`](docs/artifacts/t4.3-t2.7-membership-readiness-20260813.md)
+    records that none of the 56 T2.7-indexed experiment files or exact source
+    datasets is locally present. The surviving index cannot reconstruct
+    per-user optimizer, validation/checkpoint-selection, or preprocessing
+    participation; its 49-user export mask is not a membership record. The
+    global temporal-window contract reserves no user-held-out cohort, so no
+    authenticated same-lineage non-member population or common support is
+    currently demonstrated and primary membership is unavailable. Restore the
+    exact indexed/source bytes for a retrospective audit, or generate a newly
+    identified matched diagnostic lineage with frozen user-level participation
+    records and a predeclared held-out cohort; never substitute another seed,
+    source hash, preparation identity, or scenario.
 
 - [x] **T4.4 — Online incremental-update benchmarks.**
   - **Requirement IDs:** R13.
