@@ -269,25 +269,21 @@ Goal: make the representation usable beyond the controlled prototype.
 Exit gate: tradeoffs are reported explicitly; no simulator-only result is
 presented as real-world validation.
 
-Status: seeded three-cutoff reliability/repeatability and an observed-only
-offline frozen-export/evaluation benchmark are implemented. T4.2 is complete as
-an authenticated diagnostic-control adaptation/forgetting audit, not as a
-successful selected-model conclusion: no representation has the
-`selected_candidate` role, so a selection-dependent R11 conclusion remains
-unavailable. T4.5 is complete as claim-boundary and evidence-validation work,
-not as external validation; external validation remains absent. T4.3a is
-complete as an executable diagnostic-control privacy audit, while T4.3 remains
-open because no representation has the `selected_candidate` role. The remaining
-tasks are T4.1 uncertainty calibration and selection-dependent T4.3 privacy
-audits.
+Status: the T4.1a reliability-calibration and T4.3a privacy diagnostic-control
+surfaces are complete. T4.2, T4.4, and T4.5 remain complete within their
+documented boundaries. Full T4.1 and T4.3 remain blocked because no
+representation has the `selected_candidate` role. The immediate next action is
+stable-release verification and integration repair, not another
+selection-dependent audit. A future model-development cycle must first pass the
+representation-selection gates before full T4.1, T4.2, or T4.3 can be rerun as
+selected-candidate evidence. T2.7's **do not advance** result remains binding,
+and no routine branch is open.
 
 Historical plan: P4 was originally prioritized as T4.1 uncertainty calibration,
 T4.2 adaptation and forgetting audit, T4.3 privacy audits, T4.4 online
 incremental-update benchmarks, then T4.5 calibration and external-validity
 limits. This records the former sequence, not the current execution order or
-task status. The current next-task recommendation is T4.3 privacy audits,
-without selecting a least-bad representation; any comparative attacks must
-remain explicitly labeled as diagnostic controls under the selection policy.
+task status, and is retained as history rather than current guidance.
 
 ## T1.2 implementation note (R1, R4)
 
