@@ -343,6 +343,36 @@ coverage-risk behavior differs, while timing on this warm filesystem happened
 to be lower. These hardware-specific smoke measurements do not measure training
 or online incremental updates and are not calibrated real-world uncertainty.
 
+## T4.3a diagnostic-control privacy audit verification (2026-08-13)
+
+Requirement R12 is affected in the evaluator and documentation layers; the
+simulator, observed contract, model, and generated artifacts are unchanged. No
+authenticated same-lineage member/non-member reference artifact is locally
+available, so the executable audit must report membership as `unavailable`
+rather than inventing labels. Verify the CLI and local contracts with:
+
+```bash
+uv run pytest tests/test_privacy.py tests/test_privacy_input_authentication.py \
+  tests/test_privacy_protected_labels.py tests/test_privacy_rendering.py \
+  tests/test_privacy_cli.py
+uv run geoembed audit-privacy --help
+```
+
+For an authenticated lineage, run the canonical command documented in
+`docs/COMMAND_REFERENCE.md`; it writes immutable
+`AUDIT_OUTPUT_DIR/audits/privacy.{json,md}` under
+`geoembeddings-privacy-audit/1.0`. Tests cover strict frozen configuration,
+deterministic user splits and matching, attack train/validation/test isolation,
+support and unavailable states, seeded bootstrap intervals, input and
+protected-label authentication, prohibited conclusions, atomic publication,
+and CLI path behavior.
+
+This verifies the T4.3a diagnostic surface, not selection-dependent T4.3. No
+representation has the `selected_candidate` role, no diagnostic control is
+selected, and the T2.7 **do not advance** decision remains binding. Simulator
+attacks do not certify privacy; AUC near 0.5 does not prove safety, and may
+instead reflect attack weakness, inadequate support, or threat-model mismatch.
+
 ## T4.4 online incremental-update verification
 
 Run `uv run geoembed benchmark --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR

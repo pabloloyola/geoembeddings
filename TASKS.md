@@ -800,7 +800,7 @@ gated by T1.6.
   - **Baseline artifact required:** matched statistical/single/factorized exports
     and utility reports.
   - **Command → expected artifact:** `uv run geoembed audit-privacy ...` →
-    `audits/privacy.{json,md}` (proposed).
+    `audits/privacy.{json,md}` (implemented for T4.3a diagnostic controls).
   - **Minimum coverage:** split/attack/imbalance unit tests; integration test for
     held-out membership and sensitive-attribute protocols.
   - **Completion evidence:** attack AUC, sensitive probes, utility/privacy curves,
@@ -826,7 +826,7 @@ gated by T1.6.
     records and a predeclared held-out cohort; never substitute another seed,
     source hash, preparation identity, or scenario.
 
-  - [ ] **T4.3a — Diagnostic-control privacy audit.**
+  - [x] **T4.3a — Diagnostic-control privacy audit.**
     - **Requirement ID:** R12.
     - **Inputs and lineage:** audit the statistical baseline,
       `capacity_matched_single`, and eligible T2.7 factorized variants from one
@@ -874,7 +874,7 @@ gated by T1.6.
       a strict typed boundary and rejects unknown or unfrozen protocol fields
       before an evaluator opens protected labels. No privacy baseline artifact
       exists; the authenticated matched input lineage remains unavailable, so
-      this does not make T4.3a executable or complete.
+      membership inference for that historical lineage remains unavailable.
     - **Attack-family note (2026-08-13):** `geoembeddings.privacy` now provides
       deterministic random/prior controls, provenance-only, vector-only,
       vector-plus-provenance regularized logistic attacks, and the YAML-bounded
@@ -882,14 +882,13 @@ gated by T1.6.
       class weights, and parameters; validation selects hyperparameters and
       membership thresholds before one test scoring pass. Undefined membership
       and sensitive-attribute metrics remain explicit. Authenticated report
-      orchestration and matched utility/privacy artifacts remain blockers, so
-      T4.3a stays open.
+      orchestration is now implemented; applicability remains explicit.
     - **Bootstrap note (2026-08-13):** primary attack metrics now use the frozen
       seeded stratified user-percentile protocol, preserving whole users and
       class/matching strata while reporting successful, degenerate, and
       excluded replicates. The shared utility also computes paired control
-      deltas from identical resampled users. Full audit-report orchestration and
-      matched utility/privacy artifacts remain blockers, so T4.3a stays open.
+      deltas from identical resampled users. The completed audit records these
+      intervals without deriving a winner.
     - **Protected-label note (2026-08-13):** the evaluator now gates canonical
       `truth/user_latents.csv.gz` loading on successful representation
       authentication and implements a small code-versioned attribute allowlist.
@@ -898,8 +897,7 @@ gated by T1.6.
       fields, and unsupported users remain aggregate exclusions. Prohibited or
       undeclared targets fail before truth is opened, and the returned label
       capability has no per-user serialization surface. Full report
-      orchestration and matched utility/privacy artifacts remain blockers, so
-      T4.3a stays open.
+      orchestration is now implemented; applicability remains explicit.
 
     - **CLI orchestration note (2026-08-13):** `geoembed audit-privacy` now
       resolves dataset, named experiment, evidence, utility-report, config, and
@@ -907,8 +905,18 @@ gated by T1.6.
       label access; and atomically writes the JSON/Markdown audit. Scientifically
       unavailable membership is an explicit successful result rather than an
       invented label or command failure. No locally authenticated matched
-      utility/privacy lineage exists yet, so T4.3a stays open and no diagnostic
-      control is selected.
+      utility/privacy lineage exists yet; no diagnostic control is selected.
+    - **Diagnostic completion note (2026-08-13):** the canonical CLI, strict
+      configuration and input authentication, protected-label gate, frozen
+      attack families and user splits, bootstrap intervals, applicability and
+      coverage reporting, immutable paired JSON/Markdown publication, and
+      rejection tests are implemented. The report schema is
+      `geoembeddings-privacy-audit/1.0`. This completes the executable T4.3a
+      diagnostic surface even when a scientifically valid result is
+      `unavailable`; it does not complete T4.3. A T4.3 conclusion still requires
+      an immutable `selected_candidate` and authenticated same-lineage evidence.
+      The T2.7 **do not advance** decision remains binding. Simulator attacks do
+      not certify privacy, and an attack AUC near 0.5 would not prove safety.
 
 - [x] **T4.4 — Online incremental-update benchmarks.**
   - **Requirement IDs:** R13.

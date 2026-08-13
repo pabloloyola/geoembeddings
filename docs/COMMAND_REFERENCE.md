@@ -893,9 +893,27 @@ The immutable outputs are `AUDIT_OUTPUT_DIR/audits/privacy.json` and
 `privacy.md`; existing outputs fail unless `--overwrite` is explicit. A lineage
 without authenticated user-level target-training participation can complete
 successfully, but membership results remain `unavailable` with an explicit
-reason. The supported conclusion is diagnostic-control evidence only. It does
-not select an input, establish factorized component semantics, provide a formal
-privacy guarantee, or make a selection-dependent R12 conclusion.
+reason.
+
+The JSON uses schema `geoembeddings-privacy-audit/1.0` and records:
+
+| Field | Evidence recorded |
+|---|---|
+| `threat_model`, `inputs`, `lineage` | Frozen protocol plus authenticated dataset, export, checkpoint, utility-report, preparation, and source identities |
+| `splits`, `membership_population`, `sensitive_attributes` | User-level split identity, membership applicability, protected-label derivations, and support |
+| `attacks`, `membership_metrics`, `sensitive_probe_metrics` | Frozen controls/attack families and held-out metrics, including undefined reasons and bootstrap uncertainty |
+| `utility_privacy_axes` | Separate authenticated utility and attack axes; never an aggregate winner |
+| `coverage`, `exclusions` | Eligible/realized populations, common support, missingness, and explicit unavailable reasons |
+| `selection`, `limitations` | Immutable `diagnostic_control` roles, unavailable selected-candidate conclusion, and claim boundaries |
+| `command`, `timestamps`, `runtime_metadata` | Reproduction and runtime provenance |
+
+The exact evidence scope is a simulator-scoped, authenticated attack evaluation
+of named diagnostic controls under the frozen threat model. It does not select
+an input, establish factorized component semantics, provide a formal privacy
+guarantee, certify deployment privacy, or make a selection-dependent R12
+conclusion. Attack AUC near 0.5 is not proof of safety: it can also reflect weak
+attacks, inadequate support, or a mismatched threat model. The T2.7 **do not
+advance** decision remains binding.
 
 ## `pipeline`
 
