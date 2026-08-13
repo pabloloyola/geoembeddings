@@ -165,6 +165,18 @@ attribute or intersection is excluded with counts. Results for synthetic labels
 are simulator diagnostics and do not imply the same attributes, distributions,
 or harms in a real population.
 
+The initial executable allowlist is code-versioned in
+`geoembeddings.privacy.SUPPORTED_PROTECTED_ATTRIBUTES`. It contains protected
+train-tertile derivations for canonical `user_latents` fields
+`price_sensitivity` and `family_orientation`, plus explicit non-probe
+declarations for observed `age_group` and `household_type`. Quantile boundaries
+are fitted from probe-train users only. The loader reports aggregate eligibility,
+missingness, unsupported, and class counts only after minimum total, class, and
+class-by-split cell support passes; excluded small-cell counts are not emitted.
+There is no rare-class merge in version 1 because no semantic merge mapping is
+predeclared. Exact coordinates, identifiers, episode/decision IDs, chosen flags,
+utility, text, and undeclared intersections fail before a truth file is opened.
+
 ## Imbalance and attack baselines
 
 The report must preserve the natural eligible membership prevalence and class

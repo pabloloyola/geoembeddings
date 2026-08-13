@@ -884,6 +884,16 @@ gated by T1.6.
       and sensitive-attribute metrics remain explicit. Authenticated report
       orchestration and matched utility/privacy artifacts remain blockers, so
       T4.3a stays open.
+    - **Protected-label note (2026-08-13):** the evaluator now gates canonical
+      `truth/user_latents.csv.gz` loading on successful representation
+      authentication and implements a small code-versioned attribute allowlist.
+      Continuous protected traits use probe-train-fitted tertiles; missing
+      labels, inadequate classes/cells, observed attributes, missing truth
+      fields, and unsupported users remain aggregate exclusions. Prohibited or
+      undeclared targets fail before truth is opened, and the returned label
+      capability has no per-user serialization surface. Full report
+      orchestration and matched utility/privacy artifacts remain blockers, so
+      T4.3a stays open.
 
 - [x] **T4.4 — Online incremental-update benchmarks.**
   - **Requirement IDs:** R13.
