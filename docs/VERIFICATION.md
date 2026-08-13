@@ -24,6 +24,20 @@ uv run pytest
 uv run geoembed --version
 ```
 
+## Continuous integration scope
+
+`.github/workflows/ci.yml` runs the locked development environment and test
+suite on the supported Python 3.11--3.14 matrix using CPU-only GitHub-hosted
+runners. It also checks the CLI version, privacy command and imports,
+documentation status, and external-validity evidence links. The uv download
+cache is keyed from `uv.lock`; generated `runs/`, `experiments/`, and
+`notebook_artifacts/` outputs are neither checked out nor cached.
+
+CUDA and Apple MPS regressions remain separate, optional checks on appropriate
+hardware. A passing CPU workflow does not establish CUDA or MPS compatibility,
+and accelerator results must continue to report their actual device and avoid
+counting device fallback as an accelerator pass.
+
 ## Integration verification: `c64611e` (2026-08-13 UTC)
 
 This run verified source commit

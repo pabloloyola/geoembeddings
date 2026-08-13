@@ -1,0 +1,57 @@
+name: CPU CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }} (CPU)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          clean: true
+          fetch-depth: 1
+
+      - name: Ensure generated artifact roots are absent
+        run: test ! -e runs && test ! -e experiments && test ! -e notebook_artifacts
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install locked development environment
+        run: uv sync --locked --extra dev
+
+      - name: Check lockfile
+        run: uv lock --check
+
+      - name: Test
+        run: uv run pytest
+
+      - name: Check CLI version
+        run: uv run geoembed --version
+
+      - name: Check privacy command and imports
+        run: |
+          uv run geoembed audit-privacy --help
+          uv run python -c "import geoembeddings.privacy, geoembeddings.privacy_audit, geoembeddings.privacy_evaluation"
+
+      - name: Check documentation status
+        run: uv run python scripts/check_status_consistency.py
+
+      - name: Check external-validity evidence links
+        run: uv run python scripts/check_evidence_links.py docs/EXTERNAL_VALIDITY.md
