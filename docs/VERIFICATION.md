@@ -15,6 +15,29 @@ suite.
 For pipeline and ranking smoke commands, follow
 [`docs/LOCAL_EXPLORATION.md`](LOCAL_EXPLORATION.md).
 
+## Bounded CLI integration smoke
+
+Run the complete public-command contract against a disposable supported smoke
+cohort with deterministic CPU training:
+
+```bash
+uv run python scripts/run_cli_integration_smoke.py
+```
+
+The script uses a temporary root by default (or a new path supplied with
+`--work-dir`), 50 synthetic users over seven days, one training epoch, and one
+measured benchmark iteration. It covers simulation, deep validation,
+preparation, baseline and learned representations, sparse and dense export,
+both evaluations, comparison, the dataset-2.0 nearest ranking control,
+offline/online benchmarking, and the authenticated privacy audit. It verifies
+canonical artifacts, explicit fields, preparation/source identities, finite
+arrays, unchanged observed/truth bytes, default output immutability, and
+rejection of a protected subdirectory as `--run-dir`. The intentionally small
+cohort does not support scientific membership inference; the smoke requires the
+audit to record membership as unavailable rather than treating that limitation
+as privacy evidence. This CI-only contract check is not reference-scale
+scientific evidence and must not be indexed or cited as such.
+
 ## Verify this checkout
 
 ```bash
