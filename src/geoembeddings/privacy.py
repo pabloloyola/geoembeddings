@@ -133,6 +133,227 @@ class PrivacyPopulation:
             raise KeyError(f"Unknown privacy population set {name!r}") from exc
 
 
+def _defined(value: float | None, reason: str | None = None) -> dict[str, Any]:
+    """JSON-safe metric value which never disguises an undefined result as zero."""
+    return {"value": None if value is None else float(value), "undefined_reason": reason}
+
+
+def _binary_metrics(y: np.ndarray, score: np.ndarray, threshold: float) -> dict[str, Any]:
+    support = int(y.size); positives = int(y.sum()); negatives = support - positives
+    pred = score >= threshold
+    tp = int(np.sum(pred & (y == 1))); fp = int(np.sum(pred & (y == 0)))
+    fn = positives - tp; tn = negatives - fp
+    reason = None if positives and negatives else "test_split_lacks_both_classes"
+    if reason:
+        auc = ap = None
+    else:
+        order = np.argsort(score, kind="stable")
+        ranks = np.empty(support, dtype=float); ranks[order] = np.arange(1, support + 1)
+        # Average tied ranks, which makes constant-score controls exactly 0.5.
+        for value in np.unique(score):
+            mask = score == value; ranks[mask] = ranks[mask].mean()
+        auc = float((ranks[y == 1].sum() - positives * (positives + 1) / 2) / (positives * negatives))
+        ap = 0.0
+        previous_recall = 0.0
+        for cutoff in np.sort(np.unique(score))[::-1]:
+            selected = score >= cutoff
+            selected_tp = int(np.sum((y == 1) & selected))
+            recall_at_cutoff = selected_tp / positives
+            precision_at_cutoff = selected_tp / int(selected.sum())
+            ap += (recall_at_cutoff - previous_recall) * precision_at_cutoff
+            previous_recall = recall_at_cutoff
+    recall = None if not positives else tp / positives
+    precision = None if not (tp + fp) else tp / (tp + fp)
+    tpr = None if not positives else tp / positives; tnr = None if not negatives else tn / negatives
+    balanced = None if tpr is None or tnr is None else (tpr + tnr) / 2
+    return {"roc_auc": _defined(auc, reason), "average_precision": _defined(ap, reason),
+            "balanced_accuracy": _defined(balanced, reason),
+            "precision": _defined(precision, "no_predicted_positive" if precision is None else None),
+            "recall": _defined(recall, "no_positive_support" if recall is None else None),
+            "threshold": float(threshold), "threshold_rule": "score_greater_than_or_equal_to_threshold",
+            "natural_prevalence": positives / support if support else None,
+            "support": {"total": support, "positive": positives, "negative": negatives}}
+
+
+def _multiclass_metrics(y: np.ndarray, probabilities: np.ndarray, classes: np.ndarray) -> dict[str, Any]:
+    pred = classes[np.argmax(probabilities, axis=1)]
+    recalls: list[float] = []; f1s: list[float] = []; aucs: list[float] = []
+    per_class: dict[str, int] = {}
+    for column, label in enumerate(classes):
+        actual = y == label; guessed = pred == label; count = int(actual.sum()); per_class[str(label)] = count
+        tp = int(np.sum(actual & guessed)); fp = int(np.sum(~actual & guessed)); fn = count - tp
+        if count: recalls.append(tp / count)
+        denominator = 2 * tp + fp + fn
+        if denominator: f1s.append(2 * tp / denominator)
+        one = _binary_metrics(actual.astype(int), probabilities[:, column], 0.5)["roc_auc"]["value"]
+        if one is not None: aucs.append(one)
+    absent = "test_split_has_fewer_than_two_supported_classes"
+    result = {"macro_f1": _defined(float(np.mean(f1s)) if len(f1s) == len(classes) else None, absent),
+              "balanced_accuracy": _defined(float(np.mean(recalls)) if len(recalls) == len(classes) else None, absent),
+              "one_vs_rest_macro_auc": _defined(float(np.mean(aucs)) if len(aucs) == len(classes) else None, absent),
+              "per_class_support": per_class, "support": int(y.size)}
+    if len(classes) == 2:
+        result.update({k: v for k, v in _binary_metrics((y == classes[1]).astype(int), probabilities[:, 1], 0.5).items()
+                       if k in {"roc_auc", "average_precision"}})
+    return result
+
+
+def _fit_preprocessor(x: np.ndarray, pca_components: int | None) -> tuple[dict[str, np.ndarray], np.ndarray]:
+    median = np.nanmedian(x, axis=0); median = np.where(np.isfinite(median), median, 0.0)
+    clean = np.where(np.isfinite(x), x, median)
+    mean = clean.mean(axis=0); scale = clean.std(axis=0); scale[scale == 0] = 1
+    standardized = (clean - mean) / scale
+    basis = np.empty((standardized.shape[1], 0))
+    if pca_components is not None and 0 < pca_components < standardized.shape[1]:
+        _, _, vt = np.linalg.svd(standardized, full_matrices=False); basis = vt[:pca_components].T
+        standardized = standardized @ basis
+    return {"imputation": median, "mean": mean, "scale": scale, "pca_basis": basis}, standardized
+
+
+def _transform(x: np.ndarray, state: Mapping[str, np.ndarray]) -> np.ndarray:
+    clean = np.where(np.isfinite(x), x, state["imputation"])
+    value = (clean - state["mean"]) / state["scale"]
+    return value @ state["pca_basis"] if state["pca_basis"].shape[1] else value
+
+
+def _fit_softmax(x: np.ndarray, y: np.ndarray, classes: np.ndarray, c: float,
+                 weights: np.ndarray, seed: int, epochs: int = 500) -> tuple[np.ndarray, np.ndarray]:
+    del seed  # initialization is deliberately deterministic and data-independent
+    targets = (y[:, None] == classes[None, :]).astype(float)
+    coef = np.zeros((x.shape[1], len(classes))); intercept = np.zeros(len(classes))
+    rate = 0.2 / max(1.0, np.sqrt(x.shape[1]))
+    for step in range(epochs):
+        logits = x @ coef + intercept; logits -= logits.max(axis=1, keepdims=True)
+        probability = np.exp(logits); probability /= probability.sum(axis=1, keepdims=True)
+        error = (probability - targets) * weights[:, None]
+        coef -= rate / np.sqrt(step + 1) * (x.T @ error / weights.sum() + coef / (c * len(y)))
+        intercept -= rate / np.sqrt(step + 1) * error.sum(axis=0) / weights.sum()
+    return coef, intercept
+
+
+def _predict_softmax(x: np.ndarray, model: tuple[np.ndarray, np.ndarray]) -> np.ndarray:
+    logits = x @ model[0] + model[1]; logits -= logits.max(axis=1, keepdims=True)
+    result = np.exp(logits); return result / result.sum(axis=1, keepdims=True)
+
+
+def run_privacy_attacks(
+    population: PrivacyPopulation, labels_by_user: Mapping[str, Any] | None, *,
+    inverse_regularization_strengths: Sequence[float], hidden_units: Sequence[int],
+    nonlinear_epochs: int, nonlinear_tuning_budget: int, maximum_parameters: int,
+    seed: int, task: Literal["membership", "sensitive_attribute"] = "membership",
+    pca_components: int | None = None,
+) -> dict[str, Any]:
+    """Run the frozen attack families with train/validation/test isolation.
+
+    All preprocessing and class weights are estimated from attack-train.  The
+    validation split alone chooses regularization, architecture, and (for
+    membership) the decision threshold; test is transformed and scored once.
+    """
+    if population.status != "available": return {"status": "unavailable", "reason": population.reason, "attacks": {}}
+    records = list(population.records)
+    labels = np.asarray([int(r.membership) if labels_by_user is None else labels_by_user[r.user_id] for r in records])
+    indices = {name: np.asarray([i for i, r in enumerate(records) if r.split == name]) for name in ("train", "validation", "test")}
+    classes = np.unique(labels[indices["train"]]) if len(indices["train"]) else np.asarray([])
+    if (any(not len(value) for value in indices.values()) or len(classes) < 2
+            or not set(np.unique(labels[indices["validation"]])).issubset(set(classes))
+            or not set(np.unique(labels[indices["test"]])).issubset(set(classes))):
+        return {"status": "unavailable", "reason": "attack_split_support_inadequate", "attacks": {}}
+    vector = np.asarray([r.vector_features + r.missing_cutoff_mask + r.missing_component_mask for r in records], float)
+    provenance = np.asarray([r.provenance_covariates for r in records], float)
+    features = {"provenance_logistic": provenance, "vector_logistic": vector,
+                "vector_plus_provenance_logistic": np.column_stack((vector, provenance)),
+                "bounded_nonlinear": np.column_stack((vector, provenance))}
+    train_counts = {label: int(np.sum(labels[indices["train"]] == label)) for label in classes}
+    row_weights = np.asarray([len(indices["train"]) / (len(classes) * train_counts[label]) for label in labels[indices["train"]]])
+
+    def quality(y: np.ndarray, probability: np.ndarray) -> float:
+        if task == "membership":
+            return _binary_metrics(y.astype(int), probability[:, 1], 0.5)["roc_auc"]["value"] or -1.0
+        value = _multiclass_metrics(y, probability, classes)["macro_f1"]["value"]; return value if value is not None else -1.0
+
+    output: dict[str, Any] = {}
+    test = indices["test"]; validation = indices["validation"]
+    prevalence = float(np.mean(labels[indices["train"]] == classes[-1]))
+    random_scores = np.asarray([int(_seeded_user_hash(seed, population.target_model_lineage, records[i].user_id, "random-control"), 16) / 2**256 for i in test])
+    if task == "membership":
+        output["deterministic_random"] = _binary_metrics((labels[test] == classes[-1]).astype(int), random_scores, 0.5)
+        output["majority_base_rate"] = _binary_metrics((labels[test] == classes[-1]).astype(int), np.full(len(test), prevalence), 0.5)
+    else:
+        priors = np.asarray([train_counts[c] for c in classes], float); priors /= priors.sum()
+        output["majority_prior"] = _multiclass_metrics(labels[test], np.tile(priors, (len(test), 1)), classes)
+        random_probability = np.asarray([[int(_seeded_user_hash(seed + column, population.target_model_lineage,
+                                                                  records[i].user_id, "random-control"), 16) / 2**256
+                                          for column in range(len(classes))] for i in test])
+        random_probability /= random_probability.sum(axis=1, keepdims=True)
+        output["deterministic_random"] = _multiclass_metrics(labels[test], random_probability, classes)
+    for name, raw in features.items():
+        state, train_x = _fit_preprocessor(raw[indices["train"]], pca_components)
+        val_x = _transform(raw[validation], state); test_x = _transform(raw[test], state)
+        candidates: list[tuple[float, dict[str, Any], np.ndarray, Any]] = []
+        if name != "bounded_nonlinear":
+            for c in inverse_regularization_strengths:
+                model = _fit_softmax(train_x, labels[indices["train"]], classes, float(c), row_weights, seed)
+                val_probability = _predict_softmax(val_x, model)
+                candidates.append((quality(labels[validation], val_probability), {"C": float(c)}, val_probability, model))
+        else:
+            budget = 0
+            for hidden in hidden_units:
+                for c in inverse_regularization_strengths:
+                    if budget >= nonlinear_tuning_budget: break
+                    parameters = (train_x.shape[1] + 1) * hidden + (hidden + 1) * len(classes)
+                    if parameters > maximum_parameters: continue
+                    torch.manual_seed(seed + budget); model = torch.nn.Sequential(torch.nn.Linear(train_x.shape[1], hidden), torch.nn.ReLU(), torch.nn.Linear(hidden, len(classes)))
+                    optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1 / float(c))
+                    tx = torch.tensor(train_x, dtype=torch.float32); ty = torch.tensor(np.searchsorted(classes, labels[indices["train"]]), dtype=torch.long)
+                    tw = torch.tensor(row_weights, dtype=torch.float32)
+                    for _ in range(nonlinear_epochs):
+                        optimizer.zero_grad(); losses = torch.nn.functional.cross_entropy(model(tx), ty, reduction="none"); (losses * tw).mean().backward(); optimizer.step()
+                    with torch.no_grad():
+                        vp = torch.softmax(model(torch.tensor(val_x, dtype=torch.float32)), 1).numpy()
+                    candidates.append((quality(labels[validation], vp), {"hidden_units": hidden, "C": float(c), "parameter_count": parameters}, vp, model)); budget += 1
+                if budget >= nonlinear_tuning_budget: break
+        if not candidates:
+            output[name] = {"status": "unavailable", "reason": "no_model_within_frozen_parameter_budget"}; continue
+        _, selected, validation_probability, selected_model = max(candidates, key=lambda item: (item[0], -list(item[1].values())[0]))
+        if name == "bounded_nonlinear":
+            with torch.no_grad():
+                probability = torch.softmax(selected_model(torch.tensor(test_x, dtype=torch.float32)), 1).numpy()
+        else:
+            probability = _predict_softmax(test_x, selected_model)
+        if task == "membership":
+            # Threshold is selected solely from validation predictions of the frozen selected configuration.
+            # Refit its validation predictions without ever consulting test outcomes.
+            score = probability[:, 1]
+            validation_scores = validation_probability[:, 1]
+            thresholds = np.unique(np.r_[0.0, 0.5, 1.0, validation_scores])
+            threshold = max(thresholds, key=lambda value: (
+                _binary_metrics((labels[validation] == classes[-1]).astype(int), validation_scores, float(value))["balanced_accuracy"]["value"] or -1.0,
+                -abs(float(value) - 0.5), -float(value)))
+            output[name] = {**_binary_metrics((labels[test] == classes[-1]).astype(int), score, threshold), "selected_hyperparameters": selected}
+        else:
+            output[name] = {**_multiclass_metrics(labels[test], probability, classes), "selected_hyperparameters": selected}
+        output[name]["preprocessing_fit_split"] = "train"; output[name]["selection_split"] = "validation"
+        output[name]["test_scoring_passes"] = 1; output[name]["pca_components"] = pca_components
+    return {"status": "available", "task": task, "class_order": classes.tolist(), "attacks": output}
+
+
+def run_privacy_attacks_from_config(
+    population: PrivacyPopulation, labels_by_user: Mapping[str, Any] | None,
+    config: Any, *, task: Literal["membership", "sensitive_attribute"] = "membership",
+) -> dict[str, Any]:
+    """Execute attacks using only the architecture and search budget frozen in YAML."""
+    linear = config.attacks["linear"]; nonlinear = config.attacks["nonlinear"]
+    reduction = config.attacks.get("dimensionality_reduction", {})
+    return run_privacy_attacks(
+        population, labels_by_user,
+        inverse_regularization_strengths=linear["inverse_regularization_strengths"],
+        hidden_units=nonlinear["hidden_units"], nonlinear_epochs=nonlinear["epochs"],
+        nonlinear_tuning_budget=nonlinear["tuning_budget"],
+        maximum_parameters=nonlinear["maximum_parameters"], seed=config.audit_seed,
+        task=task, pca_components=reduction.get("components") if reduction.get("enabled", False) else None,
+    )
+
+
 def _user_set_hash(users: Sequence[str]) -> str:
     """Hash a set rather than its caller-provided iteration order."""
     values = sorted(map(str, users))

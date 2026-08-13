@@ -180,7 +180,7 @@ def validate_privacy_config(raw: Any) -> PrivacyAuditConfig:
     if not isinstance(attributes_raw, list) or not attributes_raw: raise ValueError("sensitive_attributes must not be empty")
     attributes = tuple(_parse_attribute(value, index) for index, value in enumerate(attributes_raw))
     if len({item.name for item in attributes}) != len(attributes): raise ValueError("sensitive attributes overlap")
-    attacks = _fields(config["attacks"], "attacks", {"linear", "nonlinear"})
+    attacks = _fields(config["attacks"], "attacks", {"linear", "nonlinear", "dimensionality_reduction"})
     linear = _fields(attacks["linear"], "attacks.linear", {"family", "regularization", "inverse_regularization_strengths"})
     if linear["family"] != "logistic_regression" or linear["regularization"] != "l2": raise ValueError("linear attack is not frozen")
     strengths = linear["inverse_regularization_strengths"]
@@ -189,6 +189,10 @@ def validate_privacy_config(raw: Any) -> PrivacyAuditConfig:
     if nonlinear["family"] != "one_hidden_layer_mlp": raise ValueError("nonlinear architecture must have one hidden layer")
     if not isinstance(nonlinear["hidden_units"], list) or not nonlinear["hidden_units"] or any(_integer(v, "attacks.nonlinear.hidden_units[]", positive=True) < 1 for v in nonlinear["hidden_units"]): raise ValueError("hidden_units must be positive")
     for name in ("maximum_parameters", "epochs", "tuning_budget"): _integer(nonlinear[name], f"attacks.nonlinear.{name}", positive=True)
+    reduction = _fields(attacks["dimensionality_reduction"], "attacks.dimensionality_reduction", {"enabled", "method", "components"})
+    if not isinstance(reduction["enabled"], bool) or reduction["method"] != "train_fitted_pca":
+        raise ValueError("dimensionality reduction must be frozen to train-fitted PCA")
+    _integer(reduction["components"], "attacks.dimensionality_reduction.components", positive=True)
     imbalance = _fields(config["imbalance"], "imbalance", {"class_weighting", "secondary_one_to_one"})
     if imbalance["class_weighting"] != "inverse_frequency_from_attack_train": raise ValueError("class weighting is not frozen")
     secondary = _fields(imbalance["secondary_one_to_one"], "imbalance.secondary_one_to_one", {"enabled", "policy", "seeds"})
