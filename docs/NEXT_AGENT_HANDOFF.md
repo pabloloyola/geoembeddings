@@ -88,9 +88,9 @@ design document and tests before changing code. Research context lives in
   representation comparisons are `diagnostic_control` evidence only.
 - The open top-level tasks are T4.1 (R10, uncertainty calibration) and T4.3
   (R12, selection-dependent privacy conclusion). T4.1 and T4.3 cannot be
-  completed without a selected candidate, although T4.1a remains open and the
-  explicitly scoped T4.3a diagnostic-control command is complete. Reconfirm all
-  statuses in `TASKS.md` before starting because this paragraph will age.
+  completed without a selected candidate; the explicitly scoped T4.1a and
+  T4.3a diagnostic-control commands are complete. Reconfirm all statuses in
+  `TASKS.md` before starting because this paragraph will age.
 
 Run T4.3a with `uv run geoembed audit-privacy --run-dir RUN_DIR
 --experiment-dir NAME=EXPERIMENT_DIR --evidence-dir EVIDENCE_DIR

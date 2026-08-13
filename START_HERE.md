@@ -90,5 +90,6 @@ decision because persistent and combined gates failed; do not open a routine
 branch. T4.2 adaptation/forgetting auditing and T4.5 external-validity limits
 are complete. Because no representation has the `selected_candidate` role,
 T4.2 currently provides diagnostic-control evidence only, not a
-selection-dependent R11 conclusion. The remaining open top-level tasks are T4.1
-uncertainty calibration and T4.3 privacy audits.
+selection-dependent R11 conclusion. The remaining open top-level tasks are the
+selection-dependent T4.1 uncertainty-calibration and T4.3 privacy conclusions;
+the bounded T4.1a and T4.3a diagnostic-control surfaces are complete.
