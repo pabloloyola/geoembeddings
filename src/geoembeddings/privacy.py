@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Mapping, Sequence
 
 import numpy as np
 import torch
@@ -27,6 +27,7 @@ FACTORIZATION_INDEX_SCHEMA_VERSION = "geoembeddings-factorization-evidence-index
 PRIVACY_INPUT_SCHEMA_VERSION = "geoembeddings-privacy-input/1.0"
 SELECTION_ROLE = "diagnostic_control"
 BASELINE_CHECKPOINT_IDENTITY = "not_applicable"
+PRIVACY_POPULATION_SCHEMA_VERSION = "geoembeddings-privacy-population/1.0"
 
 
 def _canonical_hash(value: Any) -> str:
@@ -93,6 +94,214 @@ class AuthenticatedPrivacyInputs:
     t2_7_decision: str
     inputs: tuple[PrivacyInputIdentity, ...]
     runtime_metadata: RuntimeMetadata | None = None
+
+
+@dataclass(frozen=True)
+class PrivacyPopulationRecord:
+    """One attack example: all of a user's vectors, masks, and public strata."""
+
+    user_id: str
+    membership: bool
+    split: Literal["train", "validation", "test"]
+    vector_features: tuple[float, ...]
+    missing_cutoff_mask: tuple[int, ...]
+    missing_component_mask: tuple[int, ...]
+    provenance_covariates: tuple[float, ...]
+    matching_stratum: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class PrivacyPopulation:
+    """Deterministic user population, or a fail-closed unavailable decision."""
+
+    schema_version: str
+    status: Literal["available", "unavailable"]
+    reason: str | None
+    target_model_lineage: str
+    cutoff_order: tuple[str, ...]
+    component_order: tuple[str, ...]
+    vector_feature_names: tuple[str, ...]
+    provenance_feature_names: tuple[str, ...]
+    records: tuple[PrivacyPopulationRecord, ...]
+    excluded_users: tuple[str, ...]
+    user_set_hashes: tuple[tuple[str, str], ...]
+
+    def user_set_hash(self, name: str) -> str:
+        try:
+            return dict(self.user_set_hashes)[name]
+        except KeyError as exc:
+            raise KeyError(f"Unknown privacy population set {name!r}") from exc
+
+
+def _user_set_hash(users: Sequence[str]) -> str:
+    """Hash a set rather than its caller-provided iteration order."""
+    values = sorted(map(str, users))
+    if len(values) != len(set(values)):
+        raise ValueError("User sets must not contain duplicate identities")
+    return _canonical_hash(values)
+
+
+def _seeded_user_hash(seed: int, lineage: str, user_id: str, purpose: str) -> str:
+    return _canonical_hash({"version": "privacy-user-hash/1.0", "seed": seed,
+                            "target_model_lineage": lineage, "user_id": user_id,
+                            "purpose": purpose})
+
+
+def _bin(value: float, boundaries: Sequence[float], name: str) -> int:
+    edges = tuple(float(item) for item in boundaries)
+    if len(edges) < 2 or any(b <= a for a, b in zip(edges, edges[1:])):
+        raise ValueError(f"Matching boundaries for {name!r} are not strictly increasing")
+    if not np.isfinite(value):
+        raise ValueError(f"Matching covariate {name!r} is not finite")
+    # Frozen strata are half-open, except that the final right edge is inclusive.
+    for index, (left, right) in enumerate(zip(edges, edges[1:])):
+        if left <= value < right or (index == len(edges) - 2 and value == right):
+            return index
+    raise ValueError(f"Matching covariate {name!r}={value} is outside frozen boundaries")
+
+
+def construct_privacy_population(
+    export: LoadedEmbeddingExport | str | Path,
+    *,
+    target_model_lineage: str,
+    membership_by_user: Mapping[str, bool],
+    provenance_by_user: Mapping[str, Mapping[str, float]],
+    cutoff_order: Sequence[str],
+    component_order: Sequence[str],
+    matching_boundaries: Mapping[str, Sequence[float]],
+    audit_seed: int,
+    split_seed: int,
+    split_fractions: tuple[float, float, float] = (0.6, 0.2, 0.2),
+    minimum_total: int = 1,
+    minimum_per_class: int = 1,
+    minimum_per_stratum: int = 1,
+    expected_user_set_hashes: Mapping[str, str] | None = None,
+) -> PrivacyPopulation:
+    """Build immutable user-level membership examples from a frozen export.
+
+    Membership is supplied once per user for this target lineage.  In
+    particular, export cutoffs never create membership labels: a post-training
+    event belonging to a training user remains part of that member's one record.
+    Matching and splitting use only the explicitly declared public provenance.
+    """
+    if not target_model_lineage.strip():
+        raise ValueError("target_model_lineage must be non-empty")
+    loaded = load_embedding_export(export) if isinstance(export, (str, Path)) else export
+    cutoffs = tuple(map(str, cutoff_order)); components = tuple(map(str, component_order))
+    if not cutoffs or len(cutoffs) != len(set(cutoffs)):
+        raise ValueError("cutoff_order must be non-empty and unique")
+    if not components or len(components) != len(set(components)):
+        raise ValueError("component_order must be non-empty and unique")
+    if any(name not in loaded.components for name in components):
+        raise ValueError("component_order contains a component absent from the export")
+    provenance_names = tuple(matching_boundaries)
+    if not provenance_names:
+        raise ValueError("At least one frozen public matching covariate is required")
+    if set(membership_by_user) != set(provenance_by_user):
+        raise ValueError("Membership and frozen-provenance user sets differ")
+    if any(not isinstance(value, (bool, np.bool_)) for value in membership_by_user.values()):
+        raise ValueError("Membership must be one boolean per (target_model_lineage, user_id)")
+    fractions = tuple(float(value) for value in split_fractions)
+    if len(fractions) != 3 or any(value <= 0 for value in fractions) or not np.isclose(sum(fractions), 1.0):
+        raise ValueError("Split fractions must be three positive values summing to one")
+
+    export_users = loaded.arrays["user_id"].astype(str)
+    export_cutoffs = loaded.arrays["cutoff"].astype(str)
+    row_by_key: dict[tuple[str, str], int] = {}
+    for index, key in enumerate(zip(export_users.tolist(), export_cutoffs.tolist())):
+        if key in row_by_key:
+            raise ValueError(f"Duplicate export user/cutoff key: {key!r}")
+        if key[1] not in cutoffs:
+            raise ValueError(f"Post-hoc cutoff {key[1]!r} is absent from the declared cutoff order")
+        row_by_key[key] = index
+    unknown_export_users = set(export_users) - set(membership_by_user)
+    if unknown_export_users:
+        raise ValueError(f"Export contains users without frozen membership: {sorted(unknown_export_users)}")
+
+    eligible = sorted(map(str, membership_by_user))
+    excluded: list[str] = []
+    candidates: dict[str, dict[str, Any]] = {}
+    feature_names: list[str] = []
+    for cutoff in cutoffs:
+        for component in components:
+            feature_names.extend(f"vector:{cutoff}:{component}:{i}" for i in range(loaded.components[component].shape[1]))
+    for user in eligible:
+        provenance = provenance_by_user[user]
+        if set(provenance) != set(provenance_names):
+            raise ValueError(f"Public provenance schema mismatch for user {user!r}")
+        try:
+            provenance_values = tuple(float(provenance[name]) for name in provenance_names)
+            stratum = tuple(_bin(value, matching_boundaries[name], name)
+                            for name, value in zip(provenance_names, provenance_values))
+        except ValueError:
+            excluded.append(user)
+            continue
+        values: list[float] = []; cutoff_mask: list[int] = []; component_mask: list[int] = []
+        for cutoff in cutoffs:
+            row = row_by_key.get((user, cutoff)); cutoff_mask.append(int(row is None))
+            for component in components:
+                missing = row is None
+                component_mask.append(int(missing))
+                dimension = loaded.components[component].shape[1]
+                values.extend(([0.0] * dimension) if missing else loaded.components[component][row].astype(float).tolist())
+        candidates[user] = {"membership": bool(membership_by_user[user]), "vector": tuple(values),
+                            "cutoff_mask": tuple(cutoff_mask), "component_mask": tuple(component_mask),
+                            "provenance": provenance_values, "stratum": stratum}
+
+    # Pair within common-support cells; deterministic order gives matching
+    # without replacement and never consults vectors or protected outcomes.
+    cells: dict[tuple[int, ...], dict[bool, list[str]]] = {}
+    for user, value in candidates.items():
+        cells.setdefault(value["stratum"], {False: [], True: []})[value["membership"]].append(user)
+    matched: list[str] = []
+    for stratum in sorted(cells):
+        cell = cells[stratum]
+        members = sorted(cell[True], key=lambda u: _seeded_user_hash(audit_seed, target_model_lineage, u, "match"))
+        nonmembers = sorted(cell[False], key=lambda u: _seeded_user_hash(audit_seed, target_model_lineage, u, "match"))
+        count = min(len(members), len(nonmembers))
+        if count < minimum_per_stratum:
+            excluded.extend(members); excluded.extend(nonmembers)
+        else:
+            matched.extend(members[:count]); matched.extend(nonmembers[:count])
+            excluded.extend(members[count:]); excluded.extend(nonmembers[count:])
+    matched = sorted(matched)
+    class_counts = {value: sum(candidates[user]["membership"] == value for user in matched) for value in (False, True)}
+
+    thresholds = (fractions[0], fractions[0] + fractions[1])
+    split_users: dict[str, list[str]] = {"train": [], "validation": [], "test": []}
+    records: list[PrivacyPopulationRecord] = []
+    for user in matched:
+        # Hashing the complete canonical identity makes assignment independent
+        # of export row order and keeps the whole user in exactly one split.
+        unit = int(_seeded_user_hash(split_seed, target_model_lineage, user, "attack-split"), 16) / 2**256
+        split = "train" if unit < thresholds[0] else "validation" if unit < thresholds[1] else "test"
+        split_users[split].append(user)
+        value = candidates[user]
+        records.append(PrivacyPopulationRecord(user, value["membership"], split, value["vector"],
+                                               value["cutoff_mask"], value["component_mask"],
+                                               value["provenance"], value["stratum"]))
+    sets = {"eligible": eligible, "matched": matched, "excluded": sorted(set(excluded)), **split_users}
+    hashes = tuple((name, _user_set_hash(users)) for name, users in sets.items())
+    if set(split_users["train"]) & set(split_users["validation"]) or set(split_users["train"]) & set(split_users["test"]) or set(split_users["validation"]) & set(split_users["test"]):
+        raise ValueError("Attack user splits overlap")
+    if set().union(*map(set, split_users.values())) != set(matched):
+        raise ValueError("Attack split assignment changed the matched user set")
+    if expected_user_set_hashes is not None:
+        actual = dict(hashes)
+        for name, expected in expected_user_set_hashes.items():
+            if name not in actual or actual[name] != expected:
+                raise ValueError(f"Post-hoc {name!r} user-set change detected")
+    reason = None
+    if not class_counts[False] or not class_counts[True]: reason = "membership_classes_inadequate"
+    elif len(matched) < minimum_total or min(class_counts.values()) < minimum_per_class: reason = "common_support_inadequate"
+    status: Literal["available", "unavailable"] = "unavailable" if reason else "available"
+    return PrivacyPopulation(PRIVACY_POPULATION_SCHEMA_VERSION, status, reason, target_model_lineage,
+                             cutoffs, components, tuple(feature_names), provenance_names,
+                             tuple(records), tuple(sorted(set(excluded))), hashes)
+
+
+# Public spelling retained for callers that describe this phase as population building.
+build_privacy_population = construct_privacy_population
 
 
 def _indexed_artifact(index: dict[str, Any], path: Path) -> dict[str, Any]:
