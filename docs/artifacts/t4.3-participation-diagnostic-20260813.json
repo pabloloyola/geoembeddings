@@ -1,0 +1,458 @@
+{
+  "attack_decision": {
+    "attacks_run": false,
+    "coverage": {
+      "eligible": 100,
+      "excluded": 100,
+      "matched": 0,
+      "realized_members": 0,
+      "realized_nonmembers": 0,
+      "unmatched": 100
+    },
+    "reason": "no_exported_clean_pipeline_nonmembers_and_no_common_support",
+    "status": "unavailable",
+    "thresholds": {
+      "minimum_per_class": {
+        "passed": false,
+        "realized_member": 0,
+        "realized_nonmember": 0,
+        "required": 20
+      },
+      "minimum_per_stratum": {
+        "matched_strata": 0,
+        "passed": false,
+        "required": 10
+      },
+      "minimum_total": {
+        "passed": false,
+        "realized": 0,
+        "required": 100
+      }
+    }
+  },
+  "commands": [
+    "uv run geoembed simulate --run-dir runs/t4.3-participation-diagnostic-20260813 --users 100 --days 7 --seed 20260813",
+    "uv run geoembed validate --run-dir runs/t4.3-participation-diagnostic-20260813",
+    "for VARIANT in factorized_pc capacity_matched_single persistent_only context_only factorized_no_persistent_loss factorized_no_context_loss; do uv run geoembed prepare --config configs/embedding/$VARIANT.yaml --run-dir runs/t4.3-participation-diagnostic-20260813 --experiment-dir experiments/t4.3-participation-diagnostic-20260813/$VARIANT; uv run geoembed train --config configs/embedding/$VARIANT.yaml --run-dir runs/t4.3-participation-diagnostic-20260813 --experiment-dir experiments/t4.3-participation-diagnostic-20260813/$VARIANT; uv run geoembed export --config configs/embedding/$VARIANT.yaml --run-dir runs/t4.3-participation-diagnostic-20260813 --experiment-dir experiments/t4.3-participation-diagnostic-20260813/$VARIANT; done",
+    "uv run geoembed prepare --config configs/embedding/factorized_pc.yaml --run-dir runs/t4.3-participation-diagnostic-20260813 --experiment-dir experiments/t4.3-participation-diagnostic-20260813/statistical_baseline",
+    "uv run geoembed baseline --config configs/embedding/factorized_pc.yaml --run-dir runs/t4.3-participation-diagnostic-20260813 --experiment-dir experiments/t4.3-participation-diagnostic-20260813/statistical_baseline"
+  ],
+  "experiments": {
+    "capacity_matched_single": {
+      "checkpoint": {
+        "bytes": 2186229,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/capacity_matched_single/model/best_model.pt",
+        "sha256": "612568aa2a0f441bfe78a467c00167f6ade303aef6cc1517631e5a1d7472504c"
+      },
+      "counts": {
+        "clean_pipeline_nonparticipants": 7,
+        "eligible_training_users": 90,
+        "eligible_training_windows": 1290,
+        "preprocessing_seen_nonparticipants": 3,
+        "same_lineage_no_target_fitting_users": 10,
+        "validation_users": 89,
+        "validation_windows": 407
+      },
+      "export": {
+        "bytes": 388337,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/capacity_matched_single/embeddings.npz",
+        "sha256": "8f50aa144c02a7bc9b80273914b83c0a636f4964927ea6e24b594ff1d56bc73b"
+      },
+      "membership": {
+        "eligible": 100,
+        "excluded": 100,
+        "matched": 0,
+        "realized_members": 0,
+        "realized_nonmembers": 0,
+        "reason": "no_exported_clean_pipeline_nonmembers_and_no_common_support",
+        "status": "unavailable",
+        "unmatched": 100
+      },
+      "prepared_metadata": {
+        "bytes": 2352,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/capacity_matched_single/prepared/prepared_metadata.json",
+        "sha256": "edbb9af8ca69964ebd05928d4712c3a0ea016581c25e163f76a5dd7c85aa93e1"
+      },
+      "role": "diagnostic_control",
+      "root": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/capacity_matched_single",
+      "training_participation": {
+        "bytes": 2658,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/capacity_matched_single/model/training_participation.json",
+        "sha256": "780ff61c653f1745db292cb78f8e6159b480a96913d1488fd2c72187b7d1f5f2"
+      }
+    },
+    "context_only": {
+      "checkpoint": {
+        "bytes": 2195189,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/context_only/model/best_model.pt",
+        "sha256": "a601834ae668863da049b165278d6428b6c738160e85bf90e4af069bd1982c2e"
+      },
+      "counts": {
+        "clean_pipeline_nonparticipants": 7,
+        "eligible_training_users": 90,
+        "eligible_training_windows": 1290,
+        "preprocessing_seen_nonparticipants": 3,
+        "same_lineage_no_target_fitting_users": 10,
+        "validation_users": 89,
+        "validation_windows": 407
+      },
+      "export": {
+        "bytes": 388985,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/context_only/embeddings.npz",
+        "sha256": "77a13413f71752deab87cdb98f1552b806b6441c7e54e8cf00c63563820de74a"
+      },
+      "membership": {
+        "eligible": 100,
+        "excluded": 100,
+        "matched": 0,
+        "realized_members": 0,
+        "realized_nonmembers": 0,
+        "reason": "no_exported_clean_pipeline_nonmembers_and_no_common_support",
+        "status": "unavailable",
+        "unmatched": 100
+      },
+      "prepared_metadata": {
+        "bytes": 2352,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/context_only/prepared/prepared_metadata.json",
+        "sha256": "edbb9af8ca69964ebd05928d4712c3a0ea016581c25e163f76a5dd7c85aa93e1"
+      },
+      "role": "diagnostic_control",
+      "root": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/context_only",
+      "training_participation": {
+        "bytes": 2658,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/context_only/model/training_participation.json",
+        "sha256": "bcad244b4d04eedeb962b3d3cf0de28182e80d74f767f3408f3b4526852ae2fe"
+      }
+    },
+    "factorized_no_context_loss": {
+      "checkpoint": {
+        "bytes": 2195253,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_no_context_loss/model/best_model.pt",
+        "sha256": "e6e3ce07c138d1561f0e3593a333ffa6073c0dc7e59754c65d141d4121617785"
+      },
+      "counts": {
+        "clean_pipeline_nonparticipants": 7,
+        "eligible_training_users": 90,
+        "eligible_training_windows": 1290,
+        "preprocessing_seen_nonparticipants": 3,
+        "same_lineage_no_target_fitting_users": 10,
+        "validation_users": 89,
+        "validation_windows": 407
+      },
+      "export": {
+        "bytes": 517044,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_no_context_loss/embeddings.npz",
+        "sha256": "d1faa7855412cc124b836717b3d5aebc0d4b5ab28682d6ee022994129c34ce52"
+      },
+      "membership": {
+        "eligible": 100,
+        "excluded": 100,
+        "matched": 0,
+        "realized_members": 0,
+        "realized_nonmembers": 0,
+        "reason": "no_exported_clean_pipeline_nonmembers_and_no_common_support",
+        "status": "unavailable",
+        "unmatched": 100
+      },
+      "prepared_metadata": {
+        "bytes": 2352,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_no_context_loss/prepared/prepared_metadata.json",
+        "sha256": "edbb9af8ca69964ebd05928d4712c3a0ea016581c25e163f76a5dd7c85aa93e1"
+      },
+      "role": "diagnostic_control",
+      "root": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_no_context_loss",
+      "training_participation": {
+        "bytes": 2658,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_no_context_loss/model/training_participation.json",
+        "sha256": "5d362288e7eb4625c4d9dc5a4a20a2265684881c58442d54db2d3e8204a41d99"
+      }
+    },
+    "factorized_no_persistent_loss": {
+      "checkpoint": {
+        "bytes": 2195189,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_no_persistent_loss/model/best_model.pt",
+        "sha256": "344b62da1fdba046c834ff6e58f073328927bed40f0e13f123dbebd9fdb73349"
+      },
+      "counts": {
+        "clean_pipeline_nonparticipants": 7,
+        "eligible_training_users": 90,
+        "eligible_training_windows": 1290,
+        "preprocessing_seen_nonparticipants": 3,
+        "same_lineage_no_target_fitting_users": 10,
+        "validation_users": 89,
+        "validation_windows": 407
+      },
+      "export": {
+        "bytes": 517926,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_no_persistent_loss/embeddings.npz",
+        "sha256": "a2995b2f381d581ea76c7978df78fa0cef22ac304ffc0cd5aa57c1daa9a9c6b5"
+      },
+      "membership": {
+        "eligible": 100,
+        "excluded": 100,
+        "matched": 0,
+        "realized_members": 0,
+        "realized_nonmembers": 0,
+        "reason": "no_exported_clean_pipeline_nonmembers_and_no_common_support",
+        "status": "unavailable",
+        "unmatched": 100
+      },
+      "prepared_metadata": {
+        "bytes": 2352,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_no_persistent_loss/prepared/prepared_metadata.json",
+        "sha256": "edbb9af8ca69964ebd05928d4712c3a0ea016581c25e163f76a5dd7c85aa93e1"
+      },
+      "role": "diagnostic_control",
+      "root": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_no_persistent_loss",
+      "training_participation": {
+        "bytes": 2658,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_no_persistent_loss/model/training_participation.json",
+        "sha256": "87e6914ca6b95fe03ee2bad80262acc582c1eb54f9405f2fb6810528234f6dbc"
+      }
+    },
+    "factorized_pc": {
+      "checkpoint": {
+        "bytes": 2195189,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_pc/model/best_model.pt",
+        "sha256": "2e7cfa2a1a5624308cd97d831d2704e685de71a114a51b80b8dd57097cee0ce3"
+      },
+      "counts": {
+        "clean_pipeline_nonparticipants": 7,
+        "eligible_training_users": 90,
+        "eligible_training_windows": 1290,
+        "preprocessing_seen_nonparticipants": 3,
+        "same_lineage_no_target_fitting_users": 10,
+        "validation_users": 89,
+        "validation_windows": 407
+      },
+      "export": {
+        "bytes": 516668,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_pc/embeddings.npz",
+        "sha256": "f7c5b82394aea95ccc6e55fc6ff55dd6ab79989571f7dd5313c509ffdfd85fa3"
+      },
+      "membership": {
+        "eligible": 100,
+        "excluded": 100,
+        "matched": 0,
+        "realized_members": 0,
+        "realized_nonmembers": 0,
+        "reason": "no_exported_clean_pipeline_nonmembers_and_no_common_support",
+        "status": "unavailable",
+        "unmatched": 100
+      },
+      "prepared_metadata": {
+        "bytes": 2352,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_pc/prepared/prepared_metadata.json",
+        "sha256": "edbb9af8ca69964ebd05928d4712c3a0ea016581c25e163f76a5dd7c85aa93e1"
+      },
+      "role": "diagnostic_control",
+      "root": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_pc",
+      "training_participation": {
+        "bytes": 2658,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/factorized_pc/model/training_participation.json",
+        "sha256": "b4389126dffa2bb8290f7a2d5c8df4c2ea187b1ad897e94ab9880ae053ba1a00"
+      }
+    },
+    "persistent_only": {
+      "checkpoint": {
+        "bytes": 2195189,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/persistent_only/model/best_model.pt",
+        "sha256": "b414a58786f05c5a84cba0ed58bea41cf6e3e81fda7c1218fcf8ca062a09b442"
+      },
+      "counts": {
+        "clean_pipeline_nonparticipants": 7,
+        "eligible_training_users": 90,
+        "eligible_training_windows": 1290,
+        "preprocessing_seen_nonparticipants": 3,
+        "same_lineage_no_target_fitting_users": 10,
+        "validation_users": 89,
+        "validation_windows": 407
+      },
+      "export": {
+        "bytes": 389791,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/persistent_only/embeddings.npz",
+        "sha256": "6d6528484f3f002eda3ee4a6a667dafb65ed9a6b40c3a798b0dba961d36b32c3"
+      },
+      "membership": {
+        "eligible": 100,
+        "excluded": 100,
+        "matched": 0,
+        "realized_members": 0,
+        "realized_nonmembers": 0,
+        "reason": "no_exported_clean_pipeline_nonmembers_and_no_common_support",
+        "status": "unavailable",
+        "unmatched": 100
+      },
+      "prepared_metadata": {
+        "bytes": 2352,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/persistent_only/prepared/prepared_metadata.json",
+        "sha256": "edbb9af8ca69964ebd05928d4712c3a0ea016581c25e163f76a5dd7c85aa93e1"
+      },
+      "role": "diagnostic_control",
+      "root": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/persistent_only",
+      "training_participation": {
+        "bytes": 2658,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/persistent_only/model/training_participation.json",
+        "sha256": "6c598867121cef30ec702452aa25ddff7f1bd92d21f135fbdcbd3ef4088363d5"
+      }
+    },
+    "statistical_baseline": {
+      "counts": {
+        "clean_pipeline_nonparticipants": 7,
+        "preprocessing_seen_nonparticipants": 3,
+        "reference_eligible_training_users": 90,
+        "reference_validation_users": 89,
+        "same_lineage_no_target_fitting_users": 10
+      },
+      "export": {
+        "bytes": 48321,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/statistical_baseline/statistical_baseline.npz",
+        "sha256": "bc5b6e3152a767ff7f51d5008465a2e4820f5a1f83333d21fc8b6d5c3bccbbb1"
+      },
+      "membership": {
+        "eligible": 0,
+        "excluded": 0,
+        "matched": 0,
+        "realized_members": 0,
+        "realized_nonmembers": 0,
+        "reason": "no_learned_target_parameters",
+        "status": "not_applicable",
+        "unmatched": 0
+      },
+      "prepared_metadata": {
+        "bytes": 2352,
+        "path": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/statistical_baseline/prepared/prepared_metadata.json",
+        "sha256": "edbb9af8ca69964ebd05928d4712c3a0ea016581c25e163f76a5dd7c85aa93e1"
+      },
+      "role": "diagnostic_control",
+      "root": "/workspace/geoembeddings/experiments/t4.3-participation-diagnostic-20260813/statistical_baseline"
+    }
+  },
+  "immutable": true,
+  "lineage_id": "t4.3-participation-diagnostic-20260813",
+  "next_task": {
+    "reason": "No clean exported nonmembers exist.",
+    "scope": "separately_scoped_held_out_user_lineage",
+    "status": "required"
+  },
+  "population": {
+    "clean_pipeline_nonparticipants": 7,
+    "eligible_training_users": 90,
+    "exported_clean_pipeline_nonparticipants": 0,
+    "exported_users": 93,
+    "frozen_strata": {
+      "clean_pipeline_nonparticipants": {
+        "history_event_count=[0,10)|cutoff_availability_count=[0,1)|service_coverage_count=[0,1)": 7
+      },
+      "members": {
+        "history_event_count=[0,10)|cutoff_availability_count=[3,4)|service_coverage_count=[1,2)": 9,
+        "history_event_count=[0,10)|cutoff_availability_count=[3,4)|service_coverage_count=[2,3)": 7,
+        "history_event_count=[10,30)|cutoff_availability_count=[3,4)|service_coverage_count=[1,2)": 12,
+        "history_event_count=[10,30)|cutoff_availability_count=[3,4)|service_coverage_count=[2,3)": 17,
+        "history_event_count=[10,30)|cutoff_availability_count=[3,4)|service_coverage_count=[3,4)": 7,
+        "history_event_count=[30,100)|cutoff_availability_count=[3,4)|service_coverage_count=[2,3)": 15,
+        "history_event_count=[30,100)|cutoff_availability_count=[3,4)|service_coverage_count=[3,4)": 19,
+        "history_event_count=[30,100)|cutoff_availability_count=[3,4)|service_coverage_count=[4,5)": 4
+      },
+      "same_lineage_no_target_fitting": {
+        "history_event_count=[0,10)|cutoff_availability_count=[0,1)|service_coverage_count=[0,1)": 7,
+        "history_event_count=[0,10)|cutoff_availability_count=[3,4)|service_coverage_count=[1,2)": 3
+      }
+    },
+    "preprocessing_seen_nonparticipants": 3,
+    "preprocessing_seen_users": 93,
+    "same_lineage_no_target_fitting_users": 10,
+    "same_lineage_users": 100,
+    "user_set_hashes": {
+      "all": "94a269e9470a19815d41e80e1b0b5b8bc82e56f79742ada25b52d46a3a5916e2",
+      "clean_nonparticipants": "f5acade3a93e14962eff68c3a7b9cc5fdcb2a707571da33c542ecb1dc32de8a9",
+      "no_target_fitting": "b14fc877ef5885a83bbe9457c59b10b157bb132c4c23c2321499cdf90837e03d",
+      "train": "99d53d9a12acbbcabdd6875e334ee517aa75a77f84e6dd41f633e27e00e55538",
+      "validation": "96bf78bbb635b8abd3a49ce23ecb5875a476d802141ac0ea97c834a34542b062"
+    },
+    "validation_users": 89
+  },
+  "protocol": {
+    "matching_variables": {
+      "cutoff_availability_count": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "history_event_count": [
+        0,
+        10,
+        30,
+        100,
+        1000000000
+      ],
+      "service_coverage_count": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "minimum_per_class": 20,
+    "minimum_per_stratum": 10,
+    "minimum_total": 100,
+    "path": "configs/privacy/diagnostic_v1.yaml",
+    "sha256": "d561ab5ac4c5207ea18573bedd9936bcfa0f4b50119dea2adc9fe334d963ff1e"
+  },
+  "requirement_ids": [
+    "R12"
+  ],
+  "run": {
+    "deep_validation_report": {
+      "bytes": 7059,
+      "path": "/workspace/geoembeddings/runs/t4.3-participation-diagnostic-20260813/deep_validation_report.json",
+      "sha256": "029115b627fdfdd029986233ae3d9f87bea0784f71ab5da0a384daa5ee56a21c"
+    },
+    "manifest": {
+      "bytes": 4830,
+      "path": "/workspace/geoembeddings/runs/t4.3-participation-diagnostic-20260813/manifest.json",
+      "sha256": "b1f0c682d3f863e94b8bf3dd94def20e56b9b16f1f8f85382fb1f7425d191832"
+    },
+    "observed_source_hashes": {
+      "observed_events.csv.gz": "e4956a8ad1ab08a2c720c35f8cb738cde76b833e17175b1d14c3e23df67eaf28",
+      "users_observed.csv.gz": "4184575fa3db013c9650814c417159d2d0a0954c085dab0ca3f8a1413baa3bb2"
+    },
+    "resolved_config": {
+      "bytes": 12656,
+      "path": "/workspace/geoembeddings/runs/t4.3-participation-diagnostic-20260813/config.resolved.yaml",
+      "sha256": "fd29c6c20db7d2456830504d62f3b3f851c7a54985155e5e3ab61540415b004d"
+    },
+    "root": "/workspace/geoembeddings/runs/t4.3-participation-diagnostic-20260813",
+    "seed": 20260813,
+    "validation_report": {
+      "bytes": 1042,
+      "path": "/workspace/geoembeddings/runs/t4.3-participation-diagnostic-20260813/validation_report.json",
+      "sha256": "4dd1669d3908e9da901f04bdac923f88b234b07a5bddc131c1e80b26362baa53"
+    }
+  },
+  "schema_version": "geoembeddings-privacy-membership-diagnostic-lineage/1.0",
+  "scientific_role": "diagnostic_control",
+  "seeds": {
+    "learned_training": 20260806,
+    "privacy_audit": 20260813,
+    "privacy_split": 20260814,
+    "simulation": 20260813
+  },
+  "source": {
+    "commit_at_generation": "8d8f78975d7703e9f08862c191a01bfa7f710df4",
+    "working_tree_note": "Generated after immutable training-participation support; committed evidence files contain hashes while gitignored run/experiment bytes remain local."
+  },
+  "task_id": "T4.3",
+  "temporal_contract": {
+    "reason": "All exported users were seen by train-fitted preprocessing; the only clean pipeline nonparticipants have no observed histories and therefore no frozen exports. A held-out-user cohort must be reserved before preprocessing and target-model training.",
+    "supports_training_membership_without_model_training_change": false
+  },
+  "utility_reports": {
+    "reason": "Membership attack was gated off before utility/privacy comparison; this diagnostic lineage does not claim model utility or selection.",
+    "status": "not_generated"
+  }
+}
