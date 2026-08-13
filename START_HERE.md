@@ -16,6 +16,10 @@ people, places, services, or deployments.
 
 ## For a Codex agent
 
+For a concise operational checklist and current-state transfer, start with the
+**[next-agent handoff](docs/NEXT_AGENT_HANDOFF.md)**, then complete the required
+reading below before editing.
+
 Read these files in order before editing code:
 
 1. `AGENTS.md`
