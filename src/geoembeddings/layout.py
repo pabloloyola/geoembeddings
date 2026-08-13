@@ -131,6 +131,16 @@ class PairLayout:
     def nonstationarity_audit_markdown(self) -> Path:
         return self.audits_dir / "nonstationarity.md"
 
+    @property
+    def privacy_audit_json(self) -> Path:
+        """Canonical authoritative R12 privacy-audit artifact."""
+        return self.audits_dir / "privacy.json"
+
+    @property
+    def privacy_audit_markdown(self) -> Path:
+        """Canonical human-readable rendering of the R12 privacy audit."""
+        return self.audits_dir / "privacy.md"
+
 
 @dataclass(frozen=True)
 class ExperimentLayout:
