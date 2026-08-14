@@ -142,6 +142,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     export_dense.add_argument("--kind", choices=("learned", "baseline"), default="learned")
 
+    visualize = commands.add_parser(
+        "visualize-embeddings", help="Project and plot an observed-only frozen embedding export"
+    )
+    visualize.add_argument("--experiment-dir", required=True, type=Path)
+    visualize.add_argument("--kind", choices=("learned", "baseline"), default="learned")
+    visualize.add_argument("--dense", action="store_true", help="Use the timestamped dense export")
+    visualize.add_argument("--reference-cutoff", help="Exact cutoff or timestamp used to fit the reducer")
+    visualize.add_argument("--normalization", choices=("standard", "center", "none"), default="standard")
+    visualize.add_argument("--reducer", choices=("pca", "umap"), default="pca")
+    visualize.add_argument("--seed", type=int, default=0)
+    visualize.add_argument("--format", choices=("png", "svg"), default="png")
+    visualize.add_argument("--umap-neighbors", type=int, default=15)
+    visualize.add_argument("--umap-min-dist", type=float, default=.1)
+    visualize.add_argument("--overwrite", action="store_true")
+
     evaluate = commands.add_parser("evaluate", help="Evaluate learned or baseline embeddings")
     _add_embedding_arguments(evaluate)
     evaluate.add_argument("--kind", choices=("learned", "baseline"), default="learned")
@@ -600,6 +615,19 @@ def _run_command(args: argparse.Namespace) -> dict[str, Any]:
             result = _robustness(run, experiment, config_path, args.kind, args.views)
     elif args.command == "compare":
         result = _compare(args)
+    elif args.command == "visualize-embeddings":
+        from .embedding_visualization import visualize_embeddings
+        experiment = ExperimentLayout.from_path(args.experiment_dir)
+        source = ((experiment.dense_embeddings if args.kind == "learned" else experiment.dense_baseline_embeddings)
+                  if args.dense else
+                  (experiment.embeddings if args.kind == "learned" else experiment.baseline_embeddings))
+        if not source.is_file():
+            raise FileNotFoundError(f"Missing {args.kind} embedding export: {source}")
+        result = visualize_embeddings(source,
+            experiment.visualization_artifact_dir(args.kind, dense=args.dense), dense=args.dense,
+            reference_cutoff=args.reference_cutoff, normalization=args.normalization,
+            reducer=args.reducer, seed=args.seed, image_format=args.format, overwrite=args.overwrite,
+            umap_neighbors=args.umap_neighbors, umap_min_dist=args.umap_min_dist)
     elif args.command == "rank":
         from .ranking import run_ranking
         run = DatasetLayout.from_path(args.run_dir)

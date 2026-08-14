@@ -94,10 +94,60 @@ EXPERIMENT_DIR/
 ├── statistical_baseline.npz
 ├── evaluation.json
 ├── baseline_evaluation.json
+├── visualization/
+│   ├── learned/
+│   │   ├── projection_metadata.json
+│   │   ├── projections.csv
+│   │   ├── projections.npz
+│   │   ├── small_multiples.png
+│   │   └── trajectories.png
+│   └── baseline/ ...
 └── comparison/
     ├── embedding_comparison.json
     └── embedding_comparison.md
 ```
+
+## `visualize-embeddings`
+
+Project an existing observed-only cutoff export using the canonical experiment
+root (no dataset or protected-label path is accepted):
+
+```bash
+uv run --extra viz geoembed visualize-embeddings \
+  --experiment-dir EXPERIMENT_DIR --kind learned \
+  --reference-cutoff train --normalization standard --seed 1729 --format png
+```
+
+Use `--kind baseline` for `statistical_baseline.npz`, or add `--dense` for the
+corresponding timestamped dense export. Dense mode uses its earliest timestamp
+unless an exact `--reference-cutoff TIMESTAMP` is supplied. PCA is the default:
+each validated component is fit once on the explicitly recorded reference
+population and that same reducer transforms every later cutoff/timestamp. The
+command discovers component names from the export schema, including append-only
+future components such as `routine`; legacy single-vector exports follow the
+schema reader's documented persistent/combined compatibility mapping.
+
+Outputs live in `EXPERIMENT_DIR/visualization/{learned,baseline}` (with a
+`_dense` suffix for dense exports). The versioned metadata records normalization,
+seed, mean, scale, PCA axes and explained-variance ratios, reference row
+identities, cutoff selection, export hash, and observed-source hashes. The CSV
+and NPZ are row-aligned and contain `user_id`, cutoff/timestamp, component, `x`,
+and `y`. Existing artifacts are immutable unless `--overwrite` is explicit;
+figures may be PNG or SVG.
+
+`--reducer umap` is optional and installed by the `viz` extra. Its fixed seed,
+neighbor count, and minimum distance are stored. UMAP neighborhood geometry and
+apparent clusters are exploratory, not requirement evidence. Reducers are fit
+per component, so their axes are not aligned; projections from separate command
+runs or model variants are independently fit and must not be placed on common
+axes or treated as directly aligned. Coloring by protected latent labels is not
+available in this observed-only command. Any future protected synthetic view
+belongs in evaluator-only code and must be visibly labeled as protected.
+
+**Interpretation limit:** two-dimensional cluster appearance does not establish
+factor semantics, disentanglement, causal invariance, or recommendation quality.
+Transparency improves legibility but does not turn a projection into evidence
+for R1--R4 or R8.
 
 ## Folium trajectory explorer
 

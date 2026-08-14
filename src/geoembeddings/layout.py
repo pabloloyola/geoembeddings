@@ -219,6 +219,16 @@ class ExperimentLayout:
         return self.root / "dense_statistical_baseline.npz"
 
     @property
+    def visualization_dir(self) -> Path:
+        """Experiment-owned outputs from observed-only embedding visualization."""
+        return self.root / "visualization"
+
+    def visualization_artifact_dir(self, kind: str, *, dense: bool = False) -> Path:
+        if kind not in {"baseline", "learned"}:
+            raise ValueError(f"Unsupported visualization artifact kind: {kind}")
+        return self.visualization_dir / (f"{kind}_dense" if dense else kind)
+
+    @property
     def episode_response(self) -> Path:
         return self.root / "episode_response.json"
 
