@@ -103,7 +103,10 @@ EXPERIMENT_DIR/
 │   ├── MODEL.json                               [rank; conditional: selected model report]
 │   ├── frozen_embedding_checkpoint.npz          [rank; conditional: frozen_embedding model]
 │   ├── exposure_aware_checkpoint.npz            [rank; conditional: exposure_aware model]
-│   └── transfer_slices.json                     [evaluate-ranking; conditional]
+│   ├── transfer_slices.json                     [evaluate-ranking; conditional]
+│   └── visualization/                           [visualize-ranking; conditional]
+│       ├── metadata.json
+│       └── ranking_explanation.html
 ├── benchmarks/
 │   ├── offline.json                             [benchmark; always when benchmark runs]
 │   ├── online.json                              [benchmark; always when benchmark runs]
@@ -213,6 +216,7 @@ links for complete prerequisites and collision rules.
 | [`benchmark`](#benchmark) | Observed events, prepared metadata, available exports/checkpoint | `benchmarks/{offline.json,online_workload.json,online.json}` | `EXPERIMENT_DIR` | None (observed-only) | Existing reports fail unless `--overwrite` | Evidence review |
 | [`rank`](#rank) | Dataset-2.0 observed tables; dense learned export for learned models | [Model-specific ranking predictions, report, and optional checkpoint](#ranking-model-artifacts) | `EXPERIMENT_DIR` | None (observed-only) | Selected model outputs fail unless `--overwrite` | [`evaluate-ranking`](#evaluate-ranking) or protected [`evaluate-pair`](#evaluate-pair) |
 | [`evaluate-ranking`](#evaluate-ranking) | Observed recommendation tables and selected ranking model outputs | `ranking/transfer_slices.json` | `EXPERIMENT_DIR` | None (observed-only) | Existing report fails unless `--overwrite` | Evidence review |
+| [`visualize-ranking`](#visualize-ranking) | Observed recommendation tables and four authenticated ranking controls | `ranking/visualization/{metadata.json,ranking_explanation.html}` | `EXPERIMENT_DIR` | None (observed-only) | Existing output fails unless `--overwrite` | R9 inspection |
 | [`robustness`](#robustness) | Observed events, prepared metadata, original export; learned checkpoint if applicable | `robustness/KIND/VIEW_ID.npz`, `robustness/KIND_robustness.json` | `EXPERIMENT_DIR` | Protected after observed-only view construction | Immutable writer checks; no `--overwrite` | [`compare`](#compare) |
 | [`compare`](#compare) | Matched baseline/learned experiments, optional supplemental reports and factorized experiments | [Standard or factorized comparison reports](#comparison-report-artifacts) | `OUTPUT_DIR` | Protected | Immutable; no `--overwrite` | Evidence review/decision record |
 | [`pipeline`](#pipeline) | Simulation and embedding YAML | Fresh run plus prepared artifacts, one representation, and its default evaluation | `RUN_DIR` and `EXPERIMENT_DIR` | Mixed by stage | Run target honors `--overwrite`; downstream immutable rules remain | Run the other representation, then [`compare`](#compare) |
@@ -1049,6 +1053,30 @@ uv run geoembed evaluate-ranking --run-dir runs/smoke --experiment-dir experimen
 ### Follow-up consumers
 
 The report is terminal observed-only R2/R8 evidence; no model stage consumes it.
+
+## `visualize-ranking`
+
+### Purpose and information boundary
+
+Render one deterministically selected request across `popularity`, `nearest`,
+`category_preference`, and `frozen_embedding`. **Observed-only:** the command
+accepts the dataset root but resolves only its canonical `observed/` directory;
+protected utility is unavailable rather than inferred.
+
+The renderer authenticates each prediction/report pair, current observed source
+hashes, model identity, and the common request and available-candidate hashes.
+It displays request-time candidate fields, score/rank, availability and
+impression state, and any recorded interaction. Its “what changed?” section is
+a descriptive rank-order comparison, not a causal explanation, and no feature
+attribution is fabricated.
+
+```bash
+uv run geoembed visualize-ranking --run-dir runs/smoke --experiment-dir experiments/learned
+```
+
+The versioned metadata and HTML are written beneath
+`EXPERIMENT_DIR/ranking/visualization/`; either existing target requires
+`--overwrite`.
 
 ## `robustness`
 

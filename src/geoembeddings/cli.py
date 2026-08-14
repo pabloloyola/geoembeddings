@@ -203,6 +203,13 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_ranking.add_argument("--k", type=int, nargs="+", default=[1, 5, 10])
     evaluate_ranking.add_argument("--overwrite", action="store_true")
 
+    visualize_ranking = commands.add_parser(
+        "visualize-ranking", help="Render an authenticated observed-only R9 ranking explanation"
+    )
+    visualize_ranking.add_argument("--run-dir", required=True, type=Path)
+    visualize_ranking.add_argument("--experiment-dir", required=True, type=Path)
+    visualize_ranking.add_argument("--overwrite", action="store_true")
+
     robustness = commands.add_parser("robustness", help="Re-encode deterministic observed-data robustness views for R6/R7")
     _add_embedding_arguments(robustness)
     robustness.add_argument("--kind", choices=("learned", "baseline"), default="learned")
@@ -678,6 +685,15 @@ def _run_command(args: argparse.Namespace) -> dict[str, Any]:
         result = evaluate_ranking_transfer(run.observed, experiment.ranking_dir,
             experiment.ranking_transfer_slices, models=args.models, ks=args.k,
             overwrite=args.overwrite)
+    elif args.command == "visualize-ranking":
+        from .ranking_visualization import render_ranking_explanation
+        run = DatasetLayout.from_path(args.run_dir)
+        experiment = ExperimentLayout.from_path(args.experiment_dir)
+        run.validate(require_truth=False)
+        result = render_ranking_explanation(
+            run.observed, experiment.ranking_dir, experiment.ranking_visualization_dir,
+            overwrite=args.overwrite,
+        )
     elif args.command == "pipeline":
         result = _pipeline(args)
     else:
