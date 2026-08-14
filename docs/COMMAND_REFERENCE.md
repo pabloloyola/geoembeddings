@@ -113,11 +113,14 @@ EXPERIMENT_DIR/
 │   ├── embedding_comparison.md                  [compare; standard comparison only]
 │   ├── factorized_comparison.json               [compare; conditional: factorized matrix]
 │   └── factorized_comparison.md                 [compare; conditional: factorized matrix]
-└── visualization/
+├── visualization/
     ├── baseline/                                [visualize-embeddings; conditional: sparse baseline]
     ├── baseline_dense/                          [visualize-embeddings; conditional: dense baseline]
     ├── learned/                                 [visualize-embeddings; conditional: sparse learned]
-    └── learned_dense/                           [visualize-embeddings; conditional: dense learned]
+│   └── learned_dense/                           [visualize-embeddings; conditional: dense learned]
+└── user_journey/
+    ├── USER_ID.html                             [user-journey; always]
+    └── USER_ID.metadata.json                    [user-journey; always]
 ```
 
 Each visualization leaf contains the command-owned projection metadata, CSV and
@@ -205,6 +208,7 @@ links for complete prerequisites and collision rules.
 | [`export`](#export) | Observed events, `prepared/*`, `model/best_model.pt` | `embeddings.npz` | `EXPERIMENT_DIR` | None (observed-only) | Canonical export is replaceable; no `--overwrite` | [`evaluate`](#evaluate) |
 | [`export-dense`](#export-dense) | Observed events, `prepared/*`; learned checkpoint when selected | [`dense_embeddings.npz` or `dense_statistical_baseline.npz`](#dense-export-artifacts) | `EXPERIMENT_DIR` | None (observed-only) | Regenerates only selected kind; no `--overwrite` | [`visualize-embeddings`](#visualize-embeddings), an [evaluation mode](#evaluation-mode-artifacts), or [`rank`](#rank) |
 | [`visualize-embeddings`](#visualize-embeddings) | Selected cutoff or dense export | `visualization/KIND[_dense]/{projection_metadata.json,projections.csv,projections.npz,small_multiples.FORMAT,trajectories.FORMAT}` | `EXPERIMENT_DIR` | None (observed-only) | Any target fails unless `--overwrite`; selected leaf only | Inspect plots (terminal artifact) |
+| `user-journey` | Observed tables, authenticated dense export, selected ranking reports; episodes only with `--evaluator-truth` | `user_journey/USER_ID.{html,metadata.json}` | `EXPERIMENT_DIR` | Optional, explicit protected episode access | Existing pair fails unless `--overwrite` | Inspect the deterministic journey report |
 | [`evaluate`](#evaluate) | Selected exports and prepared metadata; mode-dependent observed/truth inputs | [Mode-specific evaluation report](#evaluation-mode-artifacts) | `EXPERIMENT_DIR` | Mode-dependent: protected except transfer/reliability | Reliability requires `--overwrite`; other selected reports are replaceable | [`compare`](#compare), [`benchmark`](#benchmark), or evidence review |
 | [`benchmark`](#benchmark) | Observed events, prepared metadata, available exports/checkpoint | `benchmarks/{offline.json,online_workload.json,online.json}` | `EXPERIMENT_DIR` | None (observed-only) | Existing reports fail unless `--overwrite` | Evidence review |
 | [`rank`](#rank) | Dataset-2.0 observed tables; dense learned export for learned models | [Model-specific ranking predictions, report, and optional checkpoint](#ranking-model-artifacts) | `EXPERIMENT_DIR` | None (observed-only) | Selected model outputs fail unless `--overwrite` | [`evaluate-ranking`](#evaluate-ranking) or protected [`evaluate-pair`](#evaluate-pair) |

@@ -157,6 +157,19 @@ def build_parser() -> argparse.ArgumentParser:
     visualize.add_argument("--umap-min-dist", type=float, default=.1)
     visualize.add_argument("--overwrite", action="store_true")
 
+    journey = commands.add_parser("user-journey", help="Build a deterministic evaluator-only R1/R4/R8/R9 report")
+    journey.add_argument("--run-dir", required=True, type=Path)
+    journey.add_argument("--experiment-dir", required=True, type=Path)
+    journey.add_argument("--user-id", required=True)
+    journey.add_argument("--start", required=True, help="Inclusive ISO-8601 interval start")
+    journey.add_argument("--end", required=True, help="Inclusive ISO-8601 interval end")
+    journey.add_argument("--evaluator-truth", action="store_true", help="Explicitly permit protected episode truth")
+    journey.add_argument("--ranking-model", action="append", dest="ranking_models")
+    journey.add_argument("--max-events", type=int, default=500)
+    journey.add_argument("--max-requests", type=int, default=50)
+    journey.add_argument("--max-candidates", type=int, default=20)
+    journey.add_argument("--overwrite", action="store_true")
+
     evaluate = commands.add_parser("evaluate", help="Evaluate learned or baseline embeddings")
     _add_embedding_arguments(evaluate)
     evaluate.add_argument("--kind", choices=("learned", "baseline"), default="learned")
@@ -642,6 +655,18 @@ def _run_command(args: argparse.Namespace) -> dict[str, Any]:
                              exposure_config=(load_mapping_config(args.ranking_config) if args.model == "exposure_aware" else None),
                              baseline_report_paths={name: experiment.ranking_report(name) for name in
                                  ("popularity", "nearest", "category_preference")})
+    elif args.command == "user-journey":
+        from .user_journey_visualization import build_user_journey_report
+        run = DatasetLayout.from_path(args.run_dir)
+        experiment = ExperimentLayout.from_path(args.experiment_dir)
+        models = tuple(args.ranking_models or ("popularity", "nearest"))
+        unknown = sorted(set(models) - {"popularity", "nearest", "category_preference", "frozen_embedding", "exposure_aware"})
+        if unknown:
+            raise ValueError(f"unsupported ranking models: {unknown}")
+        result = build_user_journey_report(run, experiment, user_id=args.user_id,
+            start=args.start, end=args.end, truth_access=args.evaluator_truth,
+            ranking_models=models, max_events=args.max_events, max_requests=args.max_requests,
+            max_candidates=args.max_candidates, overwrite=args.overwrite)
     elif args.command == "evaluate-ranking":
         from .ranking_evaluation import DEFAULT_MODELS, evaluate_ranking_transfer
         run = DatasetLayout.from_path(args.run_dir)
