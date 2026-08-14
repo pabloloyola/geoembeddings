@@ -69,6 +69,13 @@ dataset, call the stage commands (`validate`, `prepare`, `baseline`, `train`,
 `export`, and `evaluate`) with that dataset root. A baseline pipeline executes
 `simulate -> validate -> prepare -> baseline -> evaluate baseline`.
 
+Optionally project and plot the baseline cutoff export after installing the
+`viz` extra:
+
+```bash
+uv run --extra viz geoembed visualize-embeddings --experiment-dir experiments/local_baseline_50u_7d --kind baseline --reference-cutoff train --normalization standard --seed 1729 --format png
+```
+
 ### 4. Inspect the baseline artifacts
 
 Read the provenance and reports without modifying them:
@@ -170,6 +177,18 @@ Read each reported requirement axis separately. There is intentionally no
 aggregate winner: stability can be caused by collapse and must be interpreted
 with separation, retrieval, effective rank, task information, and coverage.
 
+With the `viz` extra installed, create the corresponding learned and matched
+baseline cutoff visualizations:
+
+```bash
+uv run --extra viz geoembed visualize-embeddings --experiment-dir experiments/local_learned_50u_7d --kind learned --reference-cutoff train --normalization standard --seed 1729 --format png
+uv run --extra viz geoembed visualize-embeddings --experiment-dir experiments/local_learned_50u_7d --kind baseline --reference-cutoff train --normalization standard --seed 1729 --format png
+```
+
+Each projection is fitted separately. Baseline and learned projection axes are
+therefore not aligned, so do not visually compare their positions as though the
+plots shared coordinates.
+
 ### 8. Optional diagnostic surfaces
 
 These commands assume that step 7 completed. Dense exports are prerequisites
@@ -209,6 +228,11 @@ uv run geoembed compare --run-dir runs/local_learned_50u_7d --experiment-dir exp
 
 Optional visualization after installing the `viz` extra:
 
+To visualize dense trajectories, first create the selected representation with
+`export-dense` (as in the dense-export commands above), and then add `--dense`
+to the corresponding `visualize-embeddings` command. Dense outputs are written
+under `visualization/{kind}_dense/`, separately from cutoff visualizations.
+
 ```bash
 GEOEMBED_RUN_DIR=runs/local_baseline_50u_7d \
   uv run python scripts/kanto_visualization_validation.py
@@ -244,6 +268,7 @@ did not complete.
 | Deep validation | `RUN_DIR/deep_validation_report.json` |
 | Preparation | `EXPERIMENT_DIR/prepared/config.resolved.yaml`, `prepared_metadata.json`, and `vocabularies.json` |
 | Baseline export/evaluation | `statistical_baseline.npz` and `baseline_evaluation.json` |
+| Cutoff embedding visualization | `visualization/{learned,baseline}/projection_metadata.json`, `visualization/{learned,baseline}/projections.csv`, `visualization/{learned,baseline}/projections.npz`, `visualization/{learned,baseline}/small_multiples.png`, and `visualization/{learned,baseline}/trajectories.png` |
 | Each ranker | `ranking/{model}.npz` and `ranking/{model}.json` |
 | Learned training/export/evaluation | `model/best_model.pt`, `model/training_report.json`, `embeddings.npz`, and `evaluation.json` |
 | Comparison | `comparison/embedding_comparison.json` and `comparison/embedding_comparison.md` |
