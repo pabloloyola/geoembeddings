@@ -18,6 +18,10 @@ the observable recommendation tables. Event-only 1.0 runs remain explicitly
 readable by legacy modeling commands, without fabricating missing 2.0 tables.
 The systems should remain separate modules even though one CLI orchestrates them.
 
+Use the **[Command and artifact quick reference](COMMAND_REFERENCE.md#command-and-artifact-quick-reference)**
+to map every public command to its inputs, output root, truth boundary, overwrite
+behavior, and reverse artifact provenance.
+
 ## Scientific decomposition
 
 The final representation should expose three distinct but related components:

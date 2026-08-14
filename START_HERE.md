@@ -72,6 +72,9 @@ For the 500-user reference scale, omit `--users 50 --days 7`.
 Never point `--run-dir` at `observed/` or `truth/`. Training-related commands
 may read only `observed/`; protected simulator truth is evaluator-only.
 
+For a root-relative command-to-artifact index and reverse file lookup, use the
+**[Command and artifact quick reference](docs/COMMAND_REFERENCE.md#command-and-artifact-quick-reference)**.
+
 ## Current contract and recommended task
 
 New simulations write `geoembeddings-dataset/2.0`, including the public POI,
