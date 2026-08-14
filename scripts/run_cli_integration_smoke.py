@@ -22,6 +22,12 @@ import yaml
 
 from geoembeddings.contract import OBSERVED_FILES, TRUTH_FILES
 from geoembeddings.io import sha256_file
+from scripts.kanto_trajectory_explorer import (
+    EmptySelectionError,
+    _parser as trajectory_parser,
+    filter_events,
+    load_data as load_explorer_data,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -146,6 +152,23 @@ def run_smoke(workspace: Path) -> None:
          "--seed", "20260811")
     manifest = _load_json(run / "manifest.json")
     assert manifest["dataset_contract"] == {"name": "geoembeddings-dataset", "version": "2.0"}
+
+    # Keep the dated trajectory command in both exploration documents executable
+    # against the documented 50-user/seven-day simulation defaults.
+    documented_date = "2026-04-02"
+    explorer_args = trajectory_parser().parse_args([
+        "--run-dir", str(run), "--date", documented_date, "--max-users", "25",
+        "--seed", "1729", "--output", str(workspace / "documented-map.html"),
+    ])
+    start = np.datetime64(manifest["start_date"], "D")
+    selected = np.datetime64(explorer_args.date, "D")
+    assert start <= selected < start + np.timedelta64(manifest["days"], "D")
+    explorer_data, _ = load_explorer_data(run)
+    filters = {name: getattr(explorer_args, name) for name in (
+        "user_id", "age_group", "household_type", "date", "service", "region"
+    ) if getattr(explorer_args, name)}
+    if filter_events(explorer_data, filters).empty:
+        raise EmptySelectionError("documented small-run trajectory filters selected no events")
     observed_hashes = {name: sha256_file(run / "observed" / name) for name in OBSERVED_FILES.values()}
     truth_hashes = {name: sha256_file(run / "truth" / name) for name in TRUTH_FILES.values()}
 

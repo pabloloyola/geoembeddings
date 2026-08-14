@@ -159,7 +159,7 @@ protected latent trajectory and home/work layers require the explicit
 ```bash
 uv run --extra viz python scripts/kanto_trajectory_explorer.py \
   --run-dir runs/local_baseline_50u_7d \
-  --age-group 20-29 --service location --region tokyo --date 2026-01-02 \
+  --date 2026-04-02 \
   --max-users 25 --seed 1729 --output visualizations/local_map.html
 ```
 
