@@ -178,6 +178,111 @@ AUDIT_OUTPUT_DIR/
 Only the two files owned by the selected audit command are written; the audit
 tree does not imply that either audit invokes the other.
 
+
+## Command and artifact quick reference
+
+Paths in both tables are relative to the root named in **Storage root**. “Protected”
+means evaluator-only truth access; “derived protected” means the command reads an
+authenticated protected report rather than opening raw `truth/`. Follow the command
+links for complete prerequisites and collision rules.
+
+| Command | Reads from | Primary artifacts produced | Storage root | Truth access | Overwrite behavior | Typical next command |
+|---|---|---|---|---|---|---|
+| [`inspect-evidence`](#inspect-evidence) | `INDEX_DIR/**/*.json` | stdout only | none | None (documentation only) | No output and no `--overwrite` | None; review inspection result |
+| [`simulate`](#simulate) | Simulation YAML | `manifest.json`, `validation_report.json`, `observed/*.csv.gz`, `truth/*.csv.gz` | `RUN_DIR` | Creates truth as trusted simulator | Existing nonempty run fails unless `--overwrite` | [`validate`](#validate) |
+| [`simulate-pair`](#simulate-pair) | Simulation YAML | Two complete run trees; `pair_manifest.json`; `pair_integrity.json` | `REFERENCE_RUN_DIR`, `INTERVENTION_RUN_DIR`, `PAIR_DIR` | Creates and validates truth | No overwrite; all three roots must be new | [`prepare`](#prepare) for both runs, then [`evaluate-pair`](#evaluate-pair) or [`evaluate-change`](#evaluate-change) |
+| [`validate`](#validate) | Complete `RUN_DIR`, including `observed/` and `truth/` | `deep_validation_report.json` (or `OUTPUT`) | `RUN_DIR` by default | Protected | Selected report is replaceable; no `--overwrite` | [`prepare`](#prepare) |
+| [`pair-manifest`](#pair-manifest) | Two complete `RUN_DIR` trees | `pair_manifest.json` | `PAIR_DIR` | Protected contract authentication | Existing manifest fails unless `--overwrite` | [`validate-pair`](#validate-pair) |
+| [`validate-pair`](#validate-pair) | `pair_manifest.json` and both complete run trees | `pair_integrity.json` | `PAIR_DIR` | Protected | Canonical report is refreshed; no `--overwrite` | [`evaluate-pair`](#evaluate-pair) or [`evaluate-change`](#evaluate-change) |
+| [`evaluate-pair`](#evaluate-pair) | Pair manifest/integrity, four experiment exports; optional ranking predictions/reports | [Pair reports](#pair-and-audit-report-artifacts), optionally `ranking/exposure_counterfactual.json` | `PAIR_DIR` | Protected | Selected existing output fails unless `--overwrite` | [`compare`](#compare), evidence review, or [`audit-privacy`](#audit-privacy) |
+| [`evaluate-change`](#evaluate-change) | Pair manifest/integrity, four dense-export experiments, change-point truth | `change_evaluation.{json,md}` | `PAIR_DIR` | Protected | Either report fails unless `--overwrite`; pair replaced together | [`audit-nonstationarity`](#audit-nonstationarity) |
+| [`audit-nonstationarity`](#audit-nonstationarity) | Three compatible `change_evaluation.json` reports | [`audits/nonstationarity.{json,md}`](#pair-and-audit-report-artifacts) | `OUTPUT_DIR` | Derived protected | Existing reports fail unless `--overwrite` | Evidence review |
+| [`audit-privacy`](#audit-privacy) | Run identity, named experiment exports, evidence index, utility reports | [`audits/privacy.{json,md}`](#pair-and-audit-report-artifacts) | `OUTPUT_DIR` | Protected | Existing reports fail unless `--overwrite` | Evidence review |
+| [`calibrate-reliability`](#calibrate-reliability) | Observed events and named dense-export experiments | `reliability/calibration.json` | `OUTPUT_DIR` | None (observed-only) | Existing report fails unless `--overwrite` | Evidence review |
+| [`prepare`](#prepare) | `RUN_DIR/manifest.json`, `RUN_DIR/observed/`, embedding YAML | `prepared/config.resolved.yaml`, `prepared/prepared_metadata.json`, `prepared/vocabularies.json` | `EXPERIMENT_DIR` | None (observed-only) | Immutable; no `--overwrite`; use a new experiment | [`baseline`](#baseline) or [`train`](#train) |
+| [`train`](#train) | Observed events and `prepared/*` | `model/best_model.pt`, `model/training_report.json`, `model/training_participation.json` | `EXPERIMENT_DIR` | None (observed-only) | Conflicting participation fails; no `--overwrite` | [`export`](#export) and [`export-dense`](#export-dense) |
+| [`baseline`](#baseline) | Observed events and `prepared/*` | `statistical_baseline.npz` | `EXPERIMENT_DIR` | None (observed-only) | Canonical export is replaceable; no `--overwrite` | [`evaluate`](#evaluate) |
+| [`export`](#export) | Observed events, `prepared/*`, `model/best_model.pt` | `embeddings.npz` | `EXPERIMENT_DIR` | None (observed-only) | Canonical export is replaceable; no `--overwrite` | [`evaluate`](#evaluate) |
+| [`export-dense`](#export-dense) | Observed events, `prepared/*`; learned checkpoint when selected | [`dense_embeddings.npz` or `dense_statistical_baseline.npz`](#dense-export-artifacts) | `EXPERIMENT_DIR` | None (observed-only) | Regenerates only selected kind; no `--overwrite` | [`visualize-embeddings`](#visualize-embeddings), an [evaluation mode](#evaluation-mode-artifacts), or [`rank`](#rank) |
+| [`visualize-embeddings`](#visualize-embeddings) | Selected cutoff or dense export | `visualization/KIND[_dense]/{projection_metadata.json,projections.csv,projections.npz,small_multiples.FORMAT,trajectories.FORMAT}` | `EXPERIMENT_DIR` | None (observed-only) | Any target fails unless `--overwrite`; selected leaf only | Inspect plots (terminal artifact) |
+| [`evaluate`](#evaluate) | Selected exports and prepared metadata; mode-dependent observed/truth inputs | [Mode-specific evaluation report](#evaluation-mode-artifacts) | `EXPERIMENT_DIR` | Mode-dependent: protected except transfer/reliability | Reliability requires `--overwrite`; other selected reports are replaceable | [`compare`](#compare), [`benchmark`](#benchmark), or evidence review |
+| [`benchmark`](#benchmark) | Observed events, prepared metadata, available exports/checkpoint | `benchmarks/{offline.json,online_workload.json,online.json}` | `EXPERIMENT_DIR` | None (observed-only) | Existing reports fail unless `--overwrite` | Evidence review |
+| [`rank`](#rank) | Dataset-2.0 observed tables; dense learned export for learned models | [Model-specific ranking predictions, report, and optional checkpoint](#ranking-model-artifacts) | `EXPERIMENT_DIR` | None (observed-only) | Selected model outputs fail unless `--overwrite` | [`evaluate-ranking`](#evaluate-ranking) or protected [`evaluate-pair`](#evaluate-pair) |
+| [`evaluate-ranking`](#evaluate-ranking) | Observed recommendation tables and selected ranking model outputs | `ranking/transfer_slices.json` | `EXPERIMENT_DIR` | None (observed-only) | Existing report fails unless `--overwrite` | Evidence review |
+| [`robustness`](#robustness) | Observed events, prepared metadata, original export; learned checkpoint if applicable | `robustness/KIND/VIEW_ID.npz`, `robustness/KIND_robustness.json` | `EXPERIMENT_DIR` | Protected after observed-only view construction | Immutable writer checks; no `--overwrite` | [`compare`](#compare) |
+| [`compare`](#compare) | Matched baseline/learned experiments, optional supplemental reports and factorized experiments | [Standard or factorized comparison reports](#comparison-report-artifacts) | `OUTPUT_DIR` | Protected | Immutable; no `--overwrite` | Evidence review/decision record |
+| [`pipeline`](#pipeline) | Simulation and embedding YAML | Fresh run plus prepared artifacts, one representation, and its default evaluation | `RUN_DIR` and `EXPERIMENT_DIR` | Mixed by stage | Run target honors `--overwrite`; downstream immutable rules remain | Run the other representation, then [`compare`](#compare) |
+
+### Dense export artifacts
+
+| Selection | Artifact | Meaning |
+|---|---|---|
+| `export-dense --kind learned` | `EXPERIMENT_DIR/dense_embeddings.npz` | Learned components at observed event timestamps. |
+| `export-dense --kind baseline` | `EXPERIMENT_DIR/dense_statistical_baseline.npz` | Statistical vectors at observed event timestamps. |
+
+### Evaluation mode artifacts
+
+| `evaluate` selection | Artifact | Boundary |
+|---|---|---|
+| default, `--kind learned` | `EXPERIMENT_DIR/evaluation.json` | Protected |
+| default, `--kind baseline` | `EXPERIMENT_DIR/baseline_evaluation.json` | Protected |
+| `--episodes` | `EXPERIMENT_DIR/episode_response.json` or `baseline_episode_response.json` | Protected |
+| `--transfer` | `EXPERIMENT_DIR/KIND_transfer_evaluation.json` | Observed-only |
+| `--temporal-routine` | `EXPERIMENT_DIR/KIND_temporal_routine.json` | Protected |
+| `--reliability` | `EXPERIMENT_DIR/reliability.json` or `baseline_reliability.json` | Observed-only |
+
+### Ranking model artifacts
+
+Every model writes `EXPERIMENT_DIR/ranking/MODEL.npz` predictions and
+`EXPERIMENT_DIR/ranking/MODEL.json` observed metrics.
+
+| `--model` | Additional principal input | Additional artifact |
+|---|---|---|
+| `popularity` | Observed catalog/request/interaction contract | None |
+| `nearest` | Observed request and candidate coordinates | None |
+| `category_preference` | Observed histories and candidate categories | None |
+| `frozen_embedding` | Learned dense export and observed controls | `EXPERIMENT_DIR/ranking/frozen_embedding_checkpoint.npz` |
+| `exposure_aware` | Learned dense export, observed impressions/interactions, and ranking YAML | `EXPERIMENT_DIR/ranking/exposure_aware_checkpoint.npz` |
+
+See the detailed [`rank`](#rank) section for shared prerequisites, identities,
+and collision behavior.
+
+### Comparison report artifacts
+
+A standard comparison writes `OUTPUT_DIR/embedding_comparison.{json,md}`. A
+factorized matrix instead writes `OUTPUT_DIR/factorized_comparison.{json,md}`
+when `--factorized-experiment` is supplied.
+
+### Pair and audit report artifacts
+
+Paired representation evaluation writes
+`PAIR_DIR/counterfactual_comparison.{json,md}` and may write
+`PAIR_DIR/ranking/exposure_counterfactual.json`; change evaluation writes
+`PAIR_DIR/change_evaluation.{json,md}`. Audits write
+`OUTPUT_DIR/audits/nonstationarity.{json,md}` or
+`OUTPUT_DIR/audits/privacy.{json,md}`.
+
+## Where did this file come from?
+
+Use the owning command to determine which root and identity checks apply. A
+filename alone is not evidence that artifacts from different roots are
+comparable.
+
+| Common artifact | Produced by | Location | Usually consumed by / next step |
+|---|---|---|---|
+| `manifest.json` | [`simulate`](#simulate) or [`simulate-pair`](#simulate-pair) | `RUN_DIR/manifest.json` | `validate`, `prepare`, and identity-authenticating evaluators |
+| `deep_validation_report.json` | [`validate`](#validate) (also a [`pipeline`](#pipeline) stage) | `RUN_DIR/deep_validation_report.json` | Integrity review, then `prepare` |
+| `prepared_metadata.json` | [`prepare`](#prepare) (also a [`pipeline`](#pipeline) stage) | `EXPERIMENT_DIR/prepared/prepared_metadata.json` | All representation/export/evaluation stages |
+| `best_model.pt` | [`train`](#train) (also learned [`pipeline`](#pipeline)) | `EXPERIMENT_DIR/model/best_model.pt` | `export`, learned `export-dense`, robustness, benchmark, or learned rankers |
+| `embeddings.npz` | [`export`](#export) (also learned [`pipeline`](#pipeline)) | `EXPERIMENT_DIR/embeddings.npz` | Learned evaluation, visualization, robustness, benchmark, and compare |
+| `statistical_baseline.npz` | [`baseline`](#baseline) (also baseline [`pipeline`](#pipeline)) | `EXPERIMENT_DIR/statistical_baseline.npz` | Baseline evaluation, visualization, robustness, benchmark, and compare |
+| Dense exports | [`export-dense`](#export-dense) | [`EXPERIMENT_DIR/dense_embeddings.npz` or `dense_statistical_baseline.npz`](#dense-export-artifacts) | Dense visualization, temporal/episode/change evaluation, calibration, or ranking |
+| Evaluation reports | [`evaluate`](#evaluate) | [Mode-specific files in `EXPERIMENT_DIR`](#evaluation-mode-artifacts) | Compare, benchmark, audits, or evidence review depending on mode |
+| Ranking reports | [`rank`](#rank) and [`evaluate-ranking`](#evaluate-ranking) | [`EXPERIMENT_DIR/ranking/MODEL.{npz,json}` and `transfer_slices.json`](#ranking-model-artifacts) | Ranking transfer evaluation, optional protected pair evaluation, or evidence review |
+| Comparison reports | [`compare`](#compare) | [`OUTPUT_DIR/*_comparison.{json,md}`](#comparison-report-artifacts) | Terminal decision/evidence record |
+| Pair reports | [`evaluate-pair`](#evaluate-pair) or [`evaluate-change`](#evaluate-change) | [`PAIR_DIR/{counterfactual_comparison,change_evaluation}.{json,md}` plus optional ranking report](#pair-and-audit-report-artifacts) | Compare, nonstationarity/privacy audit, or evidence review |
+| Audit reports | [`audit-nonstationarity`](#audit-nonstationarity) or [`audit-privacy`](#audit-privacy) | [`OUTPUT_DIR/audits/{nonstationarity,privacy}.{json,md}`](#pair-and-audit-report-artifacts) | Terminal evidence review |
+
 ## `inspect-evidence`
 
 ### Purpose and information boundary
