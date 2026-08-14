@@ -33,5 +33,6 @@ packages = ["src/geoembeddings"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-q"
 markers = ["integration: cross-stage integration test"]

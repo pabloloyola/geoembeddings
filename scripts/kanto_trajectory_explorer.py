@@ -39,7 +39,7 @@ def resolve_paths(run_dir: Path | str, *, include_truth: bool = False) -> dict[s
     layout = DatasetLayout.from_path(run_dir)
     paths = {name: layout.observed_file(name) for name in ("users", "events", "poi_catalog", "recommendation_requests")}
     if include_truth:
-        paths.update(trajectories=layout.truth_file("trajectories"), anchors=layout.truth_file("user_latents"))
+        paths.update(truth=layout.truth_file("trajectories"), anchors=layout.truth_file("user_latents"))
     return paths
 
 

@@ -7,6 +7,7 @@ import pytest
 import yaml
 
 from geoembeddings.simulate_pair import simulate_pair
+from geoembeddings import simulator
 from geoembeddings.simulator import change_interval
 from datetime import date
 
@@ -65,6 +66,19 @@ def test_change_interval_duration_and_censoring() -> None:
         change_interval(date(2026, 1, 1), 5, {"start_day_offset": 3, "duration_days": 2})
 
 
+def test_category_preference_changes_category_probability_before_candidate_selection() -> None:
+    config = simulator.load_config(CONFIG)
+    simulator.activate_config(config)
+    low = {"pref_cafe": 0.0}
+    high = {"pref_cafe": 1.0}
+    low_weights = simulator.category_weights_for_user("routine", low)
+    high_weights = simulator.category_weights_for_user("routine", high)
+    low_share = low_weights["cafe"] / sum(low_weights.values())
+    high_share = high_weights["cafe"] / sum(high_weights.values())
+    assert high_share > low_share
+    assert high_weights["grocery"] == low_weights["grocery"]
+
+
 @pytest.mark.parametrize("kind", ["temporary-trip", "sustained-preference"])
 def test_change_pairs_preserve_identities_and_protect_change_truth(tmp_path: Path, kind: str) -> None:
     result = simulate_pair(CONFIG, tmp_path / "reference", tmp_path / "intervention", tmp_path / "pair",
@@ -74,3 +88,9 @@ def test_change_pairs_preserve_identities_and_protect_change_truth(tmp_path: Pat
     assert set(manifest["invariant_entity_classes"]) >= {"users", "episodes", "choices"}
     assert not (tmp_path / "intervention" / "observed" / "change_points_truth.csv.gz").exists()
     assert (tmp_path / "intervention" / "truth" / "change_points_truth.csv.gz").is_file()
+    behavioral = json.loads(Path(result["behavioral_diagnostics"]).read_text())
+    assert behavioral["schema_version"] == "geoembeddings-pair-behavioral-diagnostics/2.0"
+    assert behavioral["diagnostics"]["pre_change_observed_events_identical"]["passed"]
+    assert behavioral["diagnostics"]["observed_changed_users_during_change"]["intervention"] > 0
+    assert behavioral["diagnostics"]["target_category_choice_rate_during_change"]["passed"]
+    assert behavioral["diagnostics"]["observed_target_category_event_rate_during_change"]["passed"]

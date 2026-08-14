@@ -745,6 +745,50 @@ outside the simulator and not proof of factorized disentanglement. Sparse event
 histories cause explicit missing-bin exclusions; sustained runs are explicitly
 right-censored and therefore cannot report recovery.
 
+## Phase 1 recoverability repair verification (2026-08-14)
+
+Requirements R1 and R11 are affected in the simulator and protected evaluator.
+The motivating 500-user/14-day audit at revision `49125a9` found that
+`sustained-preference` left observed events byte-equivalent and changed 0 of 480
+eligible users. It also exposed numerically unstable oracle probes and saturated
+popularity/shown-rank controls. That audit is diagnostic input, not an immutable
+scientific model-comparison artifact.
+
+Config v5 moves category preference ahead of same-category candidate
+construction. A fresh 50-user/14-day fixed-seed smoke pair produced these
+bounded mechanism checks:
+
+| Check | Reference | Intervention | Result |
+|---|---:|---:|---:|
+| Target-category choice rate during change | 0.176 | 0.516 | pass |
+| Observed target-category event rate during change | 0.128205 | 0.529915 | pass |
+| Pre-change observed events | identical | identical | pass |
+| Users with changed observed rows during change | — | 43 | pass |
+
+Run the focused regressions and regenerate the larger gate before using the
+instrument for model selection:
+
+```bash
+uv run python -m pytest \
+  tests/test_recoverability_gate.py \
+  tests/test_simulate_pair.py \
+  tests/test_embedding_visualization.py \
+  tests/test_kanto_trajectory_explorer.py
+
+uv run python scripts/recoverability_gate.py \
+  --config configs/simulation/kanto_v1.yaml \
+  --output-dir /tmp/geoembeddings_recoverability_phase1 \
+  --users 500 --days 14 --seed 20260803 \
+  --interventions sustained-preference schedule-shift observation
+```
+
+Acceptance requires a passing version-2 behavioral diagnostic, exact
+pre-change observed equality, positive changed-user coverage, and finite stable
+oracle results. Any public-feature ranking control at or above 0.98 top-1 marks
+that synthetic ranking task as saturated and excludes it from model selection.
+Protected truth remains evaluator-only; no truth field is added to training or
+export surfaces.
+
 ## T2.4--T2.7 factorization gate (2026-08-12)
 
 Requirements R1, R4, R5, R6, and R7 affect the observed-only model/export path
