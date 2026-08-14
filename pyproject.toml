@@ -18,6 +18,7 @@ viz = [
   "jupyter>=1.1,<2",
   "matplotlib>=3.10,<4",
   "seaborn>=0.13,<0.14",
+  "umap-learn>=0.5.7,<0.6",
 ]
 
 [project.scripts]

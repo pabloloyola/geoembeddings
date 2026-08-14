@@ -51,6 +51,33 @@ def test_pca_is_deterministic_and_fits_only_reference_cutoff(tmp_path: Path) -> 
     assert metadata1["models"]["combined"]["components"] == direct.components.tolist()
 
 
+def test_umap_projection_is_finite_row_aligned_and_records_configuration(tmp_path: Path) -> None:
+    pytest.importorskip("umap")
+    path = _export(tmp_path / "umap.npz")
+    with np.load(path) as original:
+        payload = {name: original[name] for name in original.files}
+    users = np.asarray(["u1", "u2", "u3", "u1", "u2", "u3"])
+    cutoffs = np.asarray(["train"] * 3 + ["test"] * 3)
+    values = np.asarray([[0., 0.], [1., 2.], [2., .5], [.2, .1], [1.2, 2.1], [2.2, .6]])
+    payload.update(user_id=users, cutoff=cutoffs, embedding=values,
+                   component_persistent=values, component_context=values + 1,
+                   component_combined=values)
+    np.savez_compressed(path, **payload)
+
+    rows, metadata = project_export(path, reducer="umap", seed=37,
+                                    umap_neighbors=2, umap_min_dist=.25)
+
+    expected_identities = list(zip(users.tolist(), cutoffs.tolist()))
+    for component in COMPONENT_NAMES:
+        component_rows = [row for row in rows if row["component"] == component]
+        assert [(row["user_id"], row["cutoff"]) for row in component_rows] == expected_identities
+        assert np.isfinite([[row["x"], row["y"]] for row in component_rows]).all()
+        assert metadata["models"][component]["hyperparameters"] == {
+            "n_neighbors": 2, "min_dist": .25, "random_state": 37, "transform_seed": 37}
+    assert metadata["reducer"] == "umap"
+    assert metadata["seed"] == 37
+
+
 def test_component_discovery_and_row_alignment_including_future_routine(tmp_path: Path) -> None:
     rows, metadata = project_export(_export(tmp_path / "export.npz", routine=True))
     assert metadata["component_names"] == ["persistent", "context", "combined", "routine"]

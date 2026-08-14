@@ -697,6 +697,7 @@ viz = [
     { name = "jupyter" },
     { name = "matplotlib" },
     { name = "seaborn" },
+    { name = "umap-learn", version = "0.5.7", source = { registry = "https://pypi.org/simple" } },
 ]
 
 [package.metadata]
@@ -709,6 +710,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3,<9" },
     { name = "pyyaml", specifier = ">=6.0,<7" },
     { name = "seaborn", marker = "extra == 'viz'", specifier = ">=0.13,<0.14" },
+    { name = "umap-learn", marker = "extra == 'viz'", specifier = ">=0.5.7,<0.6" },
     { name = "torch", specifier = ">=2.6,<3" },
 ]
 provides-extras = ["dev", "viz"]
@@ -2789,3 +2791,8 @@ sdist = { url = "https://files.pythonhosted.org/packages/f6/08/3cb9f67a8d48021ac
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a8/a9/d23012099dc88ec69a29c6407b41d89681cb674c2043cd5b467c7e299c08/xyzservices-2026.3.0-py3-none-any.whl", hash = "sha256:503183d4b322bfebc3c50cdd21192aa3e81e36c5efbf9133d54ae82143e0576b", size = 94101, upload-time = "2026-03-30T14:42:24.608Z" },
 ]
+
+[[package]]
+name = "umap-learn"
+version = "0.5.7"
+source = { registry = "https://pypi.org/simple" }
