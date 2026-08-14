@@ -21,6 +21,163 @@ Public dataset commands accept the parent `RUN_DIR`, never `RUN_DIR/observed`
 or `RUN_DIR/truth`. Modeling commands accept `EXPERIMENT_DIR`. Internal names
 are resolved by `layout.py`; paths below are relative to those roots.
 
+## Path model
+
+The following trees are an index of canonical path resolvers, not a promise that
+one command creates every artifact. Bracketed annotations name the owning
+command and whether the artifact is always or conditionally written. Dataset
+table names come from `OBSERVED_FILES` and `TRUTH_FILES` in `contract.py`; the
+remaining paths come from `DatasetLayout`, `PairLayout`, `ExperimentLayout`,
+`PrivacyEvidenceLayout`, or `UtilityReportLayout` in `layout.py`. Commands may
+consume artifacts owned by another command, but they must resolve the same path.
+
+`RUN_DIR` is the root accepted by `--run-dir`:
+
+```text
+RUN_DIR/
+├── config.resolved.yaml                         [simulate; always]
+├── manifest.json                                [simulate; always]
+├── validation_report.json                       [simulate; always; simulator-owned structural report]
+├── deep_validation_report.json                  [validate; conditional: default output only]
+├── observed/
+│   ├── users_observed.csv.gz                    [simulate; always in contracts 1.0 and 2.0]
+│   ├── observed_events.csv.gz                   [simulate; always in contracts 1.0 and 2.0]
+│   ├── poi_catalog.csv.gz                       [simulate; contract 2.0 only]
+│   ├── recommendation_requests.csv.gz           [simulate; contract 2.0 only]
+│   ├── impressions.csv.gz                       [simulate; contract 2.0 only]
+│   └── interactions.csv.gz                      [simulate; contract 2.0 only]
+└── truth/                                       [simulate; protected, evaluator-only consumption]
+    ├── user_latents.csv.gz                      [simulate; always]
+    ├── episodes_truth.csv.gz                    [simulate; always]
+    ├── candidate_sets.csv.gz                    [simulate; always]
+    ├── choices_truth.csv.gz                     [simulate; always]
+    ├── trajectories_truth.csv.gz                [simulate; always]
+    └── observation_process.csv.gz               [simulate; always]
+```
+
+Contract 1.0 compatibility is event-only: its public contract contains only
+`users_observed.csv.gz` and `observed_events.csv.gz`. Readers do not synthesize
+the four recommendation tables. Change-intervention simulations may additionally
+write protected change-point truth; that simulator extension is not one of the
+six `TRUTH_FILES` entries in the dataset contract.
+
+`EXPERIMENT_DIR` is the root accepted by `--experiment-dir`. `KIND` is
+`baseline` or `learned`, `MODEL` is the selected ranking model, and `VIEW_ID` is
+the configured robustness view identifier:
+
+```text
+EXPERIMENT_DIR/
+├── prepared/
+│   ├── config.resolved.yaml                     [prepare; always]
+│   ├── prepared_metadata.json                   [prepare; always]
+│   └── vocabularies.json                        [prepare; always]
+├── model/
+│   ├── best_model.pt                            [train; learned only]
+│   ├── training_report.json                     [train; learned only]
+│   └── training_participation.json              [train; learned only]
+├── statistical_baseline.npz                     [baseline; baseline only]
+├── embeddings.npz                               [export; learned only]
+├── dense_statistical_baseline.npz               [export-dense; conditional: baseline]
+├── dense_embeddings.npz                         [export-dense; conditional: learned]
+├── baseline_evaluation.json                     [evaluate; conditional: default baseline]
+├── evaluation.json                              [evaluate; conditional: default learned]
+├── baseline_episode_response.json               [evaluate; conditional: episodes baseline]
+├── episode_response.json                        [evaluate; conditional: episodes learned]
+├── baseline_transfer_evaluation.json            [evaluate; conditional: transfer baseline]
+├── learned_transfer_evaluation.json             [evaluate; conditional: transfer learned]
+├── baseline_temporal_routine.json                [evaluate; conditional: temporal-routine baseline]
+├── learned_temporal_routine.json                 [evaluate; conditional: temporal-routine learned]
+├── baseline_reliability.json                    [evaluate; conditional: reliability baseline]
+├── reliability.json                             [evaluate; conditional: reliability learned]
+├── reliability/
+│   └── calibration.json                         [calibrate-reliability; conditional: this root is OUTPUT_DIR]
+├── robustness/
+│   ├── baseline/
+│   │   └── VIEW_ID.npz                          [robustness; conditional: each selected baseline view]
+│   ├── learned/
+│   │   └── VIEW_ID.npz                          [robustness; conditional: each selected learned view]
+│   ├── baseline_robustness.json                 [robustness; conditional: baseline kind]
+│   └── learned_robustness.json                  [robustness; conditional: learned kind]
+├── ranking/
+│   ├── MODEL.npz                                [rank; conditional: selected model predictions]
+│   ├── MODEL.json                               [rank; conditional: selected model report]
+│   ├── frozen_embedding_checkpoint.npz          [rank; conditional: frozen_embedding model]
+│   ├── exposure_aware_checkpoint.npz            [rank; conditional: exposure_aware model]
+│   └── transfer_slices.json                     [evaluate-ranking; conditional]
+├── benchmarks/
+│   ├── offline.json                             [benchmark; always when benchmark runs]
+│   ├── online.json                              [benchmark; always when benchmark runs]
+│   └── online_workload.json                     [benchmark; always when benchmark runs]
+├── comparison/
+│   ├── embedding_comparison.json                [compare; standard comparison only]
+│   ├── embedding_comparison.md                  [compare; standard comparison only]
+│   ├── factorized_comparison.json               [compare; conditional: factorized matrix]
+│   └── factorized_comparison.md                 [compare; conditional: factorized matrix]
+└── visualization/
+    ├── baseline/                                [visualize-embeddings; conditional: sparse baseline]
+    ├── baseline_dense/                          [visualize-embeddings; conditional: dense baseline]
+    ├── learned/                                 [visualize-embeddings; conditional: sparse learned]
+    └── learned_dense/                           [visualize-embeddings; conditional: dense learned]
+```
+
+Each visualization leaf contains the command-owned projection metadata, CSV and
+NPZ coordinates, small-multiples image, and trajectories image described under
+`visualize-embeddings`. A normal `pipeline` writes only the mode-specific core
+preparation, representation, and default-evaluation subset; it does not create
+the dense, supplemental evaluation, calibration, robustness, ranking,
+benchmark, comparison, or visualization branches.
+
+`PAIR_DIR` is the root resolved by `PairLayout` (and the parent of the canonical
+pair manifest):
+
+```text
+PAIR_DIR/
+├── pair_manifest.json                           [simulate-pair or pair-manifest; always for a declared pair]
+├── pair_integrity.json                          [simulate-pair or validate-pair; conditional on validation]
+├── counterfactual_comparison.json               [evaluate-pair; conditional]
+├── counterfactual_comparison.md                 [evaluate-pair; conditional]
+├── change_evaluation.json                       [evaluate-change; conditional]
+├── change_evaluation.md                         [evaluate-change; conditional]
+├── ranking/
+│   └── exposure_counterfactual.json             [evaluate-pair; conditional: ranking inputs supplied]
+└── audits/
+    ├── nonstationarity.json                     [audit-nonstationarity; conditional: PAIR_DIR used as OUTPUT_DIR]
+    ├── nonstationarity.md                       [audit-nonstationarity; conditional: PAIR_DIR used as OUTPUT_DIR]
+    ├── privacy.json                              [audit-privacy; conditional: PAIR_DIR used as OUTPUT_DIR]
+    └── privacy.md                               [audit-privacy; conditional: PAIR_DIR used as OUTPUT_DIR]
+```
+
+The privacy command's two input roots use their own authoritative layouts;
+`REPORT_NAME` must be a single safe filename stem:
+
+```text
+PRIVACY_EVIDENCE_DIR/
+└── evidence_index.json                          [privacy evidence producer; required audit-privacy input]
+
+UTILITY_REPORT_DIR/
+└── REPORT_NAME.json                             [upstream utility evaluator; named audit-privacy input]
+```
+
+Calibration and audits accept generic `--output-dir` roots, which are resolved
+with `ExperimentLayout` and `PairLayout` respectively even when the root is not
+a modeling experiment or pair used by another command:
+
+```text
+CALIBRATION_OUTPUT_DIR/
+└── reliability/
+    └── calibration.json                         [calibrate-reliability; always when command runs]
+
+AUDIT_OUTPUT_DIR/
+└── audits/
+    ├── nonstationarity.json                     [audit-nonstationarity; command-specific]
+    ├── nonstationarity.md                       [audit-nonstationarity; command-specific]
+    ├── privacy.json                              [audit-privacy; command-specific]
+    └── privacy.md                               [audit-privacy; command-specific]
+```
+
+Only the two files owned by the selected audit command are written; the audit
+tree does not imply that either audit invokes the other.
+
 ## `inspect-evidence`
 
 ### Purpose and information boundary
@@ -78,10 +235,10 @@ Simulation YAML (default `configs/simulation/kanto_v1.yaml`); no prior run artif
 | `validation_report.json` | JSON | Simulator structural validation summary. | Always |
 | `observed/users_observed.csv.gz` | gzip CSV | Public user attributes. | Always |
 | `observed/observed_events.csv.gz` | gzip CSV | Public event history. | Always |
-| `observed/poi_catalog.csv.gz` | gzip CSV | Public recommendation catalog. | Always for contract 2.0 |
-| `observed/recommendation_requests.csv.gz` | gzip CSV | Public request contexts. | Always for contract 2.0 |
-| `observed/impressions.csv.gz` | gzip CSV | Public exposures. | Always for contract 2.0 |
-| `observed/interactions.csv.gz` | gzip CSV | Public responses. | Always for contract 2.0 |
+| `observed/poi_catalog.csv.gz` | gzip CSV | Public recommendation catalog (contract 2.0 only). | Always for contract 2.0 |
+| `observed/recommendation_requests.csv.gz` | gzip CSV | Public request contexts (contract 2.0 only). | Always for contract 2.0 |
+| `observed/impressions.csv.gz` | gzip CSV | Public exposures (contract 2.0 only). | Always for contract 2.0 |
+| `observed/interactions.csv.gz` | gzip CSV | Public responses (contract 2.0 only). | Always for contract 2.0 |
 | `truth/user_latents.csv.gz` | gzip CSV | Protected persistent traits. | Always |
 | `truth/episodes_truth.csv.gz` | gzip CSV | Protected episode state. | Always |
 | `truth/candidate_sets.csv.gz` | gzip CSV | Protected candidate/utility records. | Always |
@@ -89,6 +246,10 @@ Simulation YAML (default `configs/simulation/kanto_v1.yaml`); no prior run artif
 | `truth/trajectories_truth.csv.gz` | gzip CSV | Protected noiseless trajectories. | Always |
 | `truth/observation_process.csv.gz` | gzip CSV | Protected observation mechanism. | Always |
 | `truth/change_points_truth.csv.gz` | gzip CSV | Protected intervention change points. | Conditional: change intervention only |
+
+The four recommendation tables are contract-2.0-only. Event-only contract 1.0
+retains only the two public user/event tables, and compatible readers do not
+fabricate recommendation data.
 
 ### Existing output and overwrite
 
