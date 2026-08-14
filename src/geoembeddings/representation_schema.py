@@ -78,7 +78,9 @@ def load_embedding_export(path: str | Path, *, dense: bool = False) -> LoadedEmb
         if len(arrays["source_file_names"]) != len(arrays["source_hashes"]):
             raise ValueError("Source file names and hashes are not aligned")
         names = tuple(arrays.get("component_names", np.asarray([], dtype=str)).astype(str))
-        if names != COMPONENT_NAMES:
+        # The first contract requires these semantic components in canonical order,
+        # while permitting append-only schema evolution (for example, routine).
+        if names[:len(COMPONENT_NAMES)] != COMPONENT_NAMES or len(set(names)) != len(names):
             raise ValueError(f"Component name/order mismatch: {names!r}")
         dimensions = arrays.get("component_dimensions")
         if dimensions is None or dimensions.shape != (len(names),):
