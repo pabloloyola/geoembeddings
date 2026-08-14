@@ -1,1348 +1,900 @@
 # Command reference
 
-All commands are run from the extracted repository root:
+Run commands from the repository root with `uv run geoembed`. Relative default
+configuration paths are resolved from the current working directory.
+
+This reference is intentionally organized one-to-one with the subcommands
+registered in `src/geoembeddings/cli.py`. In the tables below, `RUN_DIR` is a
+dataset root, `EXPERIMENT_DIR` is a modeling root, and `PAIR_DIR` is the parent
+of the canonical `pair_manifest.json`. A protected evaluator may read `truth/`;
+an **observed-only** command is structurally denied that input. Simulator
+commands create protected truth but do not expose it to modeling code.
+
+## Exit status and path contract
+
+Successful commands print a JSON summary to stdout. Reported scientific
+`unavailable` status is also a successful result. Failures use exit code `2`
+for schema/identity errors, `3` for immutable-output conflicts, and `4` for
+missing prerequisites; unexpected failures use `1`.
+
+Public dataset commands accept the parent `RUN_DIR`, never `RUN_DIR/observed`
+or `RUN_DIR/truth`. Modeling commands accept `EXPERIMENT_DIR`. Internal names
+are resolved by `layout.py`; paths below are relative to those roots.
+
+## `inspect-evidence`
+
+### Purpose and information boundary
+
+Read-only verification of documentation evidence indexes. **Documentation-only:** it reads neither `observed/` nor `truth/`.
+
+### Arguments
+
+`--index-dir` is optional and defaults to `docs/artifacts`.
+
+### Prerequisites consumed
+
+Evidence index JSON files below the explicitly named `INDEX_DIR`; no run, experiment, or pair artifact is consumed.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `None` | — | Prints inspection results to stdout only. | Never |
+
+### Existing output and overwrite
+
+No artifact is written, so there is no collision and no `--overwrite` option.
+
+### Minimal example
 
 ```bash
-uv sync --locked --extra dev
-uv run geoembed --version
+uv run geoembed inspect-evidence --index-dir docs/artifacts
 ```
 
-Default configuration paths are relative to the current working directory, so
-run from the repository root or pass explicit `--config` paths.
+### Follow-up consumers
 
-## Exit status and report contract
-
-All commands use the same outcome contract. Successful commands write their
-JSON result to standard output and exit zero. A diagnostic report also exits
-zero when one or more sections explicitly have `status: "unavailable"` because
-coverage or scientific support is insufficient; unavailable is a reported
-scientific result, not an authentication or software failure. Other available
-sections remain in the successful report.
-
-Failures write one concise, actionable message to standard error without
-echoing supplied artifact paths or protected data. Exit codes are stable:
-
-| Exit code | Category | Action |
-|---:|---|---|
-| `1` | Unexpected internal error | Retry with validated inputs; report a reproducible failure. |
-| `2` | Schema or identity authentication failure | Check schema versions, hashes, and matching roots. |
-| `3` | Existing immutable output conflict | Choose a new destination or use that command's validated `--overwrite`. |
-| `4` | Missing source artifact | Run the prerequisite stage and verify the supplied root. |
-
-Argument-parser usage errors remain standard `argparse` exit-code `2` errors.
-The CLI deliberately does not include exception text in its error message,
-because such text can contain protected internal paths or record values.
-
-## Path model
-
-Two roots identify all artifacts:
-
-| Argument | Meaning | Created/consumed by |
-|---|---|---|
-| `--run-dir` | One simulator dataset instance | simulation, validation, all later stages |
-| `--experiment-dir` | One embedding experiment on a run | prepare, model, export, evaluation, comparison |
-
-`--run-dir` must be the parent of `observed/` and `truth/`. Do not pass either
-subdirectory. The CLI resolves internal paths centrally.
-
-Canonical dataset tree:
-
-```text
-RUN_DIR/
-├── config.resolved.yaml
-├── manifest.json
-├── validation_report.json
-├── deep_validation_report.json
-├── observed/
-│   ├── users_observed.csv.gz
-│   ├── observed_events.csv.gz
-│   ├── poi_catalog.csv.gz
-│   ├── recommendation_requests.csv.gz
-│   ├── impressions.csv.gz
-│   └── interactions.csv.gz
-└── truth/
-    ├── user_latents.csv.gz
-    ├── episodes_truth.csv.gz
-    ├── candidate_sets.csv.gz
-    ├── choices_truth.csv.gz
-    ├── trajectories_truth.csv.gz
-    └── observation_process.csv.gz
-```
-
-Dataset contract `geoembeddings-dataset/2.0` adds the four recommendation
-tables. Readers retain read-only compatibility with `1.0` for event-only model
-stages; they do not invent missing recommendation data. Recommendation
-consumers must require `2.0`, and CSV column order is normative. Hakone request
-generation uses documented synthetic YAML assumptions (24 km/h travel-speed
-conversion, 12% temporary unavailability, ten displayed candidates), not facts
-about real businesses or transport. Utility, probabilities, latent intent and
-episodes, inaccessible alternatives, and counterfactual outcomes are excluded.
-
-Canonical experiment tree after all stages:
-
-```text
-EXPERIMENT_DIR/
-├── prepared/
-│   ├── config.resolved.yaml
-│   ├── prepared_metadata.json
-│   └── vocabularies.json
-├── model/
-│   ├── best_model.pt
-│   └── training_report.json
-├── embeddings.npz
-├── dense_embeddings.npz
-├── statistical_baseline.npz
-├── evaluation.json
-├── baseline_evaluation.json
-├── visualization/
-│   ├── learned/
-│   │   ├── projection_metadata.json
-│   │   ├── projections.csv
-│   │   ├── projections.npz
-│   │   ├── small_multiples.png
-│   │   └── trajectories.png
-│   └── baseline/ ...
-└── comparison/
-    ├── embedding_comparison.json
-    └── embedding_comparison.md
-```
-
-## `visualize-embeddings`
-
-Project an existing observed-only cutoff export using the canonical experiment
-root (no dataset or protected-label path is accepted):
-
-```bash
-uv run --extra viz geoembed visualize-embeddings \
-  --experiment-dir EXPERIMENT_DIR --kind learned \
-  --reference-cutoff train --normalization standard --seed 1729 --format png
-```
-
-Use `--kind baseline` for `statistical_baseline.npz`, or add `--dense` for the
-corresponding timestamped dense export. Dense mode uses its earliest timestamp
-unless an exact `--reference-cutoff TIMESTAMP` is supplied. PCA is the default:
-each validated component is fit once on the explicitly recorded reference
-population and that same reducer transforms every later cutoff/timestamp. The
-command discovers component names from the export schema, including append-only
-future components such as `routine`; legacy single-vector exports follow the
-schema reader's documented persistent/combined compatibility mapping.
-
-Outputs live in `EXPERIMENT_DIR/visualization/{learned,baseline}` (with a
-`_dense` suffix for dense exports). The versioned metadata records normalization,
-seed, mean, scale, PCA axes and explained-variance ratios, reference row
-identities, cutoff selection, export hash, and observed-source hashes. The CSV
-and NPZ are row-aligned and contain `user_id`, cutoff/timestamp, component, `x`,
-and `y`. Existing artifacts are immutable unless `--overwrite` is explicit;
-figures may be PNG or SVG.
-
-`--reducer umap` is optional and installed by the `viz` extra. Its fixed seed,
-neighbor count, and minimum distance are stored. UMAP neighborhood geometry and
-apparent clusters are exploratory, not requirement evidence. Reducers are fit
-per component, so their axes are not aligned; projections from separate command
-runs or model variants are independently fit and must not be placed on common
-axes or treated as directly aligned. Coloring by protected latent labels is not
-available in this observed-only command. Any future protected synthetic view
-belongs in evaluator-only code and must be visibly labeled as protected.
-
-**Interpretation limit:** two-dimensional cluster appearance does not establish
-factor semantics, disentanglement, causal invariance, or recommendation quality.
-Transparency improves legibility but does not turn a projection into evidence
-for R1--R4 or R8.
-
-## Folium trajectory explorer
-
-The standalone evaluator visualization resolves every table through
-`DatasetLayout`. By default it opens only public tables under `observed/`; the
-protected latent trajectory and home/work layers require the explicit
-`--include-truth` evaluator switch (anchors also require `--include-anchors`).
-
-```bash
-uv run --extra viz python scripts/kanto_trajectory_explorer.py \
-  --run-dir runs/local_baseline_50u_7d \
-  --date 2026-04-02 \
-  --max-users 25 --seed 1729 --output visualizations/local_map.html
-```
-
-The Folium HTML uses an OpenStreetMap base layer. **Loading map tiles normally
-requires network access when the generated HTML is opened.** Feature controls
-separate observed paths and clustered events, synthetic POIs, public request
-locations, and optional evaluator-only layers. Service colors and active/passive
-styles remain distinct. Tooltips contain only sanitized timestamps, demographic
-bands, regions, actions, and accuracy descriptions.
-
-User selection and timestamp-aware point reduction are deterministic under
-`--seed`; `--max-users`, `--max-markers`, and `--max-path-points` bound browser
-work. The terminal, HTML banner, and companion `.metadata.json` report
-truncation. Metadata also records the contract and manifest identity, filters,
-selection counts, limits, seed, and truth-access status. Outputs default to
-`visualizations/` outside the run and existing outputs or any destination inside
-the immutable run are rejected.
-
-
-Protected matched-run declarations use a third canonical root:
-
-```text
-PAIR_DIR/
-├── reference_input.yaml               # immutable resolved pair input
-├── intervention_input.yaml            # immutable resolved pair input
-├── pair_manifest.json
-├── pair_integrity.json                 # T1.11d
-├── behavioral_diagnostics.json         # T1.11e
-├── counterfactual_comparison.json      # T1.11f
-└── counterfactual_comparison.md        # T1.11f
-```
-
-`evaluate-pair` consumes the canonical protected pair manifest plus two ordered
-experiment directories (reference then intervention) for each representation:
-
-```bash
-uv run geoembed evaluate-pair --pair-manifest PAIR_DIR/pair_manifest.json \
-  --baseline-experiment-dir REF_BASELINE INT_BASELINE \
-  --learned-experiment-dir REF_LEARNED INT_LEARNED
-```
-
-It requires the passing hash-matched `pair_integrity.json` and writes the two
-versioned `counterfactual_comparison` reports. Existing reports require explicit
-`--overwrite`. The command is evaluator-only and is the only stage that joins
-protected invariant/intervention labels to frozen representation keys.
-
-For T3.6, pass matching `--ranking-predictions REF INT` and
-`--ranking-reports REF INT`. The command first completes the ordinary
-`validate-pair` authentication gate, then authenticates ranking schemas, all
-observed source hashes, and exact request/candidate identities before reading
-`truth/recommendation_counterfactuals.csv.gz`. It writes
-`PAIR_DIR/ranking/exposure_counterfactual.json`, with observed metrics,
-protected utility regret and probability recovery, coverage, sensitivity, and
-simulator-identification limitations kept as separate sections.
-
-`geoembed rank --model exposure_aware --ranking-config
-configs/ranking/exposure_v1.yaml` fits only an observed candidate-position shown
-rate on training requests. The YAML controls Laplace smoothing, propensity
-floor, maximum weight, and sensitivity thresholds. This is a synthetic
-logging-policy adjustment, not a latent choice probability or causal claim.
-
-## `pair-manifest`
-
-### Purpose
-
-Declare two identity-compatible simulator runs for later R5/R7 pair validation
-and evaluation. This evaluator/simulator-side artifact is never an input to
-`prepare`, `baseline`, `train`, or `export`.
-
-```bash
-uv run geoembed pair-manifest \
-  --reference-run-dir runs/reference \
-  --intervention-run-dir runs/observation-intervention \
-  --output pairs/observation/pair_manifest.json
-
-uv run geoembed validate-pair \
-  --pair-manifest pairs/observation/pair_manifest.json
-```
-
-`validate-pair` resolves both declared run roots through `DatasetLayout` and
-writes the canonical sibling `pair_integrity.json`. It first authenticates the
-pair declaration, run manifests, resolved configurations, source tables,
-entity hashes, schemas, matching keys, and stream lineage. It then compares
-public and protected tables at key/field granularity, recording row/entity
-coverage, missing and duplicate keys, allowed changes, and bounded exact
-mismatch samples. Stale or structurally invalid inputs abort without creating a
-passing report; disallowed value differences create a failing report and make
-the command fail. Future paired representation evaluation must authenticate a
-current passing report before computing metrics.
-
-This is an integrity check for a controlled synthetic intervention. It does not
-show that simulator assumptions are calibrated to Tokyo/Kanto, and it does not
-establish external causal validity. Because no standalone POI truth table is
-currently emitted, the complete world is deterministically reconstructed from
-its authenticated configuration and named world-stream seed for field-level
-region and POI checks.
-
-Both arguments must be dataset roots; internal observed/truth filenames cannot
-be supplied. The command reads both complete run manifests and canonical tables,
-infers `identity`, `observation`, `exposure`, or `opportunity` from scenario and
-stream lineage, hashes every source, and writes schema
-`geoembeddings-pair-manifest/1.0`. The contract records run roots, simulator and
-dataset identities, manifest/config/source/entity hashes, intervention
-parameters, invariant entity classes, allowed field changes, semantic matching
-keys, stream lineage, and creation provenance.
-
-The command rejects missing or malformed hashes, unsupported identity or pair
-schemas, incompatible dataset contracts, ambiguous/reused matching keys,
-overlapping invariant/change declarations, and identity mismatches in declared
-invariants. Existing output is immutable by default. `--overwrite` is accepted
-only for the exact canonical filename and only when the existing regular file
-is itself a valid pair manifest; it does not overwrite arbitrary files.
-
-## `simulate-pair`
-
-Generate a complete configured exposure, opportunity, or observation pair and
-execute its structural, field-integrity, and behavioral gates:
-
-```bash
-uv run geoembed simulate-pair \
-  --intervention opportunity \
-  --reference-run-dir runs/opportunity-reference \
-  --intervention-run-dir runs/opportunity-intervention \
-  --pair-dir pairs/opportunity \
-  --users 50 --days 7 --seed 20260811
-```
-
-The command reads overrides, affected streams, invariants, permitted changes,
-and expected diagnostics from the versioned simulation YAML. It creates both
-dataset roots and the protected pair root, saves exact input YAML snapshots,
-runs deep validation while requiring all structural integrity checks, creates
-and validates the pair manifest, and writes `behavioral_diagnostics.json`. It
-refuses to start when any destination exists and deliberately has no overwrite
-option. Small smoke cohorts may miss deep coverage targets; those results stay
-visible in each run's `deep_validation_report.json` and are not confused with
-the separately enumerated structural gate.
-
-The defaults are synthetic experimental assumptions, not measurements or
-claims about Tokyo, Kanto, opportunity, exposure, or observation processes.
+None; use the stdout result to verify documentation evidence.
 
 ## `simulate`
 
-### Purpose
+### Purpose and information boundary
 
-Generate one complete versioned Kanto dataset, including public observed tables,
-protected truth tables, the resolved configuration, manifest, and fast internal
-validation.
+Generate one synthetic dataset. **Trusted simulator producer:** it writes both public observations and protected truth; it is not an observed-only model command or a protected evaluator.
 
-### Command
+### Arguments
+
+Required: `--run-dir RUN_DIR`. Important options: `--config`, `--users`, `--days`, `--start-date`, `--seed`, `--scenario`, `--[no-]full-kanto`, and `--overwrite`.
+
+### Prerequisites consumed
+
+Simulation YAML (default `configs/simulation/kanto_v1.yaml`); no prior run artifacts.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `config.resolved.yaml` | YAML | Resolved generator configuration and seeds. | Always |
+| `manifest.json` | JSON | Dataset contract, counts, hashes, and identity lineage. | Always |
+| `validation_report.json` | JSON | Simulator structural validation summary. | Always |
+| `observed/users_observed.csv.gz` | gzip CSV | Public user attributes. | Always |
+| `observed/observed_events.csv.gz` | gzip CSV | Public event history. | Always |
+| `observed/poi_catalog.csv.gz` | gzip CSV | Public recommendation catalog. | Always for contract 2.0 |
+| `observed/recommendation_requests.csv.gz` | gzip CSV | Public request contexts. | Always for contract 2.0 |
+| `observed/impressions.csv.gz` | gzip CSV | Public exposures. | Always for contract 2.0 |
+| `observed/interactions.csv.gz` | gzip CSV | Public responses. | Always for contract 2.0 |
+| `truth/user_latents.csv.gz` | gzip CSV | Protected persistent traits. | Always |
+| `truth/episodes_truth.csv.gz` | gzip CSV | Protected episode state. | Always |
+| `truth/candidate_sets.csv.gz` | gzip CSV | Protected candidate/utility records. | Always |
+| `truth/choices_truth.csv.gz` | gzip CSV | Protected choices. | Always |
+| `truth/trajectories_truth.csv.gz` | gzip CSV | Protected noiseless trajectories. | Always |
+| `truth/observation_process.csv.gz` | gzip CSV | Protected observation mechanism. | Always |
+| `truth/change_points_truth.csv.gz` | gzip CSV | Protected intervention change points. | Conditional: change intervention only |
+
+### Existing output and overwrite
+
+A nonempty target is immutable unless `--overwrite` is supplied; overwrite applies only to the validated target run.
+
+### Minimal example
 
 ```bash
-uv run geoembed simulate \
-  --config configs/simulation/kanto_v1.yaml \
-  --run-dir runs/kanto_pilot
+uv run geoembed simulate --run-dir runs/smoke --users 10 --days 2 --seed 1729
 ```
 
-### Inputs
+### Follow-up consumers
 
-| Argument | Required | Default | Meaning |
-|---|---:|---|---|
-| `--config PATH` | No | `configs/simulation/kanto_v1.yaml` | Simulation YAML |
-| `--run-dir PATH` | Yes | — | New dataset root |
-| `--users INT` | No | YAML `run.users` | Cohort size; minimum 10 |
-| `--days INT` | No | YAML `run.days` | Simulated days; minimum 2 |
-| `--start-date DATE` | No | YAML | ISO start date |
-| `--seed INT` | No | YAML | Generator seed |
-| `--scenario NAME` | No | YAML | Controlled scenario |
-| `--full-kanto` / `--no-full-kanto` | No | YAML | Include full geographic population support |
-| `--overwrite` | No | false | Replace the exact existing run directory |
+`validate` consumes the run; `prepare` and other observed-only stages consume `observed/`; protected evaluators consume `truth/`.
 
-Valid scenario names are `clean`, `mixed`, `opportunity_confounded`,
-`exposure_confounded`, and `observation_biased`.
+## `simulate-pair`
 
-### Operations
+### Purpose and information boundary
 
-1. Load and validate the YAML.
-2. Apply command-line overrides and save the resolved values.
-3. Create spatial regions, synthetic POIs, users, and persistent latents.
-4. Generate daily episodes, candidate sets, utility-based choices, and true
-   trajectories.
-5. Apply service adoption, recording/dropout, GPS noise, and event processes.
-6. Split public observed data from protected truth.
-7. Run fast integrity checks and write all tables.
-8. Derive semantic-key identities and serialize the versioned run-level
-   identity/stream manifest. CSV row order is not an identity input.
+Generate two matched runs, declare their relationship, and validate field-level integrity. **Trusted simulator plus protected validation:** it creates and authenticates truth on both sides.
 
-### Outputs
+### Arguments
 
-- `observed/users_observed.csv.gz`: public user attributes and service adoption.
-- `observed/observed_events.csv.gz`: chronological observed cross-service events.
-- six protected `truth/*.csv.gz` tables.
-- `config.resolved.yaml`: exact data-generating settings.
-- `manifest.json`: version, contract, seed, row counts, splits, validation, and
-  `identity` (`geoembeddings-simulation-identity/1.0`) with resolved streams,
-  identity algorithm, entity counts, and deterministic identity-set hashes.
-- `validation_report.json`: fast in-process integrity diagnostics.
+Required: `--intervention`, `--reference-run-dir`, `--intervention-run-dir`, and `--pair-dir`. Important options: `--config`, `--users`, `--days`, and `--seed`.
 
-### Reads protected truth?
+### Prerequisites consumed
 
-It creates truth as part of the data-generating process. This is not a training
-stage.
+Simulation YAML; all three output roots must be new. No existing run artifact is a prerequisite.
 
-### Important behavior
+### Produces
 
-The output directory must not exist unless `--overwrite` is supplied. Use a new
-run directory for each scientific condition; do not overwrite evidence needed
-for comparisons.
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `REFERENCE_RUN_DIR/*` | mixed YAML/JSON/gzip CSV | Complete run tree listed under `simulate`. | Always |
+| `INTERVENTION_RUN_DIR/*` | mixed YAML/JSON/gzip CSV | Matched complete run tree, including conditional change-point truth. | Always |
+| `PAIR_DIR/pair_manifest.json` | JSON | Authenticated pair declaration and allowed changes. | Always |
+| `PAIR_DIR/pair_integrity.json` | JSON | Field-level matching and integrity report. | Always |
+
+### Existing output and overwrite
+
+There is no `--overwrite`; any conflicting immutable run or pair output fails. Choose three new roots.
+
+### Minimal example
+
+```bash
+uv run geoembed simulate-pair --intervention exposure --reference-run-dir runs/ref --intervention-run-dir runs/exposed --pair-dir pairs/exposure --users 10 --days 2 --seed 1729
+```
+
+### Follow-up consumers
+
+Each run can feed `prepare`; the manifest feeds `validate-pair`, `evaluate-pair`, or `evaluate-change`; the integrity report gates paired evaluators.
 
 ## `validate`
 
-### Purpose
+### Purpose and information boundary
 
-Run deeper structural and behavioral diagnostics on an existing simulator run.
+Deep-validate one simulation. **Protected evaluator:** it opens the complete run, including `truth/`.
 
-### Command
+### Arguments
+
+Required: `--run-dir RUN_DIR`. `--output` optionally names the JSON destination.
+
+### Prerequisites consumed
+
+The complete `RUN_DIR` contract: `manifest.json`, every required `observed/*.csv.gz`, and every required `truth/*.csv.gz`.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `deep_validation_report.json` | JSON | Deep integrity and behavioral diagnostics at the default destination. | Always when `--output` is omitted |
+| `OUTPUT` | JSON | Same report at the explicit destination. | Conditional: `--output` supplied |
+
+### Existing output and overwrite
+
+No `--overwrite` option is exposed; the report writer replaces the selected report path after validation. It never deletes source artifacts.
+
+### Minimal example
 
 ```bash
-uv run geoembed validate --run-dir runs/kanto_pilot
+uv run geoembed validate --run-dir runs/smoke
 ```
 
-Optional custom report path:
+### Follow-up consumers
+
+A passing report is a prerequisite/evidence for `prepare`, manual workflows, and interpreting later evaluator results.
+
+## `pair-manifest`
+
+### Purpose and information boundary
+
+Declare two existing simulator runs as a protected matched pair. **Protected contract command:** it authenticates run-level observed and truth hashes.
+
+### Arguments
+
+Required: `--reference-run-dir`, `--intervention-run-dir`, and canonical `--output PAIR_DIR/pair_manifest.json`; optional `--overwrite`.
+
+### Prerequisites consumed
+
+Both complete run roots, including resolved configs, manifests, observed tables, truth tables, and identity/source hashes.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `PAIR_DIR/pair_manifest.json` | JSON | Immutable pair identities, intervention, matching keys, lineage, and allowed changes. | Always |
+
+### Existing output and overwrite
+
+An existing manifest fails unless `--overwrite` is explicit; overwrite replaces only the authenticated manifest.
+
+### Minimal example
 
 ```bash
-uv run geoembed validate \
-  --run-dir runs/kanto_pilot \
-  --output reports/kanto_pilot_validation.json
+uv run geoembed pair-manifest --reference-run-dir runs/ref --intervention-run-dir runs/exposed --output pairs/exposure/pair_manifest.json
 ```
 
-### Inputs
+### Follow-up consumers
 
-- complete `RUN_DIR/observed/` and `RUN_DIR/truth/` tables;
-- `RUN_DIR/manifest.json`;
-- optional `--output PATH`.
+`validate-pair`, `evaluate-pair`, and `evaluate-change` consume the manifest.
 
-### Operations
+## `validate-pair`
 
-Checks keys and references, truth/observed separation, passive trajectory
-matching, GPS plausibility, candidate/choice consistency, distance/exposure and
-utility relationships, service overlap, event density, and related behavioral
-diagnostics. The exact current checks live in `simulation_validation.py`.
-It also rejects a missing/unsupported identity schema, missing or non-integer
-stream seeds, missing entity declarations, malformed hashes/semantic IDs,
-duplicate primary identities, table/hash count disagreement, and disagreement
-between top-level and identity-section stream provenance.
+### Purpose and information boundary
 
-### Output
+Perform field-level validation of a declared pair. **Protected evaluator:** it reads and compares both runs, including protected truth.
 
-By default: `RUN_DIR/deep_validation_report.json`.
+### Arguments
 
-The command exits with an error if the report status is not `passed`.
+Required: `--pair-manifest PAIR_DIR/pair_manifest.json`.
 
-### Reads protected truth?
+### Prerequisites consumed
 
-Yes. It is a simulator evaluator, not model training.
+The pair manifest and the complete referenced run trees with hashes matching the declaration.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `PAIR_DIR/pair_integrity.json` | JSON | Invariant matches, allowed differences, identity coverage, and pass/fail status. | Always on completed validation |
+
+### Existing output and overwrite
+
+No `--overwrite` flag is exposed; rerunning refreshes the canonical integrity report but never modifies either run or the manifest.
+
+### Minimal example
+
+```bash
+uv run geoembed validate-pair --pair-manifest pairs/exposure/pair_manifest.json
+```
+
+### Follow-up consumers
+
+A current passing report gates `evaluate-pair` and `evaluate-change`.
+
+## `evaluate-pair`
+
+### Purpose and information boundary
+
+Evaluate R5/R7 representation response across an authenticated pair and optionally exposure-aware ranking. **Protected evaluator:** it reads protected paired truth only after integrity checks.
+
+### Arguments
+
+Required: `--pair-manifest`, two roots after `--baseline-experiment-dir`, and two after `--learned-experiment-dir`. Important options: `--config`, `--overwrite`, plus paired `--ranking-predictions` and `--ranking-reports`.
+
+### Prerequisites consumed
+
+`PAIR_DIR/pair_manifest.json`, `PAIR_DIR/pair_integrity.json`, and cutoff exports plus prepared metadata from all four experiment roots. Optional ranking inputs require two prediction NPZs and two report JSONs.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `PAIR_DIR/counterfactual_comparison.json` | JSON | Machine-readable matched representation effects. | Always |
+| `PAIR_DIR/counterfactual_comparison.md` | Markdown | Human-readable matched representation report. | Always |
+| `PAIR_DIR/ranking/exposure_counterfactual.json` | JSON | Protected utility-regret/probability recovery comparison. | Conditional: both ranking option pairs supplied |
+
+### Existing output and overwrite
+
+Any selected existing output fails unless `--overwrite`; optional ranking arguments must be supplied together.
+
+### Minimal example
+
+```bash
+uv run geoembed evaluate-pair --pair-manifest pairs/exposure/pair_manifest.json --baseline-experiment-dir experiments/ref-b experiments/int-b --learned-experiment-dir experiments/ref-l experiments/int-l
+```
+
+### Follow-up consumers
+
+`compare` may incorporate paired reports; evidence indexing and scientific review consume the JSON/Markdown outputs. The optional ranking output is a utility input for `audit-privacy` only when named by its config/report root.
+
+## `evaluate-change`
+
+### Purpose and information boundary
+
+Evaluate adaptation, recovery, forgetting, and drift on an authenticated change pair. **Protected evaluator:** it reads `truth/change_points_truth.csv.gz`.
+
+### Arguments
+
+Required: `--pair-manifest`, two baseline experiment roots, and two learned experiment roots; optional `--overwrite`.
+
+### Prerequisites consumed
+
+Current passing pair manifest/integrity report; dense baseline and learned exports and prepared metadata for reference and intervention experiments; protected change-point truth in both runs.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `PAIR_DIR/change_evaluation.json` | JSON | Relative-day matched-control curves, metrics, coverage, and censoring. | Always |
+| `PAIR_DIR/change_evaluation.md` | Markdown | Human-readable change evaluation. | Always |
+
+### Existing output and overwrite
+
+Either existing output causes failure unless `--overwrite`, which replaces the two regular outputs together.
+
+### Minimal example
+
+```bash
+uv run geoembed evaluate-change --pair-manifest pairs/trip/pair_manifest.json --baseline-experiment-dir experiments/ref-b experiments/trip-b --learned-experiment-dir experiments/ref-l experiments/trip-l
+```
+
+### Follow-up consumers
+
+Three compatible reports (no-change, temporary, sustained) feed `audit-nonstationarity`.
+
+## `audit-nonstationarity`
+
+### Purpose and information boundary
+
+Synthesize the three authenticated R11 change conditions. **Protected evaluator-derived command:** it consumes protected reports, not raw `truth/`, and retains their protected classification.
+
+### Arguments
+
+Required: `--no-change-report`, `--temporary-report`, `--sustained-report`, and `--output-dir`. Important options: thresholds and `--overwrite`.
+
+### Prerequisites consumed
+
+Three compatible `geoembeddings-change-evaluation/2.0` JSON reports with identical users, cutoffs, source/preparation lineage, components, relative-day definition, and censoring rules.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `OUTPUT_DIR/audits/nonstationarity.json` | JSON | Canonical metrics, gates, coverage, and limitations. | Always |
+| `OUTPUT_DIR/audits/nonstationarity.md` | Markdown | Human-readable R11 audit. | Always |
+
+### Existing output and overwrite
+
+Existing outputs fail unless `--overwrite`; both are replaced as one validated report set.
+
+### Minimal example
+
+```bash
+uv run geoembed audit-nonstationarity --no-change-report pairs/no/change_evaluation.json --temporary-report pairs/trip/change_evaluation.json --sustained-report pairs/sustained/change_evaluation.json --output-dir experiments/r11
+```
+
+### Follow-up consumers
+
+Evidence indexes and scientific review consume both audit renderings; no CLI stage consumes them automatically.
+
+## `audit-privacy`
+
+### Purpose and information boundary
+
+Run the authenticated R12 diagnostic-control privacy audit. **Protected evaluator:** it authenticates protected evidence and utility reports against the run and frozen exports; it is not a training command.
+
+### Arguments
+
+Required: `--run-dir`, repeated `--experiment-dir NAME=ROOT`, `--evidence-dir`, `--utility-report-dir`, and `--output-dir`. Important options: `--config` and `--overwrite`.
+
+### Prerequisites consumed
+
+The run manifest/source identities; each experiment’s prepared metadata and dense export; `EVIDENCE_DIR/evidence_index.json` and referenced attack evidence; configured named JSON reports in `UTILITY_REPORT_DIR`.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `OUTPUT_DIR/audits/privacy.json` | JSON | Authoritative diagnostic-control privacy/utility audit. | Always |
+| `OUTPUT_DIR/audits/privacy.md` | Markdown | Human-readable R12 audit and limitations. | Always |
+
+### Existing output and overwrite
+
+Existing outputs fail unless `--overwrite`; replacement occurs only after all identities authenticate.
+
+### Minimal example
+
+```bash
+uv run geoembed audit-privacy --run-dir runs/smoke --experiment-dir baseline=experiments/base --evidence-dir evidence/privacy --utility-report-dir evidence/utility --output-dir experiments/r12
+```
+
+### Follow-up consumers
+
+Documentation evidence indexes and scientific review consume the reports; no model stage may consume them.
+
+## `calibrate-reliability`
+
+### Purpose and information boundary
+
+Fit and test diagnostic-control reliability calibration on held-out users. **Observed-only:** it reads observed histories and authenticated exports, never `truth/`.
+
+### Arguments
+
+Required: `--run-dir`, repeated `--experiment-dir NAME=ROOT`, and `--output-dir`. Important options: `--config` and `--overwrite`.
+
+### Prerequisites consumed
+
+`RUN_DIR/manifest.json` and `RUN_DIR/observed/observed_events.csv.gz`; for each named experiment, prepared metadata and dense export with matching observed-source/preparation identities.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `OUTPUT_DIR/reliability/calibration.json` | JSON | Frozen split, bootstrap uncertainty, calibration fits, bins, and coverage-risk curves. | Always |
+
+### Existing output and overwrite
+
+The report is immutable unless `--overwrite`; mismatched controls or identities fail before replacement.
+
+### Minimal example
+
+```bash
+uv run geoembed calibrate-reliability --run-dir runs/smoke --experiment-dir baseline=experiments/base --experiment-dir learned=experiments/learned --output-dir experiments/calibration
+```
+
+### Follow-up consumers
+
+Evidence review consumes the report; it is not consumed by `evaluate` or model training.
 
 ## `prepare`
 
-### Purpose
+### Purpose and information boundary
 
-Fit the leakage-safe preprocessing and temporal split contract for one
-experiment. It does **not** materialize transformed tensors.
+Fit vocabularies, normalization, cutoffs, and window metadata on training events. **Observed-only:** no truth path is passed.
 
-### Command
+### Arguments
 
-```bash
-uv run geoembed prepare \
-  --config configs/embedding/single_vector.yaml \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
-```
+Required: `--run-dir RUN_DIR` and `--experiment-dir EXPERIMENT_DIR`; important optional `--config`.
 
-### Inputs
+### Prerequisites consumed
 
-- `RUN_DIR/observed/users_observed.csv.gz`
-- `RUN_DIR/observed/observed_events.csv.gz`
-- embedding YAML
+`RUN_DIR/manifest.json`, public users and observed events under `RUN_DIR/observed/`; the embedding YAML.
 
-### Operations
+### Produces
 
-1. Validate the observed schema and reject truth-like columns.
-2. Sort events by user and timestamp.
-3. Compute global chronological train and validation cutoffs.
-4. Select explicit categorical and continuous fields.
-5. Fit categorical vocabularies on training events only.
-6. Fit continuous normalization statistics on training events only.
-7. Hash the two observed source files.
-8. Store all field orders, counts, cutoffs, and resolved settings.
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `EXPERIMENT_DIR/prepared/config.resolved.yaml` | YAML | Resolved preprocessing/model configuration. | Always |
+| `EXPERIMENT_DIR/prepared/prepared_metadata.json` | JSON | Source hashes, splits, cutoffs, field order, statistics, and row counts. | Always |
+| `EXPERIMENT_DIR/prepared/vocabularies.json` | JSON | Training-only categorical vocabularies in explicit field order. | Always |
 
-### Outputs
+### Existing output and overwrite
 
-Under `EXPERIMENT_DIR/prepared/`:
+There is no `--overwrite`; immutable protocol metadata rejects an existing preparation target. Use a new experiment for a changed preparation.
 
-- `vocabularies.json`: `<PAD>=0`, `<UNK>=1`, train-known tokens after that;
-- `prepared_metadata.json`: source hashes, cutoffs, field order, vocabulary
-  sizes, statistics, row counts, and target counts;
-- `config.resolved.yaml`: exact embedding configuration.
-
-### Reads protected truth?
-
-No. It receives only the resolved `observed/` path.
-
-### Important behavior
-
-`train`, `baseline`, and `export` reread the observed CSVs and encode them under
-this contract. If the source files, input fields, split fractions, vocabulary,
-or normalization logic changes, rerun `prepare` and downstream stages.
-
-## `baseline`
-
-### Purpose
-
-Export a non-learned representation using the exact same preprocessing and
-cutoffs as learned models.
-
-### Command
+### Minimal example
 
 ```bash
-uv run geoembed baseline \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
+uv run geoembed prepare --run-dir runs/smoke --experiment-dir experiments/smoke
 ```
 
-Pass `--config` if not using the default embedding YAML.
+### Follow-up consumers
 
-### Inputs
-
-- observed event CSV;
-- `EXPERIMENT_DIR/prepared/vocabularies.json`;
-- `EXPERIMENT_DIR/prepared/prepared_metadata.json`;
-- embedding configuration for maximum history length.
-
-### Operations
-
-At train, validation, and final test cutoffs for each user:
-
-1. take at most the latest `max_sequence_length` events;
-2. form normalized histograms for every categorical field;
-3. append means and standard deviations of normalized continuous features;
-4. concatenate the components without fitting model parameters.
-
-### Output
-
-`EXPERIMENT_DIR/statistical_baseline.npz`, containing:
-
-- `user_id`: string array;
-- `cutoff`: `train`, `validation`, or `test`;
-- `embedding`: dense 2-D float array.
-
-### Reads protected truth?
-
-No.
+`baseline`, `train`, `export`, `export-dense`, all evaluation variants, `rank`, `benchmark`, `robustness`, and `compare` authenticate these files.
 
 ## `train`
 
-### Purpose
+### Purpose and information boundary
 
-Train the current single-vector sequence encoder and select the checkpoint with
-minimum validation loss.
+Train the configured sequence encoder. **Observed-only:** training receives public events and prepared artifacts only.
 
-### Command
+### Arguments
+
+Required: `--run-dir` and `--experiment-dir`; important optional `--config`.
+
+### Prerequisites consumed
+
+Public observed events; all `EXPERIMENT_DIR/prepared/*` files and matching source hashes.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `EXPERIMENT_DIR/model/best_model.pt` | PyTorch checkpoint | Best learned weights plus schema/field-order identity. | Always after successful training |
+| `EXPERIMENT_DIR/model/training_report.json` | JSON | Epoch metrics, losses, configuration, and checkpoint provenance. | Always |
+| `EXPERIMENT_DIR/model/training_participation.json` | JSON | Immutable user/window participation lineage. | Always |
+
+### Existing output and overwrite
+
+No CLI `--overwrite` exists. Training refuses conflicting immutable participation output; use a new experiment rather than silently changing a trained attempt.
+
+### Minimal example
 
 ```bash
-uv run geoembed train \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
+uv run geoembed train --run-dir runs/smoke --experiment-dir experiments/learned
 ```
 
-### Inputs
+### Follow-up consumers
 
-- observed events;
-- prepared field/vocabulary/statistics/split contract;
-- embedding YAML with model, objectives, and training settings.
+`export`, learned `export-dense`, learned evaluation/robustness, `benchmark`, and exposure-aware/frozen ranking consume the checkpoint or its exports.
 
-### Window semantics
+## `baseline`
 
-For each target event in the requested split, the input contains up to the
-previous `max_sequence_length` observed events for the same user. The target
-event is never part of its own history. Histories shorter than
-`min_history_events` are not used as prediction windows.
+### Purpose and information boundary
 
-### Model operations
+Create the statistical cutoff comparator. **Observed-only:** it uses observed histories and training-fitted preparation.
 
-1. Embed each categorical field separately.
-2. Sum categorical embeddings and combine with projected continuous features.
-3. Run an MPS-safe padded GRU.
-4. Select the final valid state with a floating mask.
-5. Project to the 128-dimensional user-history embedding.
-6. Predict configured next-event fields.
-7. Align early/late history representations with cosine consistency.
-8. Apply event dropout during training.
+### Arguments
 
-Before accelerator execution, every batch is checked for field count, ID/target
-ranges, valid lengths, and finite continuous values.
+Required: `--run-dir` and `--experiment-dir`; important optional `--config`.
 
-### Outputs
+### Prerequisites consumed
 
-Under `EXPERIMENT_DIR/model/`:
+Public observed events and all prepared artifacts with matching source identity.
 
-- `best_model.pt`: state, resolved config, vocabularies, explicit field order,
-  continuous fields, selected epoch, and validation metrics;
-- `training_report.json`: device, fields, window counts, best validation loss,
-  checkpoint path, and metrics for every epoch;
-- `training_participation.json`: immutable, versioned, non-identifying counts
-  and canonical user-set hashes for eligible train windows, validation
-  checkpoint-selection windows, train-fitted preprocessing, and users eligible
-  only for post-freeze export. Its lineage binds the exact participation
-  definition to preparation/source hashes, split boundaries, configuration,
-  and the selected checkpoint. Existing participation metadata is rejected
-  rather than replaced.
+### Produces
 
-`training_report.json` also contains the shared `runtime_metadata` object
-described under **Runtime metadata schema** below. The timed interval covers
-dataset construction, model training, checkpoint selection, and report
-construction up to metadata collection.
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `EXPERIMENT_DIR/statistical_baseline.npz` | compressed NPZ | Row-aligned baseline vectors at train/validation/test cutoffs with schema metadata. | Always |
 
-### Reads protected truth?
+### Existing output and overwrite
 
-No.
+No `--overwrite` flag is exposed; the selected baseline file is regenerated atomically/replaceably while preparation remains untouched.
 
-### Device behavior
+### Minimal example
 
-`training.device: auto` prefers CUDA, then Apple MPS, then CPU. Set it to `cpu`
-for diagnosis. Do not move sequence lengths to MPS; they are CPU metadata.
+```bash
+uv run geoembed baseline --run-dir runs/smoke --experiment-dir experiments/base
+```
+
+### Follow-up consumers
+
+Baseline `evaluate`, `visualize-embeddings`, `robustness`, `benchmark`, and `compare` consume it; `pipeline --mode baseline` evaluates it immediately.
 
 ## `export`
 
-### Purpose
+### Purpose and information boundary
 
-Run the best checkpoint over complete user histories at three cutoffs and save
-frozen learned embeddings.
+Export learned cutoff embeddings from a checkpoint. **Observed-only:** it reads no protected labels.
 
-### Command
+### Arguments
+
+Required: `--run-dir` and `--experiment-dir`; important optional `--config`.
+
+### Prerequisites consumed
+
+Public observed events, prepared artifacts, and `EXPERIMENT_DIR/model/best_model.pt`.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `EXPERIMENT_DIR/embeddings.npz` | compressed NPZ | Learned component vectors at frozen cutoffs with source/checkpoint/schema metadata. | Always |
+
+### Existing output and overwrite
+
+No `--overwrite` option is exposed; rerunning regenerates the canonical export but never changes preparation or checkpoint.
+
+### Minimal example
 
 ```bash
-uv run geoembed export \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
+uv run geoembed export --run-dir runs/smoke --experiment-dir experiments/learned
 ```
 
-### Inputs
+### Follow-up consumers
 
-- observed events;
-- prepared contract;
-- `EXPERIMENT_DIR/model/best_model.pt`;
-- embedding config for batch/device settings.
-
-### Operations
-
-For each user and each cutoff with at least one observed event, select up to the
-latest `max_sequence_length` events, encode with augmentation disabled, and emit
-one vector.
-
-### Output
-
-`EXPERIMENT_DIR/embeddings.npz`, containing `user_id`, `cutoff`, and
-`embedding` arrays with the same structural convention as the baseline export.
-
-Learned exports use `geoembeddings-component-export/2.0`. `embedding` remains
-an alias for `component_combined`; independently addressable
-`component_persistent`, `component_context`, and `component_combined` arrays
-are accompanied by names/dimensions, model variant, ordered input fields,
-preparation/source hashes, boundaries, exported cutoffs, and compatibility
-metadata. Evaluator readers migrate an unversioned legacy vector by mapping it
-to `persistent` and `combined` with zero `context`; this preserves old artifacts
-without claiming learned factorization.
-
-### Reads protected truth?
-
-No.
+Learned `evaluate`, `visualize-embeddings`, `robustness`, `benchmark`, `compare`, and reliability calibration consume it.
 
 ## `export-dense`
 
-### Purpose
+### Purpose and information boundary
 
-Export learned histories after observed events so a protected evaluator can
-later align them to episode boundaries and change points. This command reads
-only `observed/`; it never reads or writes episode identifiers or other truth
-labels.
+Export baseline or learned embeddings at observed event timestamps. **Observed-only:** all cutoffs derive from public event history.
 
-### Command
+### Arguments
+
+Required: `--run-dir` and `--experiment-dir`. Important options: `--kind learned|baseline`, `--event-stride`, and `--config`.
+
+### Prerequisites consumed
+
+Public observed events and prepared artifacts; learned mode additionally requires the checkpoint.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `EXPERIMENT_DIR/dense_embeddings.npz` | compressed NPZ | Timestamped learned components, always including each user’s first/last event. | Conditional: `--kind learned` |
+| `EXPERIMENT_DIR/dense_statistical_baseline.npz` | compressed NPZ | Timestamped statistical vectors. | Conditional: `--kind baseline` |
+
+### Existing output and overwrite
+
+No `--overwrite` option is exposed; rerunning regenerates only the selected dense export. `--event-stride` must be at least one.
+
+### Minimal example
 
 ```bash
-uv run geoembed export-dense \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector \
-  --event-stride 1
+uv run geoembed export-dense --run-dir runs/smoke --experiment-dir experiments/learned --kind learned --event-stride 1
 ```
 
-`--event-stride N` retains the first event, every Nth event thereafter, and the
-last event for each user. It defaults to `1`. Each embedding uses at most the
-configured `max_sequence_length` most recent events, while
-`history_event_count` records the total observed history available at that
-timestamp.
+### Follow-up consumers
 
-### Output
+Dense visualization consumes either output. Episode/temporal evaluation and `evaluate-change` consume dense exports; ranking uses the learned dense export; calibration uses named dense exports.
 
-`EXPERIMENT_DIR/dense_embeddings.npz` contains row-aligned arrays:
+## `visualize-embeddings`
 
-- `user_id`: public user identifier;
-- `timestamp`: ISO timestamp of the latest included observed event;
-- `cutoff_kind`: currently the constant `observed_event`;
-- `embedding`: learned frozen vector;
-- `history_event_count`: total observed events available for that user.
+### Purpose and information boundary
 
-It also stores `categorical_fields` and `continuous_fields` metadata arrays in
-the checkpoint's explicit model-input order. These metadata arrays describe the
-schema and are not row-aligned.
+Project and plot a frozen export. **Observed-only:** the command accepts only an experiment root and cannot open dataset truth.
 
-The export intentionally contains no episode IDs or protected labels. A later
-evaluator may join these timestamps to `truth/` without changing the model
-input boundary.
+### Arguments
+
+Required: `--experiment-dir`. Important options: `--kind`, `--dense`, `--reference-cutoff`, `--normalization`, `--reducer`, `--seed`, `--format`, UMAP controls, and `--overwrite`.
+
+### Prerequisites consumed
+
+The selected cutoff or dense NPZ export in `EXPERIMENT_DIR`; UMAP additionally requires the visualization extra.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `EXPERIMENT_DIR/visualization/KIND[_dense]/projection_metadata.json` | JSON | Reducer, normalization, reference population, hashes, and provenance. | Always |
+| `EXPERIMENT_DIR/visualization/KIND[_dense]/projections.csv` | CSV | Human-readable row-aligned 2-D coordinates. | Always |
+| `EXPERIMENT_DIR/visualization/KIND[_dense]/projections.npz` | compressed NPZ | Machine-readable row-aligned 2-D coordinates. | Always |
+| `EXPERIMENT_DIR/visualization/KIND[_dense]/small_multiples.FORMAT` | PNG or SVG | Per-component/cutoff projection panels. | Always |
+| `EXPERIMENT_DIR/visualization/KIND[_dense]/trajectories.FORMAT` | PNG or SVG | Per-user temporal paths. | Always |
+
+### Existing output and overwrite
+
+If any target exists, the command fails unless `--overwrite`; replacement is limited to the selected kind/density directory.
+
+### Minimal example
+
+```bash
+uv run --extra viz geoembed visualize-embeddings --experiment-dir experiments/learned --kind learned --reference-cutoff train
+```
+
+### Follow-up consumers
+
+The files are terminal exploratory artifacts; no evaluator or training command consumes them.
 
 ## `evaluate`
 
-### Purpose
+### Purpose and information boundary
 
-Evaluate one learned or baseline export using protected simulator truth.
+Evaluate one frozen representation. **Boundary depends on mode:** default, `--episodes`, and `--temporal-routine` are protected evaluators; `--transfer` and `--reliability` are observed-only. Only one supplemental flag may be selected.
 
-### Learned command
+### Arguments
 
-```bash
-uv run geoembed evaluate \
-  --kind learned \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
-```
+Required: `--run-dir` and `--experiment-dir`. Important options: `--kind`, exactly zero or one of `--episodes`, `--transfer`, `--temporal-routine`, `--reliability`, plus `--config` and supplemental `--overwrite`.
 
-### Baseline command
+### Prerequisites consumed
 
-```bash
-uv run geoembed evaluate \
-  --kind baseline \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
-```
+Selected cutoff or dense export and prepared metadata. Default also needs truth and, for learned kind, the checkpoint. Episode mode needs protected episodes; temporal-routine needs protected temporal/routine truth. Transfer and reliability consume only observed artifacts.
 
-`--kind` defaults to `learned`.
+### Produces
 
-### Inputs
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `EXPERIMENT_DIR/evaluation.json` | JSON | Protected main learned probes and geometry diagnostics. | Conditional: default learned |
+| `EXPERIMENT_DIR/baseline_evaluation.json` | JSON | Protected main baseline probes. | Conditional: default baseline |
+| `EXPERIMENT_DIR/episode_response.json` | JSON | Protected learned episode response. | Conditional: `--episodes --kind learned` |
+| `EXPERIMENT_DIR/baseline_episode_response.json` | JSON | Protected baseline episode response. | Conditional: `--episodes --kind baseline` |
+| `EXPERIMENT_DIR/KIND_transfer_evaluation.json` | JSON | Observed-only spatial transfer slices. | Conditional: `--transfer` |
+| `EXPERIMENT_DIR/KIND_temporal_routine.json` | JSON | Protected temporal/routine diagnostics. | Conditional: `--temporal-routine` |
+| `EXPERIMENT_DIR/reliability.json` | JSON | Observed-only learned reliability diagnostics. | Conditional: `--reliability --kind learned` |
+| `EXPERIMENT_DIR/baseline_reliability.json` | JSON | Observed-only baseline reliability diagnostics. | Conditional: `--reliability --kind baseline` |
 
-- the corresponding `.npz` export;
-- protected `truth/user_latents.csv.gz`;
-- prepared contract and embedding config;
-- for learned evaluation, the checkpoint and observed events for test
-  next-event metrics.
+### Existing output and overwrite
 
-### Operations
+Supplemental modes select separate files. `--overwrite` is enforced for reliability; other evaluator writers replace their selected canonical report and do not alter source exports.
 
-- learned only: test next-event loss, top-1, and top-5 metrics;
-- both: held-out-user ridge probes for persistent latent traits using test
-  cutoff embeddings;
-- both: cosine stability across train, validation, and test cutoffs;
-- emit explicit requirement coverage/missing status.
-
-### Outputs
-
-- learned: `EXPERIMENT_DIR/evaluation.json`;
-- baseline: `EXPERIMENT_DIR/baseline_evaluation.json`.
-
-For learned reports, `next_event` is a backward-compatible extension under
-schema `geoembeddings-next-event-evaluation/2.0`: the existing loss, accuracy,
-and top-5 keys remain, while `predictive_diagnostics` reports each target's
-train-only class counts and majority label, known/unknown-label coverage,
-learned and naive known-label accuracy, coverage-aware accuracy, macro-F1,
-balanced accuracy, per-class support, and deltas. Unknown test labels are never
-counted as correct merely because they map to the train-fitted unknown token;
-zero known-label coverage is explicit and all aggregate metrics remain finite.
-These are predictive diagnostics only. Beating the majority control is not
-evidence of embedding quality, spatial transfer, or disentanglement.
-
-### Reads protected truth?
-
-Yes. This is the protected evaluator.
-
-## `compare`
-
-### Purpose
-
-Compare statistical and learned frozen representations with identical users,
-cutoffs, held-out-user split, and ridge penalty.
-
-### Same experiment directory
+### Minimal example
 
 ```bash
-uv run geoembed compare \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_single_vector
+uv run geoembed evaluate --run-dir runs/smoke --experiment-dir experiments/learned --kind learned
 ```
 
-### Separate experiment directories
+### Follow-up consumers
+
+`compare` consumes main reports and may merge episode/transfer supplemental reports; `benchmark` consumes reliability reports when available; audits/evidence review consume specialized reports.
+
+## `benchmark`
+
+### Purpose and information boundary
+
+Measure frozen-export offline work and atomic online-update workloads. **Observed-only:** it never accepts or reads truth.
+
+### Arguments
+
+Required: `--run-dir` and `--experiment-dir`. Important options: `--config`, `--warmup`, `--iterations`, and `--overwrite`.
+
+### Prerequisites consumed
+
+Public observed events; prepared metadata; existing baseline and/or learned cutoff exports for offline measurements; learned checkpoint for online measurements.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `EXPERIMENT_DIR/benchmarks/offline.json` | JSON | Latency, throughput, memory, bytes/hashes, workload, and missing-artifact status. | Always |
+| `EXPERIMENT_DIR/benchmarks/online_workload.json` | JSON | Frozen seeded cold-start/single-event/batch workload identity. | Always |
+| `EXPERIMENT_DIR/benchmarks/online.json` | JSON | Oracle-checked online latency, throughput, memory, and environment metadata. | Always |
+
+### Existing output and overwrite
+
+Existing reports fail unless `--overwrite`. Overwrite may refresh measurements for the identical named workload; a changed frozen workload belongs in a new experiment.
+
+### Minimal example
 
 ```bash
-uv run geoembed compare \
-  --run-dir runs/kanto_pilot \
-  --baseline-experiment-dir experiments/kanto_baseline \
-  --learned-experiment-dir experiments/kanto_single_vector
+uv run geoembed benchmark --run-dir runs/smoke --experiment-dir experiments/learned --warmup 1 --iterations 5
 ```
 
-Optional `--output-dir PATH` changes only the comparison-report destination.
+### Follow-up consumers
 
-### Inputs
-
-- both embedding exports;
-- both preparation metadata files;
-- observed events;
-- protected user latents;
-- embedding evaluation settings.
-
-The command rejects mismatched source hashes, cutoffs, categorical fields, or
-continuous fields.
-
-### Operations
-
-On common users with all three cutoffs:
-
-- held-out persistent-trait and category-preference ridge probes;
-- incremental preference probes beyond home/work geography and event count;
-- same-user and different-user temporal geometry;
-- temporal identity retrieval and effective rank;
-- activity-volume dependence;
-- common frozen future-event classifiers;
-- requirement coverage status.
-
-### Outputs
-
-By default under the learned experiment:
-
-- `comparison/embedding_comparison.json`;
-- `comparison/embedding_comparison.md`.
-
-Both formats expose the same `runtime_metadata` provenance (the Markdown report
-renders it as a runtime section). The comparison duration covers input
-validation, all frozen probes and optional supplemental-report merging.
-
-## Runtime metadata schema
-
-JSON reports produced by `train`, `evaluate` (base, episode, transfer, and
-temporal-routine modes), `robustness`, and `compare` contain a top-level
-`runtime_metadata` object using schema
-`geoembeddings-runtime-metadata/1.0`. Collection uses process, package, source
-checkout, and accelerator APIs only; it never opens `observed/` or `truth/`.
-
-Required keys are always serialized, including explicit JSON `null` when a
-portable value cannot be discovered:
-
-| Field | Type | Semantics |
-|---|---|---|
-| `schema_version` | string | Runtime metadata contract identifier. |
-| `python_version` | string | Running interpreter version. |
-| `package_version` | string or null | Installed `geoembeddings` distribution version; null for an uninstalled source tree. |
-| `pytorch_version` | string | Imported PyTorch version. |
-| `operating_system` | string | Python platform description of the host OS. |
-| `device_type` | string or null | PyTorch device class (`cpu`, `cuda`, or `mps`); null when the report does not execute model tensors. |
-| `source_commit` | string or null | Git `HEAD` commit of the source checkout; null outside a discoverable Git work tree. |
-| `wall_clock_duration_seconds` | finite non-negative number | Command-path interval measured with a monotonic clock, ending immediately before serialization. |
-| `seed` | integer | Resolved command/config seed; never coerced to a floating-point value. |
-
-`accelerator` is the only optional accelerator-specific value. It is an object
-for CUDA/MPS execution (and may itself contain null values when an API cannot
-name hardware) and is explicitly `null` for CPU or non-tensor evaluator paths.
-Runtime duration is reproducibility and rough-cost provenance, not a normalized
-cross-device benchmark.
-
-### Reads protected truth?
-
-Yes. It is a protected comparative evaluator.
-
-### Interpretation
-
-There is intentionally no aggregate winner. Read stability together with
-distinctiveness, effective rank, and retained information.
-
-## Spatial and transfer evaluation (`evaluate --transfer`)
-
-Run both frozen representations against the identical versioned slice contract:
-
-```bash
-uv run geoembed evaluate --transfer --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-uv run geoembed evaluate --transfer --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-```
-
-The first two commands write `baseline_transfer_evaluation.json` and
-`learned_transfer_evaluation.json`. `compare` rejects differences in observed
-source hashes, users, cutoffs, fitted training contract, slice-definition hash,
-or slice coverage, then adds independent R2/R8 deltas. It never creates an
-aggregate spatial score. Thresholds, known regions, and known geohashes are fit
-from training events only; held-out and unseen labels affect evaluation slices
-and coverage only.
-
-## `robustness`
-
-Construct versioned, deterministic observed-data views and evaluate R6/R7:
-
-```bash
-uv run geoembed robustness --views gps,timestamp,leave-one-service-out,recent-truncation --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-uv run geoembed robustness --views gps,timestamp,leave-one-service-out,recent-truncation --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-```
-
-The versioned specifications live under `evaluation.robustness` in the embedding
-YAML. Each stable `view_id` hashes its view kind, parameters, and specification
-version. GPS offsets and timestamp jitter, service selection, and truncation are
-keyed by the observed-event source hash, seed, user, original timestamp, and
-canonical row discriminator; they do not use global RNG state and do not depend
-on CSV row order. `recent-truncation` removes the configured number of most
-recent observed events per user; leave-one-service-out removes exactly the
-configured public `service_id`.
-
-View exports are `robustness/{kind}/{view_id}.npz`; reports are
-`robustness/{kind}_robustness.json`. Exports and reports contain the source and
-specification hashes, algorithm/version, seed, view IDs/specifications, mask
-hashes, field order, requested and realized corruption, encoded keys, coverage,
-cosine drift, frozen-probe degradation, and explicit insufficient-history
-exclusions. Empty views stay unencodable and never fall back to clean history.
-View construction and encoding read only `observed/`; the CLI validates and
-opens `truth/` only after encoding, for protected frozen probes. `compare`
-rejects mismatched specifications, hashes, masks, view IDs, keys, coverage,
-users, or cutoffs before reporting distinct learned-minus-baseline R6 and R7
-axes. These are controlled sensitivity tests, not causal or real-noise claims.
+These are terminal R13 evidence artifacts consumed by documentation/evidence indexing, not by training or comparison.
 
 ## `rank`
 
-### Purpose
+### Purpose and information boundary
 
-Run one dataset-2.0 observable recommendation control over the public candidate
-surface. The command never reads `truth/` and rejects event-only dataset 1.0
-runs rather than manufacturing recommendation tables.
+Train/run one observable dataset-2.0 recommendation control. **Observed-only:** ranking never reads utility, latent intent, chosen flags, or other truth.
+
+### Arguments
+
+Required: `--run-dir`, `--experiment-dir`, and `--model`. Important options: `--ranking-config` (exposure-aware only), `--k`, and `--overwrite`.
+
+### Prerequisites consumed
+
+Dataset-2.0 public catalog, requests, impressions, interactions, users/events, and manifest. Frozen/exposure-aware models require the learned dense export; learned models may require baseline ranking reports as controls.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `EXPERIMENT_DIR/ranking/MODEL.npz` | compressed NPZ | Per-request candidate scores/ranks and authenticated identities. | Always |
+| `EXPERIMENT_DIR/ranking/MODEL.json` | JSON | Observed ranking metrics, coverage, configuration, and provenance. | Always |
+| `EXPERIMENT_DIR/ranking/frozen_embedding_checkpoint.npz` | compressed NPZ | Frozen-embedding ranker weights. | Conditional: `--model frozen_embedding` |
+| `EXPERIMENT_DIR/ranking/exposure_aware_checkpoint.npz` | compressed NPZ | Exposure-aware ranker weights/configuration. | Conditional: `--model exposure_aware` |
+
+### Existing output and overwrite
+
+Any selected existing prediction/report/checkpoint fails unless `--overwrite`; replacement is scoped to the named model after identity checks.
+
+### Minimal example
 
 ```bash
-uv run geoembed rank \
-  --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_ranking \
-  --model popularity
-uv run geoembed rank --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_ranking --model nearest
-uv run geoembed rank --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_ranking --model category_preference
-uv run geoembed rank --run-dir runs/kanto_pilot \
-  --experiment-dir experiments/kanto_ranking --model frozen_embedding
+uv run geoembed rank --run-dir runs/smoke --experiment-dir experiments/learned --model popularity --k 1 5 10
 ```
 
-`--k 1 5 10` controls the reported cutoffs. Existing prediction or report
-artifacts are immutable unless `--overwrite` is supplied.
+### Follow-up consumers
 
-### Inputs and causal boundary
-
-All scoring and labels come from `observed/poi_catalog.csv.gz`,
-`recommendation_requests.csv.gz`, `impressions.csv.gz`, `interactions.csv.gz`,
-and `observed_events.csv.gz`. Candidates with `is_available != 1` are removed
-before scoring. Popularity is the POI interaction count strictly before each
-request timestamp; category preference is the requesting user's observed event
-category count strictly before that timestamp; nearest uses the request-time
-travel-time observable. Equal scores use ascending `poi_id`, so results do not
-depend on CSV row order. An interaction or event at the exact request timestamp
-is not training history.
-
-### Outputs
-
-Each model writes `EXPERIMENT_DIR/ranking/{model}.npz` predictions and a
-versioned `EXPERIMENT_DIR/ranking/{model}.json` report. Both identify the common
-request and available-candidate sets by canonical SHA-256. The report also
-records observed source hashes, source-manifest identity, cutoff semantics,
-scorer configuration, coverage, Recall@K, NDCG@K, and MRR. Requests without an
-available candidate remain in request coverage but have no prediction; requests
-without an observable interaction are excluded from metric means and reported
-separately.
-
-### Limitations
-
-These are controls, not learned personalization. Interaction popularity can be
-cold-started when the contract contains no earlier recommendation traffic;
-category counts treat unseen categories as zero; clicks are implicit observed
-relevance rather than utility or counterfactual relevance. Metrics do not use
-protected utility, true intent, or unexposed alternatives and therefore do not
-establish causal recommendation quality.
-
-The `frozen_embedding` variant additionally requires the existing learned
-`EXPERIMENT_DIR/dense_embeddings.npz` from `export-dense` and preparation
-metadata. It authenticates the versioned component schema, preparation and
-observed-source hashes, component identity, and timestamp field, then selects
-the latest user export timestamp no later than each request. It never reuses a
-split-end vector for an earlier request. It fits categorical vocabularies,
-numeric normalization, and a logistic candidate-interaction head only on
-scorable requests at or before `train_end`, and never updates the encoder. It writes
-`ranking/frozen_embedding_checkpoint.npz`, predictions, and a report. The
-report records ordered features, component and dimension, cutoff/split/seed and
-all input/checkpoint hashes, disjoint training/validation/test request
-identities, per-split requested/scorable/positive/candidate counts, explicit
-unscorable requests, plus separate deltas against each available popularity,
-nearest, and category-preference report.
-Missing controls are reported as missing rather than aggregated.
+`evaluate-ranking` consumes model NPZ/JSON pairs. Optional protected `evaluate-pair` ranking arguments consume matched prediction/report pairs.
 
 ## `evaluate-ranking`
 
-Evaluate the four immutable T3.4/T3.5 ranking surfaces on a frozen transfer
-contract without opening `truth/`:
+### Purpose and information boundary
+
+Evaluate frozen seen/unseen region/POI and early/late ranking slices. **Observed-only:** utility regret is unavailable because truth is never opened.
+
+### Arguments
+
+Required: `--run-dir` and `--experiment-dir`. Important options: `--models`, `--k`, and `--overwrite`.
+
+### Prerequisites consumed
+
+Dataset-2.0 observed request/catalog/interaction tables and each selected `EXPERIMENT_DIR/ranking/MODEL.{npz,json}` pair.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `EXPERIMENT_DIR/ranking/transfer_slices.json` | JSON | Frozen slice identities, coverage, and ranking metrics by model/k. | Always |
+
+### Existing output and overwrite
+
+Existing output fails unless `--overwrite`; selected model names must be supported and their identities must match.
+
+### Minimal example
 
 ```bash
-uv run geoembed evaluate-ranking --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
+uv run geoembed evaluate-ranking --run-dir runs/smoke --experiment-dir experiments/learned --models popularity nearest --k 1 5 10
 ```
 
-The command requires the popularity, nearest, category-preference, and corrected
-frozen-embedding reports and predictions to share request and available-candidate
-hashes. It re-authenticates their observed source hashes and writes
-`EXPERIMENT_DIR/ranking/transfer_slices.json`. Seen identities are fit only from
-requests whose timestamp is at or before the frozen ranker's training cutoff;
-catalog metadata may map an observed POI to a region but catalog membership alone
-does not make a POI seen. Cutoff equality is training, while evaluation is
-strictly later.
+### Follow-up consumers
 
-Region and POI seen/unseen slices, their intersections, and early/late trip
-stage intersections report request, user, positive-label, and candidate coverage
-for every model. Early means the earliest post-training observable request
-timestamp for a user and request region (ties are early); late is strictly later.
-Empty slices remain explicit. Utility regret is marked unavailable because this
-observed-only evaluator has no protected-utility input.
+The report is terminal observed-only R2/R8 evidence; no model stage consumes it.
 
-## `audit-privacy` (T4.3a; R12)
+## `robustness`
 
-Run the authenticated diagnostic-control privacy audit from canonical roots:
+### Purpose and information boundary
+
+Re-encode deterministic perturbation views and evaluate sensitivity for R6/R7. **Mixed protected evaluator:** view construction is observed-only, then the evaluator opens truth for authenticated reporting.
+
+### Arguments
+
+Required: `--run-dir` and `--experiment-dir`. Important options: `--kind`, `--views` (comma-separated), and `--config`.
+
+### Prerequisites consumed
+
+Public events, prepared metadata, original selected cutoff export, and learned checkpoint when applicable; protected truth is opened only after view construction succeeds.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `EXPERIMENT_DIR/robustness/KIND/VIEW_ID.npz` | compressed NPZ | Embeddings for configured removal/GPS/timestamp/service/truncation views. | Conditional: one per selected/configured view |
+| `EXPERIMENT_DIR/robustness/KIND_robustness.json` | JSON | Authenticated sensitivity metrics, coverage, and view manifest. | Always |
+
+### Existing output and overwrite
+
+There is no `--overwrite`; existing view exports/report follow immutable robustness writer checks. Use a fresh experiment or remove only explicitly disposable derived outputs outside this command.
+
+### Minimal example
 
 ```bash
-uv run geoembed audit-privacy \
-  --run-dir RUN_DIR \
-  --experiment-dir statistical_baseline=BASELINE_EXPERIMENT_DIR \
-  --experiment-dir capacity_matched_single=LEARNED_EXPERIMENT_DIR \
-  --evidence-dir EVIDENCE_DIR \
-  --utility-report-dir UTILITY_REPORT_DIR \
-  --config configs/privacy/diagnostic_v1.yaml \
-  --output-dir AUDIT_OUTPUT_DIR
+uv run geoembed robustness --run-dir runs/smoke --experiment-dir experiments/learned --kind learned --views gps,timestamp
 ```
 
-`EVIDENCE_DIR/evidence_index.json`, each named experiment's canonical export,
-preparation metadata and checkpoint, and
-`UTILITY_REPORT_DIR/<name>.json` are resolved internally. The command accepts
-neither observed-table nor truth-table paths. It validates the versioned YAML
-and authenticates every input before any protected-label access.
+### Follow-up consumers
 
-The immutable outputs are `AUDIT_OUTPUT_DIR/audits/privacy.json` and
-`privacy.md`; existing outputs fail unless `--overwrite` is explicit. A lineage
-without authenticated user-level target-training participation can complete
-successfully, but membership results remain `unavailable` with an explicit
-reason.
+`compare` may merge matching robustness reports; evidence review consumes the individual view report.
 
-The JSON uses schema `geoembeddings-privacy-audit/1.0` and records:
+## `compare`
 
-| Field | Evidence recorded |
-|---|---|
-| `threat_model`, `inputs`, `lineage` | Frozen protocol plus authenticated dataset, export, checkpoint, utility-report, preparation, and source identities |
-| `splits`, `membership_population`, `sensitive_attributes` | User-level split identity, membership applicability, protected-label derivations, and support |
-| `attacks`, `membership_metrics`, `sensitive_probe_metrics` | Frozen controls/attack families and held-out metrics, including undefined reasons and bootstrap uncertainty |
-| `utility_privacy_axes` | Separate authenticated utility and attack axes; never an aggregate winner |
-| `coverage`, `exclusions` | Eligible/realized populations, common support, missingness, and explicit unavailable reasons |
-| `selection`, `limitations` | Immutable `diagnostic_control` roles, unavailable selected-candidate conclusion, and claim boundaries |
-| `command`, `timestamps`, `runtime_metadata` | Reproduction and runtime provenance |
+### Purpose and information boundary
 
-The exact evidence scope is a simulator-scoped, authenticated attack evaluation
-of named diagnostic controls under the frozen threat model. It does not select
-an input, establish factorized component semantics, provide a formal privacy
-guarantee, certify deployment privacy, or make a selection-dependent R12
-conclusion. Attack AUC near 0.5 is not proof of safety: it can also reflect weak
-attacks, inadequate support, or a mismatched threat model. The T2.7 **do not
-advance** decision remains binding.
+Compare baseline and learned exports with common frozen probes and optional factorized matrix. **Protected evaluator:** it authenticates and uses run truth; it never trains either representation.
+
+### Arguments
+
+Required: `--run-dir` plus either shared `--experiment-dir` or both separate experiment-root options. Important: `--output-dir`, `--config`, and repeated `--factorized-experiment NAME=PATH`.
+
+### Prerequisites consumed
+
+Prepared metadata and baseline/learned cutoff exports (and main evaluations as applicable) from matched roots; protected run truth. Compatible episode, robustness, and transfer reports are merged when present. Factorized mode consumes every named immutable experiment.
+
+### Produces
+
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `OUTPUT_DIR/embedding_comparison.json` | JSON | Machine-readable fair baseline-versus-learned axes and supplemental merges. | Always without factorized matrix |
+| `OUTPUT_DIR/embedding_comparison.md` | Markdown | Human-readable comparison without aggregate winner. | Always without factorized matrix |
+| `OUTPUT_DIR/factorized_comparison.json` | JSON | Authenticated T2.7 named-control matrix and gates. | Conditional: `--factorized-experiment` supplied |
+| `OUTPUT_DIR/factorized_comparison.md` | Markdown | Human-readable factorized matrix decision. | Conditional: `--factorized-experiment` supplied |
+
+### Existing output and overwrite
+
+No `--overwrite` exists; comparison outputs are immutable and an existing target fails. Default `OUTPUT_DIR` is the shared experiment’s `comparison/` (or the explicitly resolved comparison destination).
+
+### Minimal example
+
+```bash
+uv run geoembed compare --run-dir runs/smoke --baseline-experiment-dir experiments/base --learned-experiment-dir experiments/learned --output-dir experiments/comparison/comparison
+```
+
+### Follow-up consumers
+
+The reports are terminal decision/evidence artifacts; documentation evidence indexes may reference them.
 
 ## `pipeline`
 
-### Purpose
+### Purpose and information boundary
 
-Convenience orchestration for a complete **from-scratch** baseline or learned
-run.
+Run simulation, deep validation, preparation, one representation path, and its protected default evaluation. **Mixed boundary:** simulator creates observed/truth; preparation and representation are observed-only; validation/evaluation are protected. It is a fresh pipeline, not resume.
 
-### Learned pipeline
+### Arguments
 
-```bash
-uv run geoembed pipeline \
-  --run-dir runs/kanto_pilot_learned \
-  --experiment-dir experiments/kanto_single_vector \
-  --mode learned
-```
+Required: `--run-dir` and `--experiment-dir`. Important options: simulation arguments, `--embedding-config`, `--mode baseline|learned`, and `--overwrite` for the new simulation target.
 
-### Baseline pipeline
+### Prerequisites consumed
 
-```bash
-uv run geoembed pipeline \
-  --run-dir runs/kanto_pilot_baseline \
-  --experiment-dir experiments/kanto_baseline \
-  --mode baseline
-```
+Simulation and embedding YAML only. The command creates the run before consuming its observed and protected artifacts in later stages.
 
-Simulation arguments accepted by `simulate` also apply. The embedding config is
-passed as `--embedding-config`, not `--config`.
+### Produces
 
-### Stage order
+| Artifact path | Format | Meaning | Written |
+|---|---|---|---|
+| `RUN_DIR/config.resolved.yaml, manifest.json, validation_report.json` | YAML + JSON | Resolved simulation, dataset identity, and structural report. | Always: both modes |
+| `RUN_DIR/observed/*.csv.gz` | gzip CSV | All six dataset-2.0 public tables listed under `simulate`. | Always: both modes |
+| `RUN_DIR/truth/*.csv.gz` | gzip CSV | All six core truth tables; change-points only for configured change interventions. | Always core; change points conditional |
+| `RUN_DIR/deep_validation_report.json` | JSON | Protected deep validation. | Always: both modes |
+| `EXPERIMENT_DIR/prepared/config.resolved.yaml` | YAML | Resolved embedding/preparation config. | Always: both modes |
+| `EXPERIMENT_DIR/prepared/prepared_metadata.json` | JSON | Splits, source hashes, statistics, cutoffs, and field order. | Always: both modes |
+| `EXPERIMENT_DIR/prepared/vocabularies.json` | JSON | Training-only explicit-order vocabularies. | Always: both modes |
+| `EXPERIMENT_DIR/statistical_baseline.npz` | compressed NPZ | Baseline cutoff representation. | Baseline mode only |
+| `EXPERIMENT_DIR/baseline_evaluation.json` | JSON | Protected default baseline evaluation. | Baseline mode only |
+| `EXPERIMENT_DIR/model/best_model.pt` | PyTorch checkpoint | Best learned weights and schema. | Learned mode only |
+| `EXPERIMENT_DIR/model/training_report.json` | JSON | Learned training metrics/provenance. | Learned mode only |
+| `EXPERIMENT_DIR/model/training_participation.json` | JSON | Learned participation lineage. | Learned mode only |
+| `EXPERIMENT_DIR/embeddings.npz` | compressed NPZ | Learned cutoff export. | Learned mode only |
+| `EXPERIMENT_DIR/evaluation.json` | JSON | Protected default learned evaluation. | Learned mode only |
 
-For `--mode baseline`:
+### Existing output and overwrite
 
-```text
-simulate -> validate -> prepare -> baseline -> evaluate baseline
-```
+The simulation target obeys validated `--overwrite`; downstream immutable preparation/training rules still apply. Therefore pipeline should target new run and experiment roots and must not be used as resume.
 
-For `--mode learned`:
-
-```text
-simulate -> validate -> prepare -> train -> export -> evaluate learned
-```
-
-### Important behavior
-
-- It always begins with simulation; it is not a resume command.
-- Existing run directories fail unless `--overwrite` is supplied.
-- Learned mode does not create the statistical baseline.
-- It does not run `compare`.
-- To resume after training, call `export`, `evaluate`, and `compare` separately.
-
-## Inspecting artifacts
-
-### `inspect-evidence`
-
-Audit every JSON evidence index in `docs/artifacts` without downloading an
-artifact or modifying an immutable index:
+### Minimal example
 
 ```bash
-uv run geoembed inspect-evidence
+uv run geoembed pipeline --run-dir runs/pipeline --experiment-dir experiments/pipeline --mode baseline --users 10 --days 2 --seed 1729
 ```
 
-Use `--index-dir DIRECTORY` to inspect another index collection. The command
-recursively discovers indexed path/identifier plus SHA-256 records, reports
-local presence, byte-count and digest matches (or `null` when an older index
-does not record bytes), and distinguishes intentionally external, locally
-absent, and historically lost artifacts. Missing bytes are an availability
-state, not a failed scientific result. Each index also reports its claim
-sufficiency, recorded rerun commands for a newly named lineage, and the
-historical task/index/commit/root identity that must not be reused. The JSON
-schema `geoembeddings-evidence-inspection/1.0`, top-level `summary`, and
-`ci_status` provide a concise CI surface; `ci_status=mismatch` means locally
-present bytes disagree with their index.
+### Follow-up consumers
 
-### `scripts/index_artifacts.py`
-
-Create the T0.1a evidence inventory only after the baseline and learned
-cutoff/dense exports, base/episode/transfer/temporal-routine/reliability
-evaluations, robustness views, offline benchmark, and comparison reports have
-been generated from the same preparation:
-
-```bash
-uv run python scripts/index_artifacts.py \
-  --run-dir runs/reference500 \
-  --experiment-dir experiments/reference500 \
-  --output docs/artifacts/t0.2-reference500.json \
-  --task-id T0.2
-```
-
-The command never edits generated run or experiment artifacts. It resolves
-canonical filenames through `DatasetLayout` and `ExperimentLayout`, hashes each
-file as raw bytes with SHA-256, and writes only `--output`. Local identifiers
-are normalized relative to the repository when possible; external URI schemes
-and hosts are normalized without retrieving their content.
-
-The output schema is `geoembeddings-evidence-index/1.0`:
-
-| Field | Meaning |
-|---|---|
-| `schema_version`, `task_id`, `index_location` | Index identity and normalized destination |
-| `provenance` | Git commit, simulator-manifest hash, resolved simulation/training/evaluation seeds, cohort size, train/validation cutoffs, observed-source hashes, preparation contract, ordered categorical/continuous fields, and preparation-metadata hash |
-| `evidence_identity.{baseline,learned}` | Exact user set/hash, cutoff set, source hashes, and preparation identity for each representation |
-| `required_artifacts.shared` | Manifest, resolved simulator/embedding configs, deep validation, preparation metadata, and vocabularies |
-| `required_artifacts.baseline` | Cutoff/dense exports and base, episode, robustness, transfer, temporal/routine, and reliability reports |
-| `required_artifacts.learned` | Checkpoint/training report, cutoff/dense exports, and base, episode, robustness, transfer, temporal/routine, and reliability reports |
-| `required_artifacts.robustness_views` | Every baseline and learned versioned robustness NPZ |
-| `required_artifacts.comparison` | JSON and Markdown matched-comparison reports |
-| `required_artifacts.benchmarks` | Matched observed-only offline benchmark report |
-| `comparability_audit` | Separate source, cutoff, field-order, user-set, and preparation-contract checks with blocking diagnostics |
-
-Indexing aborts before writing output if required artifacts are absent, an
-embedding is non-finite, observed files no longer match preparation hashes, or
-baseline and learned users/cutoffs/report provenance differ. This is an
-identity and completeness audit, not an aggregate scientific winner.
-
-### `scripts/reconcile_status.py`
-
-After a T0.2 index passes its comparability audit, authenticate and reconcile
-the indexed reports without calculating an aggregate winner:
-
-```bash
-uv run python scripts/reconcile_status.py \
-  --artifact-index docs/artifacts/t0.2-reference500.json \
-  --output docs/decisions/t0.2a-reference-decision.md
-```
-
-The command verifies the T0.2 index schema and passing audit, baseline/learned
-source hashes, preparation identity, cutoffs, ordered categorical and
-continuous fields, user identity, robustness specifications and masks, and the
-SHA-256 digest of every consumed report. Missing or remote-only report files
-abort reconciliation rather than allowing the index to stand in for the
-scientific evidence. The output keeps persistent probes, incremental
-information, collapse/geometry, episode response, robustness, and next-event
-performance/coverage separate; every axis includes coverage and missingness
-qualifications and exactly one permitted next action.
-
-Readable JSON/YAML:
-
-```bash
-sed -n '1,220p' RUN_DIR/manifest.json
-sed -n '1,220p' EXPERIMENT_DIR/prepared/prepared_metadata.json
-sed -n '1,260p' EXPERIMENT_DIR/model/training_report.json
-sed -n '1,260p' EXPERIMENT_DIR/comparison/embedding_comparison.md
-```
-
-NPZ shapes without modifying data:
-
-```bash
-uv run python - <<'PY'
-import numpy as np
-p = np.load("experiments/kanto_single_vector/embeddings.npz", allow_pickle=False)
-print(p.files)
-for key in p.files:
-    print(key, p[key].shape, p[key].dtype)
-PY
-```
-
-Checkpoint metadata:
-
-```bash
-uv run python - <<'PY'
-import torch
-p = torch.load(
-    "experiments/kanto_single_vector/model/best_model.pt",
-    map_location="cpu",
-    weights_only=False,
-)
-for key in p:
-    if key != "model_state":
-        print(key, p[key])
-PY
-```
-
-## Recommended transparent workflow
-
-Use individual commands during development. Reserve `pipeline` for clean smoke
-or reference runs. Individual commands make stage boundaries, inputs, outputs,
-and rerun decisions visible and reduce accidental regeneration.
-
-## Dense episode response (`evaluate --episodes`)
-
-```bash
-uv run geoembed export-dense --kind baseline --event-stride 1 --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-uv run geoembed export-dense --kind learned --event-stride 1 --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-uv run geoembed evaluate --episodes --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-uv run geoembed evaluate --episodes --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-```
-
-Artifacts are `dense_statistical_baseline.npz`, `dense_embeddings.npz`, `baseline_episode_response.json`, and `episode_response.json`. `compare` rejects differing source hashes, users, timestamps/cutoffs, or bin edges and adds learned-minus-baseline episode deltas. Sparse exports remain valid; coverage reports missing users and bins.
-
-## Temporal and routine diagnostics (`evaluate --temporal-routine`)
-
-```bash
-uv run geoembed evaluate --temporal-routine --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-uv run geoembed evaluate --temporal-routine --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-uv run geoembed compare --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-```
-
-The commands consume the corresponding dense export and write
-`baseline_temporal_routine.json` or `learned_temporal_routine.json`. Only the
-evaluator joins public timestamps to protected episode and intent labels. All
-temporal definitions live under `evaluation.temporal_routine` in embedding YAML.
-Reports keep cyclic probes, duration tasks, periodic user/state retrieval,
-repeated-routine-versus-one-off classification, coverage, separation, and
-effective rank separate. `compare` requires matched sources, dense keys,
-definitions, split, and row coverage and computes no aggregate winner. Use
-`simulate-pair --intervention schedule-shift` followed by `evaluate-pair` for
-the controlled response axis; observational calendar probes are not a substitute.
-
-## Reliability evaluation (`evaluate --reliability`)
-
-```bash
-uv run geoembed evaluate --reliability --kind baseline --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-uv run geoembed evaluate --reliability --kind learned --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR
-```
-
-The commands consume `statistical_baseline.npz` or `embeddings.npz` plus the
-observed sources and preparation metadata; they do not open `truth/`. Outputs
-are respectively `baseline_reliability.json` and `reliability.json`. Existing
-reports are rejected unless `--overwrite` is explicit. Schema
-`geoembeddings-reliability-report/1.0` records runtime metadata, seed,
-representation kind, source hashes, preparation and cutoff identities,
-resampling settings, per-user sample counts, insufficient users/bins, seeded
-cutoff-bootstrap embedding variance, reliability-error bins, and coverage-risk
-points. This remains a repeatability diagnostic over the three frozen cutoffs,
-not calibrated uncertainty; the separate T4.1a command below uses window
-bootstrap and held-out users.
-
-## Diagnostic-control calibration (`calibrate-reliability`)
-
-```bash
-uv run geoembed calibrate-reliability --run-dir RUN_DIR \
-  --experiment-dir statistical_baseline=BASELINE_EXPERIMENT \
-  --experiment-dir capacity_matched_single=SINGLE_EXPERIMENT \
-  --experiment-dir factorized_pc=FACTORIZED_EXPERIMENT \
-  --output-dir CALIBRATION_EXPERIMENT
-```
-
-The command writes the immutable
-`CALIBRATION_EXPERIMENT/reliability/calibration.json`. All supplied controls
-must have identical users and authenticated observed-source, preparation, and
-dense-export identities. Eligible factorized loss/branch ablations may be
-added with repeated `--experiment-dir NAME=ROOT` arguments. The frozen seeded
-user split is shared by every control and disjoint between calibration and
-test. Uncertainty comes from replacement bootstrap samples of chronological
-observed-history dense windows; the last window is reserved as the realized
-error target. Calibration parameters are fit only on calibration users, while
-raw/calibrated reliability bins and coverage-risk curves are reported only on
-test users. Every role remains `diagnostic_control`; there is no aggregate
-winner and no selected-candidate conclusion.
-
-## Offline and online benchmarks (`benchmark`)
-
-```bash
-uv run geoembed benchmark --run-dir RUN_DIR --experiment-dir EXPERIMENT_DIR \
-  --warmup 1 --iterations 5
-```
-
-The observed-only command reads existing baseline and learned exports and writes
-`benchmarks/offline.json` under schema
-`geoembeddings-offline-benchmark/1.0`. Each representation reports workload,
-artifact bytes/hash, frozen-export read/validation, in-memory export serialization, and reliability-evaluation
-latency (mean/p50/p95/min/max), throughput, Python peak allocation, process peak
-RSS, warmup/iteration counts, CPU/software metadata, and explicit missing
-artifact status. It rejects source/preparation mismatch and existing output
-unless `--overwrite` is passed. It never accepts a truth path and does not
-measure training or hardware-normalized performance.
-
-The same invocation also freezes `benchmarks/online_workload.json` and writes
-the canonical `benchmarks/online.json`. The online report benchmarks cold-start,
-single-event, frozen 8/32/128-event batch, and export-serialization workload
-boundaries for both the statistical baseline and learned diagnostic control.
-Every measured update runs the independent full-history oracle using
-`atol=1e-5, rtol=1e-4`; an identity, ordered-field, timestamp, schema,
-finiteness, or oracle failure aborts the report. Workload selection is immutable,
-seeded, source/preparation/checkpoint-bound, and never reads `truth/`. Defaults
-are 10 warmups and 100 measured iterations; use smaller explicit values only
-for smoke verification. Existing reports require `--overwrite`, while a changed
-named workload must be written to a new experiment rather than overwritten.
-
-## `evaluate-change` (T1.15)
-
-Generate either versioned intervention with at least one pre-change day and, for
-a temporary trip, at least one post-change day:
-
-```bash
-uv run geoembed simulate-pair --intervention temporary-trip \
-  --reference-run-dir runs/change-control --intervention-run-dir runs/change-trip \
-  --pair-dir pairs/change-trip --users 50 --days 14 --seed 20260811
-uv run geoembed evaluate-change --pair-manifest pairs/change-trip/pair_manifest.json \
-  --baseline-experiment-dir experiments/control-baseline experiments/trip-baseline \
-  --learned-experiment-dir experiments/control-learned experiments/trip-learned
-```
-
-Both experiment roots must already contain observed-only dense exports. The
-protected evaluator authenticates the passing, current pair-integrity report,
-then reads `truth/change_points_truth.csv.gz`; preparation, training, baseline,
-and export never receive that path. The immutable outputs are
-`change_evaluation.json` and `.md` beside the pair manifest. They report
-relative-day matched-control drift curves, adaptation, recovery, forgetting,
-permanent drift, coverage, exclusions, and right-censoring separately for the
-statistical and learned representations. `--overwrite` is required to replace
-both existing regular outputs.
-
-## `audit-nonstationarity` (T4.2; R11)
-
-```bash
-uv run geoembed audit-nonstationarity \
-  --no-change-report pairs/no-change/change_evaluation.json \
-  --temporary-report pairs/temporary/change_evaluation.json \
-  --sustained-report pairs/sustained/change_evaluation.json \
-  --output-dir experiments/r11-audit
-```
-
-The command consumes three authenticated `geoembeddings-change-evaluation/2.0`
-reports and writes canonical `audits/nonstationarity.json` and `.md` outputs.
-It rejects any difference in users, cutoffs, preparation contract, source
-lineage, component schema, relative-day definition, or censoring rules. Metrics,
-matched controls, confidence intervals, censoring, exclusions, and coverage stay
-separate by representation and component; the report never selects an aggregate
-winner. Existing outputs require `--overwrite`.
+Baseline output can feed baseline visualization/robustness/benchmark; learned output can feed learned visualization, dense export, robustness, benchmark, and ranking. Run the other representation explicitly and then `compare`. **Pipeline does not produce dense exports, robustness reports, ranking artifacts, baseline-versus-learned comparisons, or paired-evaluation artifacts.**
