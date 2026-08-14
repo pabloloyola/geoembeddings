@@ -17,6 +17,10 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 import numpy as np
 import yaml
 
@@ -29,8 +33,6 @@ from scripts.kanto_trajectory_explorer import (
     load_data as load_explorer_data,
 )
 
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def _canonical_hash(value: object) -> str:
