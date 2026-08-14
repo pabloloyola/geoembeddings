@@ -72,6 +72,15 @@ interventions with pair manifests, field-level integrity, protected paired and
 change evaluators. Dataset 2.0 publishes a synthetic Hakone recommendation
 catalog and request/impression/interaction logs.
 
+Simulation config v5 contains the first recoverability repair. Category
+preference now changes the intent-compatible category distribution before a
+same-category candidate set is built; paired preference runs must retain exact
+pre-change observed equality and produce positive observed changed-user
+coverage during the change interval. The target is `cafe` solely because it is
+eligible under every configured episode intent. Do not interpret that synthetic
+coverage device as a calibrated behavioral claim. Public candidate ranking is
+currently saturated and must not select the next model.
+
 Important limitations:
 
 - coordinates and POIs are synthetic;

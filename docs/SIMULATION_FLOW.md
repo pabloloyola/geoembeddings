@@ -352,18 +352,26 @@ earlier projects.
 
 ### Temporary and sustained preference interventions (T1.15; R1/R11)
 
-Simulation config v2 declares `temporary-trip` and `sustained-preference` under
+Simulation config v5 declares `temporary-trip` and `sustained-preference` under
 `interventions`, using schema `geoembeddings-change-intervention/1.0`. Both keep
 user, world, episode, and decision identities fixed and consume only the
 existing independent `choices` stream (without reseeding it). A temporary trip
 applies a category-preference delta over a half-open finite interval; sustained
 preference applies it from the protected change point through the run. Original
-persistent user latents are never rewritten. Only choice utilities/outcomes,
-downstream trajectories/observations, and protected change declarations may
-differ. Change points, duration, target, and magnitude exist only in
+persistent user latents are never rewritten. Category preference modulates the
+intent-compatible category distribution before the same-category candidate set
+is constructed. This ordering is required: an additive category term applied
+only after candidate construction cancels across every candidate and cannot
+change observable behavior. Only category/choice outcomes, downstream
+trajectories/observations, and protected change declarations may differ. Change
+points, duration, target, and magnitude exist only in
 `truth/change_points_truth.csv.gz`.
 
 Fixed-seed generation rejects intervals without pre-change evidence and finite
 intervals without post-change recovery evidence. Its behavioral diagnostic
-requires target-category preference utility to increase. These are synthetic
-mechanisms, not evidence that a trip changes a person's real preference.
+requires target-category choice rate and observed local-commerce event rate to
+increase during the change interval. It also authenticates exact pre-change
+observed equality and at least one changed user's observed rows during the
+interval. The development intervention targets `cafe`, which is eligible under
+every configured episode intent and therefore supplies fixed-seed coverage; it
+is not a claim about real preference changes or Kanto behavior.

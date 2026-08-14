@@ -465,6 +465,18 @@ steps without losing PR traceability.
   - **Known limitation/blocker:** validity depends on distinguishable simulator
     interventions; one trip cannot be treated as long-term preference evidence.
   - **Completion note (2026-08-11):** versioned choice-stream interventions preserve stable identities and persistent latent truth, expose protected half-open change points, and pass fixed-seed utility diagnostics. `evaluate-change` hard-gates on current pair integrity and emits matched-control baseline/learned adaptation, recovery, forgetting, and permanent-drift curves with explicit coverage and censoring. These synthetic single-vector diagnostics do not establish real-world causality or disentanglement.
+  - **Recoverability repair (2026-08-14):** a 500-user/14-day audit exposed that
+    the sustained-preference intervention changed neither observed rows nor any
+    user's observed history because category preference was added only after a
+    same-category candidate set had been selected. Config v5 now applies the
+    preference at intent-compatible category selection, keeps the pre-change
+    choice stream matched, and gates paired generation on increased protected
+    category choice rate, increased observed target-category event rate, exact
+    pre-change observed equality, and positive changed-user coverage. The
+    evaluator script also filters fold-local rare columns, selects a declared
+    ridge alpha, exposes profile-only controls, and labels saturated public
+    ranking controls as unusable for model selection. This repairs the synthetic
+    recoverability instrument; it is not evidence that a representation improved.
 
 ## P2 — Two-way factorized model
 

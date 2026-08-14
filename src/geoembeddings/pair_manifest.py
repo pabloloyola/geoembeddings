@@ -29,8 +29,8 @@ ALLOWED_FIELDS = {
     "observation": ("observed.*", "truth.observation_process.*"),
     "exposure": ("truth.candidate_sets.utility_exposure", "truth.candidate_sets.utility_total", "truth.candidate_sets.is_chosen", "truth.choices.chosen_poi_id", "truth.trajectories.true_region_id", "truth.trajectories.true_latitude", "truth.trajectories.true_longitude", "observed.events.*"),
     "opportunity": ("truth.candidate_sets.*", "truth.choices.*", "truth.trajectories.*", "observed.*"),
-    "temporary-trip": ("truth.candidate_sets.utility_preference", "truth.candidate_sets.utility_total", "truth.candidate_sets.is_chosen", "truth.choices.chosen_poi_id", "truth.trajectories.*", "truth.change_points.*", "observed.events.*"),
-    "sustained-preference": ("truth.candidate_sets.utility_preference", "truth.candidate_sets.utility_total", "truth.candidate_sets.is_chosen", "truth.choices.chosen_poi_id", "truth.trajectories.*", "truth.change_points.*", "observed.events.*"),
+    "temporary-trip": ("truth.candidate_sets.*", "truth.choices.chosen_poi_id", "truth.choices.chosen_category", "truth.trajectories.*", "truth.change_points.*", "observed.events.*"),
+    "sustained-preference": ("truth.candidate_sets.*", "truth.choices.chosen_poi_id", "truth.choices.chosen_category", "truth.trajectories.*", "truth.change_points.*", "observed.events.*"),
     "schedule-shift": ("truth.choices.timestamp", "truth.trajectories.*", "observed.events.*"),
 }
 INVARIANTS = {

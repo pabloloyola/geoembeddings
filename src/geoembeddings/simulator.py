@@ -453,8 +453,27 @@ def nearby_candidates(
     return [poi | {"distance_km": distance} for distance, poi in distances[:limit]]
 
 
-def category_for_episode(rng: random.Random, episode: str) -> str:
+def category_weights_for_user(episode: str, user: dict[str, Any]) -> dict[str, float]:
+    """Return intent-compatible category weights modulated by persistent preference.
+
+    Category preference must act before the same-category candidate set is
+    constructed.  Adding it only to candidate utility is observationally inert
+    because every candidate in that set receives the same additive term.
+    """
     options = CONFIG["episodes"]["category_weights"][episode]
+    choice = CONFIG["choice"]
+    default = float(choice["default_category_preference"])
+    scale = float(choice["category_preference_scale"])
+    return {
+        category: float(base_weight) * math.exp(
+            max(-10.0, min(10.0, scale * (float(user.get(f"pref_{category}", default)) - default)))
+        )
+        for category, base_weight in options.items()
+    }
+
+
+def category_for_episode(rng: random.Random, episode: str, user: dict[str, Any]) -> str:
+    options = category_weights_for_user(episode, user)
     values = list(options)
     return weighted_choice(rng, values, [options[value] for value in values])
 
@@ -740,7 +759,12 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
             elif primary == "travel":
                 stops += [(float(schedule["travel_arrival"]), "travel", active_region, active_lat, active_lon)]
 
-            category = category_for_episode(episode_rng, primary)
+            # Category selection belongs to the choice stream and consumes the
+            # choice-only latent view.  This gives temporary/sustained
+            # preference changes an observable causal path while preserving the
+            # episode stream and all pre-change draws.
+            choice_user = changed_user(latent_user, current_day, interval, change) if change else latent_user
+            category = category_for_episode(choice_rng, primary, choice_user)
             if primary == "travel":
                 origin, origin_lat, origin_lon = active_region, active_lat, active_lon
             elif not weekend and primary == "routine":
@@ -750,7 +774,6 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
             candidates = nearby_candidates(pois, category, origin_lat, origin_lon, args.scenario)
             if candidates:
                 decision_id = stable_identifier("decision", episode_id, "primary_poi_choice")
-                choice_user = changed_user(latent_user, current_day, interval, change) if change else latent_user
                 chosen, scored = choose_poi(choice_rng, choice_user, candidates, primary, args.scenario, decision_id)
                 candidate_sets.extend(scored)
                 choice_hour = (

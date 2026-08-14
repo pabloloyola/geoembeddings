@@ -1,4 +1,4 @@
-config_version: 4
+config_version: 5
 
 # Versioned thresholds for evaluator/visualization warnings. These are
 # synthetic plausibility hypotheses, not claims about real Kanto residents.
@@ -157,6 +157,9 @@ episodes:
 
 choice:
   default_category_preference: 0.50
+  # Multiplies the centered persistent preference in category-selection logits.
+  # This is a synthetic recoverability parameter, not a calibrated population effect.
+  category_preference_scale: 4.0
   candidate_count: {default: 8, opportunity_confounded: 5}
   family_fit_categories: [park, mall, restaurant]
   travel_fit_categories: [hotel, onsen, restaurant]
@@ -239,9 +242,9 @@ interventions:
     reseed_streams: []
     stream_seed_offset: 0
     invariant_entities: [users, regions, pois, episodes, choices]
-    permitted_changes: [truth.candidate_sets.utility_preference, truth.candidate_sets.utility_total, truth.candidate_sets.is_chosen, truth.choices.chosen_poi_id, truth.trajectories.*, truth.change_points.*, observed.events.*]
-    change: {start_day_offset: 4, duration_days: 3, target_category: onsen, preference_delta: 0.45}
-    behavioral_diagnostics: {changed_category_preference_utility: increase}
+    permitted_changes: [truth.candidate_sets.*, truth.choices.chosen_poi_id, truth.choices.chosen_category, truth.trajectories.*, truth.change_points.*, observed.events.*]
+    change: {start_day_offset: 4, duration_days: 3, target_category: cafe, preference_delta: 0.45}
+    behavioral_diagnostics: {target_category_choice_rate_during_change: increase, observed_target_category_event_rate_during_change: increase}
   sustained-preference:
     declaration_version: geoembeddings-change-intervention/1.0
     config_overrides: {}
@@ -249,9 +252,9 @@ interventions:
     reseed_streams: []
     stream_seed_offset: 0
     invariant_entities: [users, regions, pois, episodes, choices]
-    permitted_changes: [truth.candidate_sets.utility_preference, truth.candidate_sets.utility_total, truth.candidate_sets.is_chosen, truth.choices.chosen_poi_id, truth.trajectories.*, truth.change_points.*, observed.events.*]
-    change: {start_day_offset: 4, duration_days: null, target_category: onsen, preference_delta: 0.45}
-    behavioral_diagnostics: {changed_category_preference_utility: increase}
+    permitted_changes: [truth.candidate_sets.*, truth.choices.chosen_poi_id, truth.choices.chosen_category, truth.trajectories.*, truth.change_points.*, observed.events.*]
+    change: {start_day_offset: 4, duration_days: null, target_category: cafe, preference_delta: 0.45}
+    behavioral_diagnostics: {target_category_choice_rate_during_change: increase, observed_target_category_event_rate_during_change: increase}
   exposure:
     config_overrides: {scenarios.mixed.exposure_scale: 2.30}
     affected_random_streams: [choices]

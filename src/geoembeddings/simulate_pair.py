@@ -7,6 +7,7 @@ import copy
 import csv
 import gzip
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -42,10 +43,61 @@ def _diagnostics(layout: DatasetLayout) -> dict[str, float]:
     change_path = layout.truth / "change_points_truth.csv.gz"
     if change_path.is_file():
         point = _rows(change_path)[0]
-        after_ids = {row["decision_id"] for row in choices if row["timestamp"] >= point["change_start_time"] and row["chosen_category"] == point["target_category"]}
-        values = [float(row["utility_preference"]) for row in candidates if row["decision_id"] in after_ids]
-        result["changed_category_preference_utility"] = sum(values) / max(1, len(values))
+        start, end, target = point["change_start_time"], point["change_end_time"], point["target_category"]
+        during_choices = [row for row in choices
+                          if row["timestamp"] >= start and (not end or row["timestamp"] < end)]
+        during_events = [row for row in events
+                         if row["timestamp"] >= start and (not end or row["timestamp"] < end)
+                         and row["service_id"] == "local_commerce"]
+        result["target_category_choice_rate_during_change"] = (
+            sum(row["chosen_category"] == target for row in during_choices) / max(1, len(during_choices))
+        )
+        result["observed_target_category_event_rate_during_change"] = (
+            sum(row["object_category"] == target for row in during_events) / max(1, len(during_events))
+        )
     return result
+
+
+def _change_pair_diagnostics(reference: DatasetLayout, changed: DatasetLayout) -> dict[str, dict[str, Any]]:
+    """Check the observable causal path without exposing truth to model code."""
+    point = _rows(changed.truth / "change_points_truth.csv.gz")[0]
+    start, end = point["change_start_time"], point["change_end_time"]
+    left = _rows(reference.observed / "observed_events.csv.gz")
+    right = _rows(changed.observed / "observed_events.csv.gz")
+
+    canonical = lambda rows: Counter(json.dumps(row, sort_keys=True) for row in rows)
+    pre_equal = canonical([row for row in left if row["timestamp"] < start]) == canonical(
+        [row for row in right if row["timestamp"] < start]
+    )
+
+    def during(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+        return [row for row in rows if row["timestamp"] >= start and (not end or row["timestamp"] < end)]
+
+    def signatures(rows: list[dict[str, str]]) -> dict[str, Counter[str]]:
+        result: dict[str, Counter[str]] = {}
+        for row in rows:
+            result.setdefault(row["user_id"], Counter())[json.dumps(row, sort_keys=True)] += 1
+        return result
+
+    before, after = signatures(during(left)), signatures(during(right))
+    users = set(before) | set(after)
+    changed_users = sum(before.get(user, Counter()) != after.get(user, Counter()) for user in users)
+    return {
+        "pre_change_observed_events_identical": {
+            "reference": 1.0,
+            "intervention": 1.0 if pre_equal else 0.0,
+            "delta": 0.0 if pre_equal else -1.0,
+            "expected_direction": "equal",
+            "passed": pre_equal,
+        },
+        "observed_changed_users_during_change": {
+            "reference": 0.0,
+            "intervention": float(changed_users),
+            "delta": float(changed_users),
+            "expected_direction": "positive",
+            "passed": changed_users > 0,
+        },
+    }
 
 
 def _set_path(config: dict[str, Any], dotted: str, value: Any) -> None:
@@ -138,7 +190,9 @@ def simulate_pair(config_path: str | Path, reference_run_dir: str | Path,
         diagnostics[metric] = {"reference": before, "intervention": after,
                                "delta": after - before, "expected_direction": direction,
                                "passed": passed}
-    behavioral = {"schema_version": "geoembeddings-pair-behavioral-diagnostics/1.0",
+    if intervention in {"temporary-trip", "sustained-preference"}:
+        diagnostics.update(_change_pair_diagnostics(reference, changed))
+    behavioral = {"schema_version": "geoembeddings-pair-behavioral-diagnostics/2.0",
                   "status": "passed" if all(item["passed"] for item in diagnostics.values()) else "failed",
                   "intervention": intervention, "seed": resolved_seed,
                   "experimental_assumption": "Synthetic intervention constants are experimental assumptions, not claims about Tokyo or Kanto.",
