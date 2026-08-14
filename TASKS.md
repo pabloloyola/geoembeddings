@@ -1137,3 +1137,11 @@ control, change the T2.7 decision, or complete selection-dependent T4.3.
 - This is inspection tooling, not a new R1--R13 metric or baseline result; no baseline artifact applies.
 - Protected trajectory and anchor overlays remain evaluator-only and explicitly gated.
 - Browser display is deliberately sampled and is not suitable for quantitative trajectory inference.
+
+# Comparison presentation note (R1--R9)
+
+The authenticated comparison renderer now produces a deterministic SVG scorecard with
+separate paired diagnostic axes, explicit missingness/coverage/confidence/direction,
+T2.7 gate presentation when its matched report is supplied, and a collapse warning.
+It intentionally computes no weighted total, winner, traffic light, or leaderboard.
+Branch labels remain diagnostic controls rather than evidence of semantic recovery.
