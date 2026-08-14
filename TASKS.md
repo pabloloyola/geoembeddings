@@ -1,5 +1,12 @@
 # Executable backlog
 
+The deterministic evaluator-only `user-journey` report now covers an R1/R4/R8/R9
+interpretability surface using bounded observed timelines, maps, authenticated
+dense projections, public candidates, and selected rankings. Episode boundaries
+require explicit truth access and protected labeling. This visual diagnostic is
+not disentanglement, causal-invariance, or recommendation-quality evidence, and
+it deliberately excludes latent traits and true utility.
+
 Select one coherent task at a time. Completion still requires the definition of
 done in `AGENTS.md`. Commands marked **proposed** are acceptance contracts for
 commands that do not exist yet; completing the task includes implementing and

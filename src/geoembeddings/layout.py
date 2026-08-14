@@ -229,6 +229,19 @@ class ExperimentLayout:
         return self.visualization_dir / (f"{kind}_dense" if dense else kind)
 
     @property
+    def user_journey_dir(self) -> Path:
+        """Canonical evaluator-owned user-journey report directory."""
+        return self.root / "user_journey"
+
+    def user_journey_report(self, user_id: str) -> Path:
+        if not user_id or Path(user_id).name != user_id:
+            raise ValueError("--user-id must be a non-empty path-safe identifier")
+        return self.user_journey_dir / f"{user_id}.html"
+
+    def user_journey_metadata(self, user_id: str) -> Path:
+        return self.user_journey_report(user_id).with_suffix(".metadata.json")
+
+    @property
     def episode_response(self) -> Path:
         return self.root / "episode_response.json"
 
