@@ -336,6 +336,10 @@ class ExperimentLayout:
         return self.comparison_dir / "embedding_comparison.md"
 
     @property
+    def comparison_scorecard(self) -> Path:
+        return self.comparison_dir / "embedding_comparison.svg"
+
+    @property
     def factorized_comparison_json(self) -> Path:
         return self.comparison_dir / "factorized_comparison.json"
 

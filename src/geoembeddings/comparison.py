@@ -258,6 +258,7 @@ def compare_embeddings(
     report["outputs"] = {
         "json": str((output_dir / "embedding_comparison.json").resolve()),
         "markdown": str((output_dir / "embedding_comparison.md").resolve()),
+        "scorecard": str((output_dir / "embedding_comparison.svg").resolve()),
     }
     report["runtime_metadata"] = collect_runtime_metadata(
         duration_seconds=time.perf_counter() - started,
@@ -267,6 +268,10 @@ def compare_embeddings(
     write_json(report, output_dir / "embedding_comparison.json")
     (output_dir / "embedding_comparison.md").write_text(
         _render_markdown(report), encoding="utf-8"
+    )
+    from .comparison_visualization import render_comparison_scorecard
+    render_comparison_scorecard(
+        output_dir / "embedding_comparison.json", output_dir / "embedding_comparison.svg"
     )
     return report
 

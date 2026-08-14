@@ -1133,6 +1133,7 @@ Prepared metadata and baseline/learned cutoff exports (and main evaluations as a
 |---|---|---|---|
 | `OUTPUT_DIR/embedding_comparison.json` | JSON | Machine-readable fair baseline-versus-learned axes and supplemental merges. | Always without factorized matrix |
 | `OUTPUT_DIR/embedding_comparison.md` | Markdown | Human-readable comparison without aggregate winner. | Always without factorized matrix |
+| `OUTPUT_DIR/embedding_comparison.svg` | SVG | Deterministic R1--R9 scorecard with separate paired axes, availability, coverage, confidence, directionality, and collapse warnings; never an aggregate winner. | Always without factorized matrix |
 | `OUTPUT_DIR/factorized_comparison.json` | JSON | Authenticated T2.7 named-control matrix and gates. | Conditional: `--factorized-experiment` supplied |
 | `OUTPUT_DIR/factorized_comparison.md` | Markdown | Human-readable factorized matrix decision. | Conditional: `--factorized-experiment` supplied |
 
