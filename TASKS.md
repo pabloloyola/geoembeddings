@@ -600,6 +600,26 @@ gated by T1.6.
 
 ## P3 — Recommendation contract and ranking
 
+- [x] **T3.8 — Observed-only ranking explanation renderer.**
+  - **Requirement IDs:** R9.
+  - **Affected layer:** observed-contract consumer, ranking inspection, CLI.
+  - **Baseline artifact required:** none for implementation; the renderer
+    requires the four existing matched control prediction/report pairs.
+  - **Command → expected artifact:** `uv run geoembed visualize-ranking ...` →
+    `ranking/visualization/{metadata.json,ranking_explanation.html}`.
+  - **Completion note (2026-08-14):** the renderer authenticates report and NPZ
+    schemas, model/source/request/candidate identities, deterministic score ties,
+    and the selected request's exact available set. It renders public candidate,
+    availability, impression, score/rank, and interaction fields; records
+    unavailable-candidate exclusions and missing interactions; and labels rank
+    changes as descriptive rather than causal. It accepts no truth path and
+    reports protected utility unavailable. Tests cover mismatched identities,
+    unavailable candidates, deterministic ties, absent interactions, and truth
+    path rejection. No run artifact was generated in this environment.
+  - **Known limitation/blocker:** rankers expose no authenticated score
+    decomposition, so the renderer deliberately supplies no feature attribution;
+    observed interactions remain exposure- and missingness-sensitive.
+
 - [x] **T3.1 — POI catalog schema and migration.**
   - **Requirement IDs:** R9.
   - **Prerequisites:** approved observable/truth field review.

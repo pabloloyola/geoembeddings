@@ -320,6 +320,10 @@ class ExperimentLayout:
         return self.ranking_dir / "transfer_slices.json"
 
     @property
+    def ranking_visualization_dir(self) -> Path:
+        return self.ranking_dir / "visualization"
+
+    @property
     def comparison_dir(self) -> Path:
         return self.root / "comparison"
 
