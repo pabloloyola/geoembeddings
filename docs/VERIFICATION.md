@@ -815,6 +815,72 @@ user-mask, and supplemental-definition mismatches. Coverage is 49 export users
 and seven held-out probe users. Persistent and combined gates fail; paired
 causal claims are deliberately not made after the mandatory rejection gate.
 
+## T2.8 two-timescale development candidate (2026-08-15)
+
+Requirements R1, R4, R5, and R7 are affected at the observed-only model and
+evaluation boundary. The dataset contract is unchanged. The candidate uses a
+shared padded GRU followed by normalized exponential pools with configured
+half-lives of 32 and 2 observed events. The persistent output is the projected
+slow pool; context is the projected fast-minus-slow residual; combined is a
+gated residual fusion with a direct persistent path. These event-order
+half-lives are hypotheses and are not calibrated real-time constants.
+
+The development run reused the passing 500-user/14-day seed-20260803 reference
+run produced by the Phase 1 recoverability gate. Candidate and control used the
+same observed source hashes, split definition, objectives, training seed
+20260806, cutoffs, and eight-epoch budget. The dynamic control matched
+1,582,054 candidate parameters with 1,582,318 single-vector parameters, a
+0.0167% relative error.
+
+```bash
+uv run pytest tests/test_model.py tests/test_component_schema.py \
+  tests/test_factorization_comparison.py
+uv run pytest
+
+for variant in two_timescale_pc two_timescale_capacity_matched_single; do
+  uv run geoembed prepare --config configs/embedding/${variant}.yaml \
+    --run-dir RUN_DIR --experiment-dir EXPERIMENT_ROOT/${variant}
+  uv run geoembed train --config configs/embedding/${variant}.yaml \
+    --run-dir RUN_DIR --experiment-dir EXPERIMENT_ROOT/${variant}
+  uv run geoembed export --config configs/embedding/${variant}.yaml \
+    --run-dir RUN_DIR --experiment-dir EXPERIMENT_ROOT/${variant}
+  uv run geoembed export-dense --kind learned --event-stride 1 \
+    --config configs/embedding/${variant}.yaml \
+    --run-dir RUN_DIR --experiment-dir EXPERIMENT_ROOT/${variant}
+  uv run geoembed evaluate --kind learned \
+    --config configs/embedding/${variant}.yaml \
+    --run-dir RUN_DIR --experiment-dir EXPERIMENT_ROOT/${variant}
+  uv run geoembed evaluate --episodes --kind learned \
+    --config configs/embedding/${variant}.yaml \
+    --run-dir RUN_DIR --experiment-dir EXPERIMENT_ROOT/${variant}
+done
+```
+
+Focused tests reported `26 passed`; the full suite reported `247 passed, 2
+skipped`. The reference-scale development metrics are deliberately separate:
+
+| Axis | Two-timescale | Capacity-matched single | Direction |
+|---|---:|---:|---|
+| Best validation loss | 5.458 | 5.254 | lower |
+| Test loss | 4.858 | 4.559 | lower |
+| Test category accuracy | 0.832 | 0.825 | higher |
+| Test service/action/region/geohash-5/geohash-7 accuracy | loses | wins | higher |
+| Persistent train→test cosine | 0.986 | 0.862 | descriptive only |
+| Context train→test cosine | 0.495 | zero-adapter N/A | descriptive only |
+| Combined centered effective rank | 24.91 | 18.30 | higher |
+| Dense episode effective rank | 49.20 | 37.64 | higher |
+| Held-out intent balanced accuracy | 0.329 | 0.353 | higher |
+
+The candidate shows a non-collapsed slow/fast stability split, but it does not
+beat the matched control on downstream prediction or held-out episode intent.
+The development decision is therefore **do not promote**. Protected trait
+probes are excluded from this decision because the Phase 1 gate did not
+demonstrate their observable recoverability. The current episode evaluator
+uses the combined compatibility alias, so component-specific response remains
+an evaluator gap. These `/tmp` artifacts are reproducible online-development
+evidence, not an immutable indexed lineage; multi-seed, matched-intervention,
+robustness, and real-data gates have not run.
+
 ## T3.4 observable naive-ranker verification
 
 Requirement R9 is affected across the observed-only ranking and evaluator
