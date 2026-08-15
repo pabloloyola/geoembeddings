@@ -293,7 +293,13 @@ task status, and is retained as history rather than current guidance.
 
 ## T1.2 implementation note (R1, R4)
 
-The episode-response evaluator is executable through `evaluate --episodes`. Configured half-open response bins, coherence/boundary change, single-vector drift/recovery, held-out intent probes, separation, and effective rank are reported. It does not claim persistent/context disentanglement; matched dense baseline and learned reports are required for deltas.
+The episode-response evaluator is executable through `evaluate --episodes`.
+Version 2.0 evaluates every named component independently using configured
+half-open response bins, coherence/boundary change, drift/recovery, held-out
+intent probes, separation, and effective rank. It marks structural zero
+adapters not applicable and preserves legacy top-level metrics as exact
+`combined` aliases. Component names still do not prove disentanglement;
+matched controls and real-data evidence remain required.
 
 ### T1.4 robustness gate (completed)
 

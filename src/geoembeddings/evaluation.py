@@ -225,12 +225,84 @@ def evaluate_episode_response(
 ) -> dict[str, Any]:
     started = time.perf_counter()
     dense, embeddings, episodes = load_episode_evaluation_inputs(dense_path, truth_dir)
+    loaded = load_embedding_export(dense_path, dense=True)
     settings = config.get("evaluation", {}).get("episode_response", {})
     edges = np.asarray(settings.get("boundary_bin_edges_hours", []), dtype=float)
     if edges.ndim != 1 or len(edges) < 3 or not np.isfinite(edges).all() or not np.all(np.diff(edges) > 0):
         raise ValueError("evaluation.episode_response.boundary_bin_edges_hours must be finite and strictly increasing")
     assigned = assign_episode_intervals(dense, episodes)
     assigned["embedding_index"] = np.arange(len(assigned))
+
+    component_reports = {
+        name: {
+            "intended_axis": {
+                "persistent": "long-horizon stability and post-episode recovery",
+                "context": "episode-boundary response and current-intent information",
+                "combined": "downstream episode coherence and intent information",
+            }.get(name, "append-only component diagnostic"),
+            "applicability": "applicable",
+            **_episode_component_metrics(assigned, np.asarray(matrix, dtype=np.float64),
+                                         episodes, edges, config),
+        }
+        for name, matrix in loaded.components.items()
+    }
+    structural_zero_context = (
+        "context" in loaded.components
+        and np.count_nonzero(loaded.components["context"]) == 0
+        and np.array_equal(loaded.components["persistent"], loaded.components["combined"])
+    )
+    if structural_zero_context:
+        component_reports["context"]["applicability"] = "not_applicable_structural_zero_adapter"
+    combined_report = component_reports["combined"]
+
+    boundary_count = int(episodes["user_id"].isin(set(dense["user_id"])).sum())
+    metadata_path = Path(prepared_dir) / "prepared_metadata.json"
+    metadata_hash = hashlib.sha256(metadata_path.read_bytes()).hexdigest()
+    source_hashes = json.loads(metadata_path.read_text())["source_files"]
+    model_variant = str(np.asarray(loaded.arrays.get("model_variant", kind)).item())
+    report = {
+        "runtime_metadata": collect_runtime_metadata(duration_seconds=time.perf_counter() - started,
+            seed=int(config.get("seed", 0)), device=None).to_dict(),
+        "metric_contract": {"version": "episode-response/2.0", "kind": kind,
+            "interval_semantics": "start_time <= timestamp < end_time", "boundary_bin_edges_hours": edges.tolist(),
+            "prepared_metadata_sha256": metadata_hash, "source_hashes": source_hashes,
+            "dense_users": sorted(dense["user_id"].unique()), "dense_timestamps_sha256": hashlib.sha256("\n".join(dense["timestamp"].astype(str)).encode()).hexdigest(),
+            "embedding_dim": int(embeddings.shape[1]),
+            "model_variant": model_variant,
+            "component_schema": {name: int(matrix.shape[1])
+                                 for name, matrix in loaded.components.items()},
+            "compatibility": loaded.compatibility},
+        "coverage": {"dense_users": int(dense["user_id"].nunique()), "truth_users": int(episodes["user_id"].nunique()),
+            "missing_dense_users": sorted(set(episodes["user_id"]) - set(dense["user_id"])), "episodes": len(episodes),
+            "episodes_with_dense_rows": int(assigned["episode_id"].nunique()), "start_boundaries_with_user_history": boundary_count,
+            "populated_time_bins": combined_report["populated_time_bins"],
+            "total_time_bins": len(edges) - 1},
+        "component_evaluations": component_reports,
+        # Compatibility aliases remain the combined representation so existing
+        # comparison readers keep their exact semantics under the v2 report.
+        "R4_episode_coherence": combined_report["R4_episode_coherence"],
+        "R1_single_vector_diagnostics": {
+            **combined_report["R1_temporal_response"],
+            "limitation": "Combined-component drift and recovery do not by themselves establish persistent/context disentanglement.",
+        },
+        "collapse_diagnostics": combined_report["collapse_diagnostics"],
+        "intent_probe": combined_report["intent_probe"],
+        "information_boundary": "episode_id, primary_intent, and all episode truth remain evaluator-only and occur only in this report",
+    }
+    for value in component_reports.values():
+        value.pop("populated_time_bins", None)
+    write_json(report, output_path)
+    return report
+
+
+def _episode_component_metrics(
+    assigned: pd.DataFrame,
+    embeddings: np.ndarray,
+    episodes: pd.DataFrame,
+    edges: np.ndarray,
+    config: dict[str, Any],
+) -> dict[str, Any]:
+    """Compute episode diagnostics for one named representation component."""
     same, adjacent, changes = [], [], []
     for _, group in assigned.groupby("user_id", sort=False):
         rows = list(group.itertuples())
@@ -242,13 +314,11 @@ def evaluate_episode_response(
                 adjacent.append(sim)
                 changes.append(1.0 - sim)
     curves = [[] for _ in range(len(edges) - 1)]
-    boundary_count = 0
     drift, recovery = [], []
     for episode in episodes.itertuples(index=False):
         user = assigned[assigned["user_id"] == episode.user_id]
         if user.empty:
             continue
-        boundary_count += 1
         delta = (user["timestamp"] - episode.start_time).dt.total_seconds().to_numpy() / 3600
         indices = user["embedding_index"].to_numpy(dtype=int)
         before = np.where(delta < 0)[0]
@@ -271,38 +341,25 @@ def evaluate_episode_response(
     singular = np.linalg.svd(centered, compute_uv=False)
     eigen = singular ** 2
     effective_rank = float(np.exp(-np.sum((eigen/eigen.sum()) * np.log(np.maximum(eigen/eigen.sum(), 1e-15))))) if eigen.sum() else 0.0
-    user_means = {u: normalized[np.asarray(list(ix), dtype=int)].mean(0) for u, ix in dense.groupby("user_id").groups.items()}
+    user_means = {
+        user_id: normalized[np.asarray(list(indices), dtype=int)].mean(0)
+        for user_id, indices in assigned.groupby("user_id").groups.items()
+    }
     users = sorted(user_means)
     separation = [_cosine(user_means[a], user_means[b]) for i, a in enumerate(users) for b in users[i+1:]]
-    metadata_path = Path(prepared_dir) / "prepared_metadata.json"
-    metadata_hash = hashlib.sha256(metadata_path.read_bytes()).hexdigest()
-    source_hashes = json.loads(metadata_path.read_text())["source_files"]
     bins = [{"left_hours": float(edges[i]), "right_hours": float(edges[i+1]), "points": len(v),
              "mean_cosine_drift_from_pre_start": float(np.mean(v)) if v else None} for i, v in enumerate(curves)]
-    report = {
-        "runtime_metadata": collect_runtime_metadata(duration_seconds=time.perf_counter() - started,
-            seed=int(config.get("seed", 0)), device=None).to_dict(),
-        "metric_contract": {"version": "episode-response/1.0", "kind": kind,
-            "interval_semantics": "start_time <= timestamp < end_time", "boundary_bin_edges_hours": edges.tolist(),
-            "prepared_metadata_sha256": metadata_hash, "source_hashes": source_hashes,
-            "dense_users": sorted(dense["user_id"].unique()), "dense_timestamps_sha256": hashlib.sha256("\n".join(dense["timestamp"].astype(str)).encode()).hexdigest(),
-            "embedding_dim": int(embeddings.shape[1])},
-        "coverage": {"dense_users": int(dense["user_id"].nunique()), "truth_users": int(episodes["user_id"].nunique()),
-            "missing_dense_users": sorted(set(episodes["user_id"]) - set(dense["user_id"])), "episodes": len(episodes),
-            "episodes_with_dense_rows": int(assigned["episode_id"].nunique()), "start_boundaries_with_user_history": boundary_count,
-            "populated_time_bins": sum(bool(v) for v in curves), "total_time_bins": len(curves)},
+    return {
+        "populated_time_bins": sum(bool(v) for v in curves),
         "R4_episode_coherence": {"within_episode_consecutive_cosine": _summary(same),
             "adjacent_episode_consecutive_cosine": _summary(adjacent), "boundary_change_magnitude": _summary(changes),
             "start_response_curve": bins},
-        "R1_single_vector_diagnostics": {"temporary_episode_drift": _summary(drift), "post_episode_recovery_cosine": _summary(recovery),
-            "limitation": "Single-vector drift and recovery do not establish persistent/context disentanglement."},
+        "R1_temporal_response": {"temporary_episode_drift": _summary(drift),
+            "post_episode_recovery_cosine": _summary(recovery)},
         "collapse_diagnostics": {"different_user_mean_cosine": float(np.mean(separation)) if separation else None,
             "different_user_pairs": len(separation), "effective_rank": effective_rank},
         "intent_probe": _intent_probe(assigned, embeddings, float(config["evaluation"]["probe_train_fraction"]), float(config["evaluation"]["ridge_alpha"])),
-        "information_boundary": "episode_id, primary_intent, and all episode truth remain evaluator-only and occur only in this report",
     }
-    write_json(report, output_path)
-    return report
 
 
 def _summary(values: list[float]) -> dict[str, Any]:

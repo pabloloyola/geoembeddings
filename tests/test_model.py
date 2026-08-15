@@ -410,3 +410,74 @@ def test_two_timescale_rejects_inverted_half_lives_and_matches_capacity():
     control = build_model(vocabularies, 8, config)
     assert control.capacity_match["target_model_variant"] == "two_timescale_pc"
     assert control.capacity_match["relative_error"] < 0.1
+
+
+def _causal_transformer_fixture():
+    config, vocabularies = _two_timescale_fixture()
+    config["data"] = {"max_sequence_length": 8}
+    config["model"].update({
+        "variant": "causal_transformer_pc",
+        "transformer_heads": 2,
+        "transformer_layers": 1,
+        "transformer_feedforward_dim": 16,
+        "attention_half_life_events": 4.0,
+    })
+    return config, vocabularies
+
+
+def test_causal_transformer_is_finite_padding_safe_and_backpropagates():
+    config, vocabularies = _causal_transformer_fixture()
+    model = build_model(vocabularies, 8, config).eval()
+    categorical = torch.randint(0, 3, (3, 6, 2))
+    continuous = torch.randn(3, 6, 8, requires_grad=True)
+    lengths = torch.tensor([6, 4, 2])
+
+    output = model.encode_components(categorical, continuous, lengths)
+
+    assert output.persistent.shape == output.context.shape == output.combined.shape == (3, 5)
+    assert all(torch.isfinite(value).all() for value in (
+        output.persistent, output.context, output.combined
+    ))
+    output.combined.square().mean().backward()
+    assert continuous.grad is not None and torch.isfinite(continuous.grad).all()
+
+    with torch.no_grad():
+        short = model.encode_components(categorical[:1, :4], continuous[:1, :4], torch.tensor([4]))
+        padded = model.encode_components(categorical[:1], continuous[:1], torch.tensor([4]))
+    for name in ("persistent", "context", "combined"):
+        torch.testing.assert_close(getattr(short, name), getattr(padded, name))
+
+
+def test_causal_transformer_does_not_leak_future_events_into_earlier_states():
+    config, vocabularies = _causal_transformer_fixture()
+    model = build_model(vocabularies, 8, config).eval()
+    categorical = torch.randint(0, 3, (1, 5, 2))
+    continuous = torch.randn(1, 5, 8)
+    changed = continuous.clone()
+    changed[:, -1] = changed[:, -1] + 100.0
+
+    with torch.no_grad():
+        original_event = model._event_tensor(categorical, continuous, augment=False)
+        changed_event = model._event_tensor(categorical, changed, augment=False)
+        original = model._transformer_sequence(original_event, torch.tensor([5]))
+        perturbed = model._transformer_sequence(changed_event, torch.tensor([5]))
+
+    torch.testing.assert_close(original[:, :-1], perturbed[:, :-1], atol=1e-6, rtol=1e-6)
+    assert not torch.allclose(original[:, -1], perturbed[:, -1])
+
+
+def test_causal_transformer_validates_configuration_and_matches_capacity():
+    config, vocabularies = _causal_transformer_fixture()
+    config["model"]["transformer_heads"] = 3
+    with pytest.raises(ValueError, match="event_dim must be divisible"):
+        build_model(vocabularies, 8, config)
+
+    config["model"].update({
+        "variant": "causal_transformer_capacity_matched_single",
+        "transformer_heads": 2,
+        "matched_output_dim": 5,
+        "capacity_search_max_hidden_dim": 128,
+    })
+    control = build_model(vocabularies, 8, config)
+    assert control.capacity_match["target_model_variant"] == "causal_transformer_pc"
+    assert control.capacity_match["relative_error"] < 0.1

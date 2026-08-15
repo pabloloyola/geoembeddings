@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from collections.abc import Callable
+import math
 from typing import Any
 
 import torch
@@ -430,6 +431,138 @@ class TwoTimescalePCEncoder(SingleVectorEncoder):
         return output.combined, logits
 
 
+class CausalTransformerPCEncoder(TwoTimescalePCEncoder):
+    """Two-timescale components over a small causal self-attention trunk.
+
+    This variant isolates the sequence-model hypothesis: it retains the same
+    slow/fast pooling, residual context definition, fusion, heads, and loss
+    routing as :class:`TwoTimescalePCEncoder`, but replaces its GRU with causal
+    self-attention. Observed continuous time-gap features remain part of every
+    event, while a fixed relative event-order bias discourages indiscriminate
+    attention to distant history without preventing it.
+
+    Padding metadata stays on CPU until converted to floating attention and
+    pooling masks. No packed sequence or integer final-state gather is used.
+    """
+
+    def __init__(self, vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+                 config: dict[str, Any], categorical_fields: list[str] | None = None) -> None:
+        super().__init__(vocabularies, continuous_dim, config, categorical_fields)
+        model_config = config["model"]
+        event_dim = int(model_config["event_dim"])
+        output_dim = int(model_config["user_embedding_dim"])
+        heads = int(model_config.get("transformer_heads", 4))
+        layers = int(model_config.get("transformer_layers", 2))
+        feedforward_dim = int(model_config.get("transformer_feedforward_dim", 2 * event_dim))
+        self.attention_half_life_events = float(
+            model_config.get("attention_half_life_events", 16.0)
+        )
+        self.max_sequence_length = int(config.get("data", {}).get("max_sequence_length", 64))
+        if event_dim % heads:
+            raise ValueError("event_dim must be divisible by transformer_heads")
+        if layers <= 0 or feedforward_dim <= 0 or self.max_sequence_length <= 0:
+            raise ValueError("transformer layers, feedforward dimension, and sequence length must be positive")
+        if self.attention_half_life_events <= 0:
+            raise ValueError("attention_half_life_events must be positive")
+
+        # Remove the recurrent trunk inherited solely to reuse the common event,
+        # component, routing, and fusion contracts. It is not part of this
+        # model's parameter count or forward graph.
+        del self.gru
+        self.position_embedding = nn.Embedding(self.max_sequence_length, event_dim)
+        self.transformer_layers = nn.ModuleList([
+            nn.TransformerEncoderLayer(
+                d_model=event_dim,
+                nhead=heads,
+                dim_feedforward=feedforward_dim,
+                dropout=float(model_config["dropout"]),
+                activation="gelu",
+                batch_first=True,
+                norm_first=True,
+            )
+            for _ in range(layers)
+        ])
+        self.transformer_normalization = nn.LayerNorm(event_dim)
+        # The recurrent parent projection consumes hidden_dim; the transformer
+        # emits event_dim. Rebuild only this projection and keep output semantics.
+        self.output_projection = nn.Sequential(
+            nn.Linear(event_dim, output_dim),
+            nn.GELU(),
+            nn.LayerNorm(output_dim),
+        )
+        self.context_projection = nn.Sequential(
+            nn.Linear(event_dim, output_dim),
+            nn.GELU(),
+            nn.LayerNorm(output_dim),
+        )
+
+    def _transformer_sequence(
+        self, event: torch.Tensor, lengths: torch.Tensor
+    ) -> torch.Tensor:
+        time_steps = event.shape[1]
+        if time_steps > self.max_sequence_length:
+            raise ValueError(
+                f"Sequence length {time_steps} exceeds configured maximum {self.max_sequence_length}"
+            )
+        cpu_positions = torch.arange(time_steps, device="cpu")
+        position_ids = cpu_positions.to(device=event.device)
+        encoded = event + self.position_embedding(position_ids).unsqueeze(0)
+
+        # Query row i may attend only to key columns j <= i. The additive
+        # relative-age penalty is finite for all permitted keys, so distant
+        # events remain retrievable when their content is useful.
+        age = cpu_positions.unsqueeze(1) - cpu_positions.unsqueeze(0)
+        future = age < 0
+        attention_mask = -math.log(2.0) * age.clamp_min(0).to(torch.float32)
+        attention_mask = attention_mask / self.attention_half_life_events
+        attention_mask[future] = float("-inf")
+        attention_mask = attention_mask.to(device=event.device, dtype=event.dtype)
+
+        valid = cpu_positions.unsqueeze(0) < lengths.detach().cpu().unsqueeze(1)
+        padding_mask = torch.zeros(valid.shape, dtype=torch.float32, device="cpu")
+        padding_mask[~valid] = float("-inf")
+        padding_mask = padding_mask.to(device=event.device, dtype=event.dtype)
+        valid_device = valid.to(device=event.device).unsqueeze(-1)
+        sequence = encoded
+        for layer in self.transformer_layers:
+            sequence = layer(
+                sequence,
+                src_mask=attention_mask,
+                src_key_padding_mask=padding_mask,
+            )
+            # Some attention kernels emit NaNs for padded query rows. Clear
+            # them after every layer; otherwise a later layer can consume NaN
+            # keys/values before its padding mask is applied.
+            sequence = torch.where(valid_device, sequence, torch.zeros_like(sequence))
+        sequence = self.transformer_normalization(sequence)
+        return torch.where(valid_device, sequence, torch.zeros_like(sequence))
+
+    def encode_components(self, categorical: torch.Tensor, continuous: torch.Tensor,
+                          lengths: torch.Tensor, augment: bool = False) -> EncoderOutput:
+        self._validate_batch(categorical, continuous, lengths)
+        event = self._event_tensor(categorical, continuous, augment=augment)
+        sequence = self._transformer_sequence(event, lengths)
+        slow_weights = self._timescale_weights(
+            lengths, sequence.shape[1], self.persistent_half_life_events,
+            device=sequence.device, dtype=sequence.dtype,
+        )
+        fast_weights = self._timescale_weights(
+            lengths, sequence.shape[1], self.context_half_life_events,
+            device=sequence.device, dtype=sequence.dtype,
+        )
+        slow_state = (sequence * slow_weights.unsqueeze(-1)).sum(dim=1)
+        fast_state = (sequence * fast_weights.unsqueeze(-1)).sum(dim=1)
+        persistent = self.output_projection(slow_state)
+        context = self.context_projection(fast_state - slow_state)
+        gate = torch.sigmoid(self.fusion_gate(torch.cat((persistent, context), dim=1)))
+        combined = self.fusion_normalization(persistent + gate * context)
+        if self.ablation == "persistent_only":
+            context, combined = torch.zeros_like(context), persistent
+        elif self.ablation == "context_only":
+            persistent, combined = torch.zeros_like(persistent), context
+        return EncoderOutput(persistent=persistent, context=context, combined=combined)
+
+
 ModelFactory = Callable[
     [dict[str, dict[str, int]], int, dict[str, Any], list[str] | None],
     SingleVectorEncoder,
@@ -486,6 +619,18 @@ def _build_two_timescale_pc(vocabularies: dict[str, dict[str, int]], continuous_
                             config: dict[str, Any], categorical_fields: list[str] | None = None
                             ) -> SingleVectorEncoder:
     return TwoTimescalePCEncoder(vocabularies, continuous_dim, config, categorical_fields)
+
+
+@register_model("causal_transformer_pc")
+def _build_causal_transformer_pc(
+    vocabularies: dict[str, dict[str, int]],
+    continuous_dim: int,
+    config: dict[str, Any],
+    categorical_fields: list[str] | None = None,
+) -> SingleVectorEncoder:
+    return CausalTransformerPCEncoder(
+        vocabularies, continuous_dim, config, categorical_fields
+    )
 
 
 def _capacity_matched_single(
@@ -566,6 +711,23 @@ def _build_two_timescale_capacity_matched_single(
     return _capacity_matched_single(
         TwoTimescalePCEncoder,
         "two_timescale_pc",
+        vocabularies,
+        continuous_dim,
+        config,
+        categorical_fields,
+    )
+
+
+@register_model("causal_transformer_capacity_matched_single")
+def _build_causal_transformer_capacity_matched_single(
+    vocabularies: dict[str, dict[str, int]],
+    continuous_dim: int,
+    config: dict[str, Any],
+    categorical_fields: list[str] | None = None,
+) -> SingleVectorEncoder:
+    return _capacity_matched_single(
+        CausalTransformerPCEncoder,
+        "causal_transformer_pc",
         vocabularies,
         continuous_dim,
         config,

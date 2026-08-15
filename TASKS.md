@@ -650,11 +650,42 @@ gated by T1.6.
     excluded from this decision under the recoverability gate. These artifacts
     were generated in a reconstructed online workspace and are reproducible
     development evidence, not an immutable indexed selection lineage.
-  - **Known limitation/blocker:** the episode report currently evaluates the
-    compatibility `embedding` alias (combined component), not persistent and
-    context independently. Matched sustained-preference, schedule-shift,
-    observation, robustness, multi-seed, and real-data evaluations remain
-    required before any future candidate can receive `selected_candidate`.
+  - **Known limitation/blocker:** the component-specific evaluator gap was
+    repaired by T2.9. Matched sustained-preference, schedule-shift, observation,
+    robustness, multi-seed, and real-data evaluations remain required before
+    any future candidate can receive `selected_candidate`.
+
+- [x] **T2.9 — Component-aware episode evaluation and causal-transformer follow-up.**
+  - **Requirement IDs:** R1, R4, R5, R7.
+  - **Prerequisites:** the T2.8 rejection and component export contract.
+  - **Affected layer:** protected evaluator, observed-only model, configurations,
+    tests, and development verification. The dataset and training information
+    boundaries are unchanged.
+  - **Evaluator repair:** `episode-response/2.0` evaluates every named exported
+    component independently, records its intended axis and applicability, and
+    preserves the former top-level metrics as exact aliases of `combined`.
+    Structural zero context adapters are explicitly not applicable rather than
+    interpreted as a learned context representation.
+  - **Model hypothesis:** replace only the shared GRU trunk with a small causal
+    transformer while retaining the two-timescale slow/fast pools, residual
+    context, routing, and fusion. Continuous time-gap inputs and a causal
+    event-order decay mask represent irregular timing without reading future
+    events or protected truth.
+  - **Matched evidence (2026-08-15):** the candidate had 1,756,390 parameters;
+    its dynamically matched single-vector control had 1,756,239 (0.0086%
+    relative error). Both used the same 500-user/14-day seed-20260803 observed
+    sources, splits, objectives, training seed 20260806, and eight-epoch budget.
+  - **Development decision:** **do not promote.** Candidate versus control best
+    validation loss was 6.337 versus 5.233 and test loss was 6.185 versus 4.476.
+    The candidate context held-out intent balanced accuracy was 0.344, below the
+    control combined score of 0.373. Persistent train→test cosine improved to
+    0.973, but this descriptive stability did not compensate for weaker task and
+    context information. The result points to objectives/routing/recoverable
+    supervision, not trunk capacity, as the next modeling bottleneck.
+  - **Known limitation/blocker:** one seed and one reference scenario are
+    development evidence only. Matched interventions, robustness, multi-seed,
+    compute-matched timing, and real-data evaluation remain required before a
+    future candidate can receive `selected_candidate`.
 
 ## P3 — Recommendation contract and ranking
 

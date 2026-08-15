@@ -875,11 +875,82 @@ The candidate shows a non-collapsed slow/fast stability split, but it does not
 beat the matched control on downstream prediction or held-out episode intent.
 The development decision is therefore **do not promote**. Protected trait
 probes are excluded from this decision because the Phase 1 gate did not
-demonstrate their observable recoverability. The current episode evaluator
-uses the combined compatibility alias, so component-specific response remains
-an evaluator gap. These `/tmp` artifacts are reproducible online-development
-evidence, not an immutable indexed lineage; multi-seed, matched-intervention,
-robustness, and real-data gates have not run.
+demonstrate their observable recoverability. At the time of this run, the
+episode evaluator used the combined compatibility alias; T2.9 subsequently
+closed that component-specific evaluator gap. These `/tmp` artifacts are
+reproducible online-development evidence, not an immutable indexed lineage;
+multi-seed, matched-intervention, robustness, and real-data gates have not run.
+
+## T2.9 component-aware evaluator and causal transformer (2026-08-15)
+
+Requirements R1, R4, R5, and R7 are affected. `episode-response/2.0` now
+evaluates `persistent`, `context`, and `combined` separately and preserves the
+old top-level episode fields as exact aliases of `combined`. A legacy or
+capacity-control zero context adapter is marked
+`not_applicable_structural_zero_adapter`. This is evaluator-only use of
+protected episode truth; model preparation, training, and export remain
+observed-only.
+
+The follow-up model changes only the shared sequence trunk: two causal
+transformer layers replace the GRU while the T2.8 slow/fast pools, residual
+context, direct persistent path, routing, and fusion remain. Learned event-order
+positions, continuous time-gap inputs, and a causal relative-order decay mask
+are used. Padding rows are cleared after every layer so an all-masked padded
+query cannot propagate a NaN through the following layer. The first diagnostic
+run exposed exactly that failure (finite training loss, NaN validation loss,
+no checkpoint); it was retained as a debugging result and rerun after the
+per-layer masking repair.
+
+```bash
+uv run pytest tests/test_model.py tests/test_episode_evaluation.py
+uv run pytest
+
+for variant in causal_transformer_pc causal_transformer_capacity_matched_single; do
+  uv run geoembed prepare --config configs/embedding/${variant}.yaml \
+    --run-dir RUN_DIR --experiment-dir EXPERIMENT_ROOT/${variant}
+  uv run geoembed train --config configs/embedding/${variant}.yaml \
+    --run-dir RUN_DIR --experiment-dir EXPERIMENT_ROOT/${variant}
+  uv run geoembed export --config configs/embedding/${variant}.yaml \
+    --run-dir RUN_DIR --experiment-dir EXPERIMENT_ROOT/${variant}
+  uv run geoembed export-dense --kind learned --event-stride 1 \
+    --config configs/embedding/${variant}.yaml \
+    --run-dir RUN_DIR --experiment-dir EXPERIMENT_ROOT/${variant}
+  uv run geoembed evaluate --kind learned --overwrite \
+    --config configs/embedding/${variant}.yaml \
+    --run-dir RUN_DIR --experiment-dir EXPERIMENT_ROOT/${variant}
+  uv run geoembed evaluate --episodes --kind learned --overwrite \
+    --config configs/embedding/${variant}.yaml \
+    --run-dir RUN_DIR --experiment-dir EXPERIMENT_ROOT/${variant}
+done
+```
+
+The reference-scale run reused the same passing 500-user/14-day,
+seed-20260803 observed sources used by T2.8. Both models used training seed
+20260806, identical splits/objectives and an eight-epoch budget. The candidate
+had 1,756,390 trainable parameters and the dynamic single-vector control had
+1,756,239, a 0.0086% relative mismatch.
+
+| Axis | Causal transformer PC | Matched single | Direction |
+|---|---:|---:|---|
+| Best validation loss | 6.337 | 5.233 | lower |
+| Test loss | 6.185 | 4.476 | lower |
+| Test service accuracy | 0.628 | 0.857 | higher |
+| Test action accuracy | 0.611 | 0.827 | higher |
+| Test region accuracy | 0.594 | 0.742 | higher |
+| Persistent train→test cosine | 0.973 | 0.831 | descriptive only |
+| Context held-out intent balanced accuracy | 0.344 | N/A zero adapter | higher |
+| Combined held-out intent balanced accuracy | 0.312 | 0.373 | higher |
+| Combined centered effective rank | 16.29 | 21.07 | higher |
+| Dense context effective rank | 25.40 | N/A zero adapter | descriptive only |
+
+The decision is **do not promote**. The transformer provides a non-zero,
+responsive context branch and a stable persistent branch, but neither the
+component-specific intent result nor representation rank compensates for its
+large predictive deficit. On this evidence, added trunk capacity is not the
+current bottleneck; observable supervision, objective routing, and the
+recoverability/real-data contract should drive the next hypothesis. This is a
+single-seed development comparison, not an immutable selected lineage, and it
+does not establish real-world validity.
 
 ## T3.4 observable naive-ranker verification
 
