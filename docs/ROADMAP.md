@@ -153,7 +153,13 @@ Status: the typed interface, registry, component schema, `factorized_pc`,
 capacity-matched control, ablation configurations, observed-only loss routing,
 and component reports are implemented. The completed matched T2.7 matrix failed
 the persistent and combined task-information/collapse gates, producing a **do
-not advance** decision that blocks a routine branch.
+not advance** decision that blocks a routine branch. A recoverability-informed
+`two_timescale_pc` follow-up is also implemented with a shared recurrent trunk,
+slow/fast event-order pooling, residual context, and a new capacity-matched
+single-vector control. Its first 500-user development comparison produced a
+descriptive slow/fast stability split but worse test loss and weaker performance
+on five of six next-event targets, so its decision is **do not promote**. It does
+not reopen the routine branch or create a selected candidate.
 
 Exit gate: `persistent` improves invariance/persistent information, `context`
 improves episode response, and neither result is explained by collapse.

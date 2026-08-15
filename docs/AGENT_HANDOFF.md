@@ -38,6 +38,12 @@ and remains a failure-revealing baseline. A configuration-selected
 named component exports are implemented. T2.7 completed on matched immutable
 artifacts with a **do not advance** decision: persistent and combined gates
 failed, so branch names do not establish semantics and routine work stays closed.
+A later `two_timescale_pc` development variant uses one shared GRU plus explicit
+slow/fast exponential pooling and residual fusion. Its 500-user development
+comparison also says **do not promote**: it created a clear descriptive
+stability split but lost to its capacity-matched single-vector control on test
+loss and five of six next-event accuracies. It remains an experimental baseline,
+not the current best model or a selected candidate.
 
 ## Repository ownership map
 
@@ -157,6 +163,15 @@ The current implementation uses padded GRU execution, a floating final-state
 mask, CPU length metadata, explicit categorical-field order, CPU-side batch
 validation, and regression tests. Do not weaken these protections.
 
+The experimental `two_timescale_pc` retains the same MPS-safe shared recurrent
+path, then pools valid recurrent states with separately configured slow and fast
+event-order half-lives. It exports the slow projection as persistent, the
+fast-minus-slow residual projection as context, and a gated residual sum as
+combined. Its companion `two_timescale_capacity_matched_single` is the required
+control. Do not interpret configured event half-lives as real-time behavioral
+constants, and do not promote the variant from its branch names or stability
+alone.
+
 ## What the current comparison proves and does not prove
 
 It can compare:
@@ -193,10 +208,16 @@ integrity and metrics, not real-world causal validity or scientific success.
 
 ## Near-term research decision
 
-Preserve the completed T2.7 **do not advance** decision. The immutable matched
+Preserve the completed T2.7 **do not advance** decision and the T2.8
+**do not promote** development result. The immutable matched
 matrix compared `capacity_matched_single`, `factorized_pc`, and the required
 branch/loss ablations on identical data and cutoffs; failed persistent and
 combined task-information/collapse gates keep the routine branch closed.
+The next useful modeling step is not a larger rerun of T2.8: first make the
+episode evaluator report named components independently, then test a small
+causal transformer trunk only as a parameter/compute-matched follow-up. A
+single `[CLS]`-style transformer vector would not address the separation
+failure. Real-data evaluation remains the ultimate gate.
 T3.4--T3.7, the T4.2 adaptation/forgetting audit, and the T4.5
 external-validity boundary are complete. T4.2 currently provides
 diagnostic-control evidence only because no representation has the

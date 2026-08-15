@@ -610,6 +610,52 @@ gated by T1.6.
     collapse gates failed versus the capacity control, so the evidence-backed
     decision is **do not advance** and routine work remains closed.
 
+- [x] **T2.8 — Recoverability-informed two-timescale development candidate.**
+  - **Requirement IDs:** R1, R4, R5, R7.
+  - **Prerequisites:** the T2.7 rejection and T1.15 recoverability repair.
+  - **Affected layer:** observed-only model, configuration, tests, and
+    development verification. The dataset contract and protected evaluator
+    boundary are unchanged.
+  - **Hypothesis:** a shared recurrent trunk followed by normalized slow and
+    fast exponential pools may separate stable history from recent residual
+    state more cleanly than duplicated GRUs. The configured 32-event and
+    2-event half-lives are event-order hypotheses, not calibrated behavioral
+    constants.
+  - **Baseline artifact required:** the rejected T2.7 factorized candidate plus
+    a newly trained single-vector control matched to this candidate's parameter
+    count, observed sources, split definition, objectives, seed, and cutoffs.
+  - **Command → expected artifact:** train/export/evaluate
+    `configs/embedding/two_timescale_pc.yaml` and
+    `two_timescale_capacity_matched_single.yaml` → separate checkpoints,
+    component exports, dense exports, `evaluation.json`, and
+    `episode_response.json` under distinct experiment roots.
+  - **Minimum coverage:** half-life validation, normalized padding-safe pools,
+    finiteness, gradients, padded-history invariance, loss routing, model
+    registration, and parameter matching; focused component tests and the full
+    suite must pass.
+  - **Implementation evidence (2026-08-15):** `two_timescale_pc` uses one padded
+    GRU, a long-half-life persistent pool, a short-half-life residual context
+    pool, and a gated residual fusion that retains a direct persistent path.
+    `two_timescale_capacity_matched_single` matched 1,582,054 candidate
+    parameters with 1,582,318 control parameters (0.0167% relative error) in a
+    500-user/14-day, seed-20260803 development run. Focused tests reported 26
+    passing tests and the full suite reported 247 passed, 2 skipped.
+  - **Development decision:** **do not promote.** The architecture produced the
+    intended descriptive stability split (persistent train→test cosine 0.986;
+    context 0.495), but the single-vector control had lower test loss (4.559 vs
+    4.858) and higher accuracy on five of six next-event targets. The candidate
+    improved combined effective rank (49.20 vs 37.64 in the dense episode
+    report) and a narrow within-minus-adjacent coherence contrast, but had
+    weaker boundary response and held-out intent metrics. Protected trait R² is
+    excluded from this decision under the recoverability gate. These artifacts
+    were generated in a reconstructed online workspace and are reproducible
+    development evidence, not an immutable indexed selection lineage.
+  - **Known limitation/blocker:** the episode report currently evaluates the
+    compatibility `embedding` alias (combined component), not persistent and
+    context independently. Matched sustained-preference, schedule-shift,
+    observation, robustness, multi-seed, and real-data evaluations remain
+    required before any future candidate can receive `selected_candidate`.
+
 ## P3 — Recommendation contract and ranking
 
 - [x] **T3.8 — Observed-only ranking explanation renderer.**

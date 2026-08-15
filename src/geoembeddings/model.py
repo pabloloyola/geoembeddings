@@ -118,14 +118,13 @@ class SingleVectorEncoder(nn.Module):
             if objective in config["objectives"] and field in vocabularies:
                 self.heads[objective] = nn.Linear(output_dim, len(vocabularies[field]))
 
-    def encode(
+    def _event_tensor(
         self,
         categorical: torch.Tensor,
         continuous: torch.Tensor,
-        lengths: torch.Tensor,
-        augment: bool = False,
+        *,
+        augment: bool,
     ) -> torch.Tensor:
-        self._validate_batch(categorical, continuous, lengths)
         category_sum = None
         for index, field in enumerate(self.categorical_fields):
             embedded = self.categorical_embeddings[field](categorical[:, :, index])
@@ -136,6 +135,29 @@ class SingleVectorEncoder(nn.Module):
             keep = torch.rand(event.shape[:2], device=event.device) >= self.event_dropout
             keep[:, 0] = True
             event = event * keep.unsqueeze(-1)
+        return event
+
+    @staticmethod
+    def _floating_final(sequence: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
+        """Select final valid states without accelerator integer gather/scatter."""
+        time_steps = sequence.shape[1]
+        cpu_positions = torch.arange(time_steps, device="cpu").unsqueeze(0)
+        cpu_final_positions = (lengths.detach().cpu() - 1).unsqueeze(1)
+        final_mask = (cpu_positions == cpu_final_positions).to(
+            device=sequence.device,
+            dtype=sequence.dtype,
+        )
+        return (sequence * final_mask.unsqueeze(-1)).sum(dim=1)
+
+    def encode(
+        self,
+        categorical: torch.Tensor,
+        continuous: torch.Tensor,
+        lengths: torch.Tensor,
+        augment: bool = False,
+    ) -> torch.Tensor:
+        self._validate_batch(categorical, continuous, lengths)
+        event = self._event_tensor(categorical, continuous, augment=augment)
 
         # PackedSequence has a long-standing failure mode on Apple's MPS
         # backend for larger batches. Running the GRU over the padded tensor is
@@ -148,14 +170,7 @@ class SingleVectorEncoder(nn.Module):
         # CPU-resident length metadata and send only a floating-point mask to
         # the accelerator. Multiplication and reduction have the same forward
         # result and avoid an integer gather/scatter in both directions.
-        time_steps = sequence_output.shape[1]
-        cpu_positions = torch.arange(time_steps, device="cpu").unsqueeze(0)
-        cpu_final_positions = (lengths.detach().cpu() - 1).unsqueeze(1)
-        final_mask = (cpu_positions == cpu_final_positions).to(
-            device=sequence_output.device,
-            dtype=sequence_output.dtype,
-        )
-        final_hidden = (sequence_output * final_mask.unsqueeze(-1)).sum(dim=1)
+        final_hidden = self._floating_final(sequence_output, lengths)
         return self.output_projection(final_hidden)
 
     @staticmethod
@@ -248,28 +263,6 @@ class FactorizedPCEncoder(SingleVectorEncoder):
         if invalid:
             raise ValueError(f"Invalid loss routing: {invalid}")
 
-    def _event_tensor(self, categorical: torch.Tensor, continuous: torch.Tensor,
-                      *, augment: bool) -> torch.Tensor:
-        category_sum = None
-        for index, field in enumerate(self.categorical_fields):
-            value = self.categorical_embeddings[field](categorical[:, :, index])
-            category_sum = value if category_sum is None else category_sum + value
-        event = self.event_normalization(
-            self.categorical_projection(category_sum) + self.continuous_projection(continuous)
-        )
-        if augment and self.training and self.event_dropout > 0:
-            keep = torch.rand(event.shape[:2], device=event.device) >= self.event_dropout
-            keep[:, 0] = True
-            event = event * keep.unsqueeze(-1)
-        return event
-
-    @staticmethod
-    def _floating_final(sequence: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
-        positions = torch.arange(sequence.shape[1], device="cpu").unsqueeze(0)
-        final_positions = (lengths.detach().cpu() - 1).unsqueeze(1)
-        mask = (positions == final_positions).to(device=sequence.device, dtype=sequence.dtype)
-        return (sequence * mask.unsqueeze(-1)).sum(dim=1)
-
     def encode_components(self, categorical: torch.Tensor, continuous: torch.Tensor,
                           lengths: torch.Tensor, augment: bool = False) -> EncoderOutput:
         self._validate_batch(categorical, continuous, lengths)
@@ -310,6 +303,130 @@ class FactorizedPCEncoder(SingleVectorEncoder):
         output = self.encode_components(categorical, continuous, lengths, augment=True)
         logits = {name: head(getattr(output, self.loss_routes[name]))
                   for name, head in self.heads.items()}
+        return output.combined, logits
+
+
+class TwoTimescalePCEncoder(SingleVectorEncoder):
+    """Persistent/context encoder with explicit slow and fast state pooling.
+
+    A shared recurrent trunk avoids interpreting duplicated recurrent capacity
+    as factorization.  The persistent branch pools the complete valid history
+    with a long half-life.  The context branch pools the same states with a
+    short half-life and encodes only its residual relative to the slow state.
+    Residual fusion retains an exact persistent path so a learned gate cannot
+    silently discard all long-horizon information.
+
+    The half-lives are architectural hypotheses over observed event order, not
+    claims about real behavioral time constants.  Sequence lengths remain CPU
+    control metadata and all pooling uses floating masks for Apple MPS safety.
+    """
+
+    def __init__(self, vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+                 config: dict[str, Any], categorical_fields: list[str] | None = None) -> None:
+        super().__init__(vocabularies, continuous_dim, config, categorical_fields)
+        model_config = config["model"]
+        hidden_dim = int(model_config["hidden_dim"])
+        output_dim = int(model_config["user_embedding_dim"])
+        self.persistent_half_life_events = float(
+            model_config.get("persistent_half_life_events", 32.0)
+        )
+        self.context_half_life_events = float(
+            model_config.get("context_half_life_events", 2.0)
+        )
+        if not self.context_half_life_events > 0:
+            raise ValueError("context_half_life_events must be positive")
+        if not self.persistent_half_life_events > self.context_half_life_events:
+            raise ValueError(
+                "persistent_half_life_events must be greater than "
+                "context_half_life_events"
+            )
+        self.context_projection = nn.Sequential(
+            nn.Linear(hidden_dim, output_dim),
+            nn.GELU(),
+            nn.LayerNorm(output_dim),
+        )
+        self.fusion_gate = nn.Linear(output_dim * 2, output_dim)
+        self.fusion_normalization = nn.LayerNorm(output_dim)
+        ablation = str(model_config.get("ablation", "fusion"))
+        allowed = {"fusion", "persistent_only", "context_only"}
+        if ablation not in allowed:
+            raise ValueError(
+                f"Unknown two-timescale ablation {ablation!r}; expected {sorted(allowed)}"
+            )
+        self.ablation = ablation
+        routes = model_config.get("loss_routing", {})
+        self.loss_routes = {
+            objective: str(routes.get(objective, "combined"))
+            for objective in self.heads
+        }
+        invalid = {
+            name: route for name, route in self.loss_routes.items()
+            if route not in {"persistent", "context", "combined"}
+        }
+        if invalid:
+            raise ValueError(f"Invalid loss routing: {invalid}")
+
+    @staticmethod
+    def _timescale_weights(
+        lengths: torch.Tensor,
+        time_steps: int,
+        half_life_events: float,
+        *,
+        device: torch.device,
+        dtype: torch.dtype,
+    ) -> torch.Tensor:
+        if half_life_events <= 0:
+            raise ValueError("half_life_events must be positive")
+        positions = torch.arange(time_steps, device="cpu").unsqueeze(0)
+        cpu_lengths = lengths.detach().cpu().unsqueeze(1)
+        valid = positions < cpu_lengths
+        age = (cpu_lengths - 1 - positions).clamp_min(0).to(torch.float32)
+        weights = torch.pow(0.5, age / half_life_events) * valid.to(torch.float32)
+        weights = weights / weights.sum(dim=1, keepdim=True).clamp_min(1e-12)
+        return weights.to(device=device, dtype=dtype)
+
+    def encode_components(self, categorical: torch.Tensor, continuous: torch.Tensor,
+                          lengths: torch.Tensor, augment: bool = False) -> EncoderOutput:
+        self._validate_batch(categorical, continuous, lengths)
+        event = self._event_tensor(categorical, continuous, augment=augment)
+        sequence, _ = self.gru(event)
+        slow_weights = self._timescale_weights(
+            lengths,
+            sequence.shape[1],
+            self.persistent_half_life_events,
+            device=sequence.device,
+            dtype=sequence.dtype,
+        )
+        fast_weights = self._timescale_weights(
+            lengths,
+            sequence.shape[1],
+            self.context_half_life_events,
+            device=sequence.device,
+            dtype=sequence.dtype,
+        )
+        slow_state = (sequence * slow_weights.unsqueeze(-1)).sum(dim=1)
+        fast_state = (sequence * fast_weights.unsqueeze(-1)).sum(dim=1)
+        persistent = self.output_projection(slow_state)
+        context = self.context_projection(fast_state - slow_state)
+        gate = torch.sigmoid(self.fusion_gate(torch.cat((persistent, context), dim=1)))
+        combined = self.fusion_normalization(persistent + gate * context)
+        if self.ablation == "persistent_only":
+            context, combined = torch.zeros_like(context), persistent
+        elif self.ablation == "context_only":
+            persistent, combined = torch.zeros_like(persistent), context
+        return EncoderOutput(persistent=persistent, context=context, combined=combined)
+
+    def encode(self, categorical: torch.Tensor, continuous: torch.Tensor,
+               lengths: torch.Tensor, augment: bool = False) -> torch.Tensor:
+        return self.encode_components(categorical, continuous, lengths, augment).combined
+
+    def forward(self, categorical: torch.Tensor, continuous: torch.Tensor,
+                lengths: torch.Tensor) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+        output = self.encode_components(categorical, continuous, lengths, augment=True)
+        logits = {
+            name: head(getattr(output, self.loss_routes[name]))
+            for name, head in self.heads.items()
+        }
         return output.combined, logits
 
 
@@ -364,15 +481,31 @@ def _build_factorized_pc(vocabularies: dict[str, dict[str, int]], continuous_dim
     return FactorizedPCEncoder(vocabularies, continuous_dim, config, categorical_fields)
 
 
-@register_model("capacity_matched_single")
-def _build_capacity_matched_single(vocabularies: dict[str, dict[str, int]], continuous_dim: int,
-                                   config: dict[str, Any], categorical_fields: list[str] | None = None
-                                   ) -> SingleVectorEncoder:
-    """Build the closest single-GRU control to the factorized parameter budget."""
-    target_config = {**config, "model": {**config["model"], "variant": "factorized_pc",
-                                          "user_embedding_dim": int(config["model"].get(
-                                              "matched_output_dim", 128))}}
-    target = FactorizedPCEncoder(vocabularies, continuous_dim, target_config, categorical_fields)
+@register_model("two_timescale_pc")
+def _build_two_timescale_pc(vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+                            config: dict[str, Any], categorical_fields: list[str] | None = None
+                            ) -> SingleVectorEncoder:
+    return TwoTimescalePCEncoder(vocabularies, continuous_dim, config, categorical_fields)
+
+
+def _capacity_matched_single(
+    target_factory: type[SingleVectorEncoder],
+    target_variant: str,
+    vocabularies: dict[str, dict[str, int]],
+    continuous_dim: int,
+    config: dict[str, Any],
+    categorical_fields: list[str] | None,
+) -> SingleVectorEncoder:
+    """Build a single-GRU control closest to one candidate's parameter budget."""
+    target_config = {
+        **config,
+        "model": {
+            **config["model"],
+            "variant": target_variant,
+            "user_embedding_dim": int(config["model"].get("matched_output_dim", 128)),
+        },
+    }
+    target = target_factory(vocabularies, continuous_dim, target_config, categorical_fields)
     target_count = sum(parameter.numel() for parameter in target.parameters())
     del target
     output_dim = int(target_config["model"]["user_embedding_dim"])
@@ -380,11 +513,18 @@ def _build_capacity_matched_single(vocabularies: dict[str, dict[str, int]], cont
     best: tuple[int, SingleVectorEncoder] | None = None
     while low <= high:
         hidden = (low + high) // 2
-        candidate_config = {**config, "model": {**config["model"], "variant": "single_vector",
-                                                  "hidden_dim": hidden,
-                                                  "user_embedding_dim": output_dim}}
-        candidate = SingleVectorEncoder(vocabularies, continuous_dim, candidate_config,
-                                        categorical_fields)
+        candidate_config = {
+            **config,
+            "model": {
+                **config["model"],
+                "variant": "single_vector",
+                "hidden_dim": hidden,
+                "user_embedding_dim": output_dim,
+            },
+        }
+        candidate = SingleVectorEncoder(
+            vocabularies, continuous_dim, candidate_config, categorical_fields
+        )
         count = sum(parameter.numel() for parameter in candidate.parameters())
         if best is None or abs(count - target_count) < abs(best[0] - target_count):
             best = (count, candidate)
@@ -393,10 +533,44 @@ def _build_capacity_matched_single(vocabularies: dict[str, dict[str, int]], cont
         else:
             high = hidden - 1
     assert best is not None
-    best[1].capacity_match = {"target_parameters": target_count,
-                              "actual_parameters": best[0],
-                              "relative_error": abs(best[0] - target_count) / target_count}
+    best[1].capacity_match = {
+        "target_model_variant": target_variant,
+        "target_parameters": target_count,
+        "actual_parameters": best[0],
+        "relative_error": abs(best[0] - target_count) / target_count,
+    }
     return best[1]
+
+
+@register_model("capacity_matched_single")
+def _build_capacity_matched_single(vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+                                   config: dict[str, Any], categorical_fields: list[str] | None = None
+                                   ) -> SingleVectorEncoder:
+    return _capacity_matched_single(
+        FactorizedPCEncoder,
+        "factorized_pc",
+        vocabularies,
+        continuous_dim,
+        config,
+        categorical_fields,
+    )
+
+
+@register_model("two_timescale_capacity_matched_single")
+def _build_two_timescale_capacity_matched_single(
+    vocabularies: dict[str, dict[str, int]],
+    continuous_dim: int,
+    config: dict[str, Any],
+    categorical_fields: list[str] | None = None,
+) -> SingleVectorEncoder:
+    return _capacity_matched_single(
+        TwoTimescalePCEncoder,
+        "two_timescale_pc",
+        vocabularies,
+        continuous_dim,
+        config,
+        categorical_fields,
+    )
 
 
 # Stable names let ablation experiments differ in one configuration field while

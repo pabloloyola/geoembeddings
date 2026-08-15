@@ -335,3 +335,78 @@ def test_factorized_loss_routing_uses_named_branch():
     embedding, logits = model(categorical, continuous, torch.tensor([4, 2]))
     assert embedding.shape == (2, 5)
     assert set(logits) == {"next_service", "next_action"}
+
+
+def _two_timescale_fixture():
+    config, vocabularies = _model_fixture()
+    config["model"].update({
+        "variant": "two_timescale_pc",
+        "persistent_half_life_events": 16.0,
+        "context_half_life_events": 2.0,
+        "ablation": "fusion",
+        "loss_routing": {
+            "next_service": "context",
+            "next_action": "persistent",
+        },
+        "consistency_route": "persistent",
+    })
+    return config, vocabularies
+
+
+def test_two_timescale_encoder_is_finite_padding_safe_and_backpropagates():
+    config, vocabularies = _two_timescale_fixture()
+    model = build_model(vocabularies, 8, config).eval()
+    categorical = torch.randint(0, 3, (3, 6, 2))
+    continuous = torch.randn(3, 6, 8, requires_grad=True)
+    lengths = torch.tensor([6, 4, 2])
+
+    output = model.encode_components(categorical, continuous, lengths)
+
+    assert output.persistent.shape == output.context.shape == output.combined.shape == (3, 5)
+    assert all(torch.isfinite(value).all() for value in (
+        output.persistent, output.context, output.combined
+    ))
+    output.combined.square().mean().backward()
+    assert continuous.grad is not None and torch.isfinite(continuous.grad).all()
+
+    with torch.no_grad():
+        short = model.encode_components(categorical[:1, :4], continuous[:1, :4], torch.tensor([4]))
+        padded = model.encode_components(categorical[:1], continuous[:1], torch.tensor([4]))
+    for name in ("persistent", "context", "combined"):
+        torch.testing.assert_close(getattr(short, name), getattr(padded, name))
+
+
+def test_two_timescale_pooling_declares_distinct_slow_and_fast_recency():
+    from geoembeddings.model import TwoTimescalePCEncoder
+
+    lengths = torch.tensor([6, 3])
+    slow = TwoTimescalePCEncoder._timescale_weights(
+        lengths, 6, 16.0, device=torch.device("cpu"), dtype=torch.float32
+    )
+    fast = TwoTimescalePCEncoder._timescale_weights(
+        lengths, 6, 2.0, device=torch.device("cpu"), dtype=torch.float32
+    )
+
+    torch.testing.assert_close(slow.sum(dim=1), torch.ones(2))
+    torch.testing.assert_close(fast.sum(dim=1), torch.ones(2))
+    assert torch.count_nonzero(slow[1, 3:]) == 0
+    assert torch.count_nonzero(fast[1, 3:]) == 0
+    assert fast[0, -1] > slow[0, -1]
+    assert fast[0, 0] < slow[0, 0]
+
+
+def test_two_timescale_rejects_inverted_half_lives_and_matches_capacity():
+    config, vocabularies = _two_timescale_fixture()
+    config["model"]["persistent_half_life_events"] = 1.0
+    with pytest.raises(ValueError, match="persistent_half_life_events must be greater"):
+        build_model(vocabularies, 8, config)
+
+    config["model"].update({
+        "variant": "two_timescale_capacity_matched_single",
+        "persistent_half_life_events": 16.0,
+        "matched_output_dim": 5,
+        "capacity_search_max_hidden_dim": 64,
+    })
+    control = build_model(vocabularies, 8, config)
+    assert control.capacity_match["target_model_variant"] == "two_timescale_pc"
+    assert control.capacity_match["relative_error"] < 0.1
