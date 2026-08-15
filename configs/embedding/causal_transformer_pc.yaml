@@ -1,0 +1,71 @@
+data:
+  categorical_fields:
+  - service_id
+  - action_type
+  - observation_mode
+  - object_category
+  - region_id
+  - geohash_5
+  - geohash_7
+  continuous_fields:
+  - latitude
+  - longitude
+  - log_delta_minutes
+  - hour_sin
+  - hour_cos
+  - dow_sin
+  - dow_cos
+  - log_location_accuracy_m
+  include_object_id: false
+  max_sequence_length: 64
+  min_history_events: 2
+  train_fraction: 0.7
+  validation_fraction: 0.15
+evaluation:
+  episode_response:
+    boundary_bin_edges_hours: [-24, -12, -6, -3, -1, 0, 1, 3, 6, 12, 24]
+  probe_train_fraction: 0.8
+  ridge_alpha: 10.0
+model:
+  variant: causal_transformer_pc
+  categorical_embedding_dim: 24
+  event_dim: 128
+  hidden_dim: 128
+  user_embedding_dim: 128
+  gru_layers: 1
+  dropout: 0.1
+  event_dropout: 0.1
+  transformer_heads: 4
+  transformer_layers: 2
+  transformer_feedforward_dim: 256
+  # Event-order biases are development hypotheses, not calibrated time constants.
+  attention_half_life_events: 16.0
+  persistent_half_life_events: 32.0
+  context_half_life_events: 2.0
+  ablation: fusion
+  consistency_route: persistent
+  loss_routing:
+    next_service: context
+    next_action: context
+    next_category: persistent
+    next_region: combined
+    next_geohash_5: combined
+    next_geohash_7: combined
+objectives:
+  cross_window_consistency: 0.1
+  next_action: 0.4
+  next_category: 1.0
+  next_geohash_5: 0.5
+  next_geohash_7: 0.25
+  next_region: 0.75
+  next_service: 0.2
+seed: 20260806
+training:
+  batch_size: 128
+  device: auto
+  epochs: 8
+  gradient_clip_norm: 1.0
+  learning_rate: 0.001
+  num_workers: 0
+  weight_decay: 0.0001
+

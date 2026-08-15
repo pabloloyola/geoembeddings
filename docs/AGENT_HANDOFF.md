@@ -44,6 +44,11 @@ comparison also says **do not promote**: it created a clear descriptive
 stability split but lost to its capacity-matched single-vector control on test
 loss and five of six next-event accuracies. It remains an experimental baseline,
 not the current best model or a selected candidate.
+The follow-up `causal_transformer_pc` keeps those branches and changes only the
+trunk. It also says **do not promote**: against a 0.0086%-matched single-vector
+control it lost on validation/test loss and on held-out episode intent. Its
+more stable persistent component is descriptive, not evidence that additional
+sequence capacity solves the current selection failure.
 
 ## Repository ownership map
 
@@ -208,16 +213,17 @@ integrity and metrics, not real-world causal validity or scientific success.
 
 ## Near-term research decision
 
-Preserve the completed T2.7 **do not advance** decision and the T2.8
-**do not promote** development result. The immutable matched
+Preserve the completed T2.7 **do not advance** decision and the T2.8/T2.9
+**do not promote** development results. The immutable matched
 matrix compared `capacity_matched_single`, `factorized_pc`, and the required
 branch/loss ablations on identical data and cutoffs; failed persistent and
 combined task-information/collapse gates keep the routine branch closed.
-The next useful modeling step is not a larger rerun of T2.8: first make the
-episode evaluator report named components independently, then test a small
-causal transformer trunk only as a parameter/compute-matched follow-up. A
-single `[CLS]`-style transformer vector would not address the separation
-failure. Real-data evaluation remains the ultimate gate.
+The component-aware episode evaluator and small causal-transformer follow-up
+are now complete. The transformer did not beat its parameter-matched control,
+so the next useful modeling step is not a larger trunk. Prioritize observable
+recoverability, objective/routing changes, and the incoming real-data contract;
+then require a newly hypothesized candidate to beat the same component-aware
+control gates. Real-data evaluation remains the ultimate gate.
 T3.4--T3.7, the T4.2 adaptation/forgetting audit, and the T4.5
 external-validity boundary are complete. T4.2 currently provides
 diagnostic-control evidence only because no representation has the

@@ -1,10 +1,12 @@
 from pathlib import Path
+import json
 
 import numpy as np
 import pandas as pd
 import pytest
 
 from geoembeddings.evaluation import assign_episode_intervals, load_episode_evaluation_inputs
+from geoembeddings.representation_schema import EXPORT_SCHEMA_VERSION
 import inspect
 from geoembeddings import baseline, export, evaluation
 
@@ -82,3 +84,82 @@ def test_intent_probe_supports_more_features_than_labeled_rows():
 
     assert report["status"] == "ok"
     assert np.isfinite(report["accuracy"])
+
+
+def _episode_config():
+    return {
+        "seed": 7,
+        "evaluation": {
+            "probe_train_fraction": 0.8,
+            "ridge_alpha": 10.0,
+            "episode_response": {"boundary_bin_edges_hours": [-2, 0, 2]},
+        },
+    }
+
+
+def _prepared(tmp_path: Path) -> Path:
+    prepared = tmp_path / "prepared"
+    prepared.mkdir()
+    (prepared / "prepared_metadata.json").write_text(json.dumps({
+        "source_files": {"observed_events.csv.gz": "events-hash"},
+    }))
+    return prepared
+
+
+def test_episode_report_evaluates_named_components_and_preserves_combined_alias(tmp_path):
+    dense, truth = _write(tmp_path)
+    with np.load(dense, allow_pickle=False) as payload:
+        arrays = {name: np.asarray(payload[name]) for name in payload.files}
+    persistent = np.asarray([[1.0, 0.0], [0.9, 0.1]])
+    context = np.asarray([[0.0, 1.0], [1.0, 0.0]])
+    combined = persistent + context
+    np.savez(
+        dense,
+        **{name: value for name, value in arrays.items() if name != "embedding"},
+        embedding=combined,
+        schema_version=np.asarray(EXPORT_SCHEMA_VERSION),
+        model_variant=np.asarray("two_timescale_pc"),
+        categorical_fields=np.asarray(["service_id"]),
+        continuous_fields=np.asarray(["latitude"]),
+        preparation_hash=np.asarray("prepared-hash"),
+        source_file_names=np.asarray(["observed_events.csv.gz"]),
+        source_hashes=np.asarray(["events-hash"]),
+        train_end=np.asarray("2026-01-01T08:00:00Z"),
+        validation_end=np.asarray("2026-01-01T08:30:00Z"),
+        export_cutoffs=np.asarray(["observed_event"]),
+        compatibility=np.asarray("embedding aliases component_combined"),
+        component_names=np.asarray(["persistent", "context", "combined"]),
+        component_dimensions=np.asarray([2, 2, 2]),
+        component_persistent=persistent,
+        component_context=context,
+        component_combined=combined,
+    )
+
+    report = evaluation.evaluate_episode_response(
+        truth, _prepared(tmp_path), dense, tmp_path / "episode.json",
+        _episode_config(), kind="learned",
+    )
+
+    assert report["metric_contract"]["version"] == "episode-response/2.0"
+    assert report["metric_contract"]["component_schema"] == {
+        "persistent": 2, "context": 2, "combined": 2,
+    }
+    assert set(report["component_evaluations"]) == {"persistent", "context", "combined"}
+    assert report["component_evaluations"]["context"]["applicability"] == "applicable"
+    assert report["R4_episode_coherence"] == report["component_evaluations"]["combined"]["R4_episode_coherence"]
+    assert report["intent_probe"] == report["component_evaluations"]["combined"]["intent_probe"]
+
+
+def test_episode_report_marks_legacy_zero_context_not_applicable(tmp_path):
+    dense, truth = _write(tmp_path)
+    report = evaluation.evaluate_episode_response(
+        truth, _prepared(tmp_path), dense, tmp_path / "episode.json",
+        _episode_config(), kind="learned",
+    )
+
+    assert report["component_evaluations"]["context"]["applicability"] == (
+        "not_applicable_structural_zero_adapter"
+    )
+    assert report["R1_single_vector_diagnostics"]["temporary_episode_drift"] == (
+        report["component_evaluations"]["combined"]["R1_temporal_response"]["temporary_episode_drift"]
+    )
