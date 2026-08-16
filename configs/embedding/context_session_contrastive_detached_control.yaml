@@ -24,7 +24,7 @@ evaluation:
   ridge_alpha: 10.0
   robustness:
     algorithm_version: sha256-robustness-views/2.0
-    schema_version: robustness-spec/2.0
+    schema_version: robustness-spec/1.0
     seed: 20260811
     views:
       gps: [{sigma_m: 25.0}, {sigma_m: 100.0}]

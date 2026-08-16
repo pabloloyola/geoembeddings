@@ -9,6 +9,7 @@ import pytest
 from geoembeddings.baseline import export_dense_statistical_baseline, export_statistical_baseline
 from geoembeddings.config import load_config
 from geoembeddings.robustness import deterministic_event_removal, export_robustness_views, perturb_view
+from geoembeddings.robustness import _specs
 from geoembeddings.representation_schema import EXPORT_SCHEMA_VERSION, load_embedding_export
 from geoembeddings.io import sha256_file
 
@@ -123,3 +124,23 @@ def test_dense_statistical_baseline_carries_calibration_identity(tmp_path: Path)
         )
         assert len(payload["source_file_names"]) == len(payload["source_hashes"])
         assert len(payload["source_file_names"]) > 0
+
+
+def test_context_session_configs_use_supported_robustness_schema_and_unknown_versions_fail() -> None:
+    root = Path(__file__).resolve().parents[1]
+    for name in (
+        "context_session_contrastive_candidate.yaml",
+        "context_session_contrastive_detached_control.yaml",
+    ):
+        config = load_config(root / "configs/embedding" / name)
+        robustness = config["evaluation"]["robustness"]
+        assert robustness["schema_version"] == "robustness-spec/1.0"
+        specs, _ = _specs(config, ["gps"])
+        assert specs[0]["schema_version"] == "robustness-spec/1.0"
+
+        invalid = dict(config)
+        invalid["evaluation"] = dict(config["evaluation"])
+        invalid["evaluation"]["robustness"] = dict(robustness)
+        invalid["evaluation"]["robustness"]["schema_version"] = "robustness-spec/2.0"
+        with pytest.raises(ValueError, match="Unsupported robustness specification version"):
+            _specs(invalid, ["gps"])
