@@ -138,6 +138,8 @@ RELIABILITY_REPORT_SCHEMA = "geoembeddings-reliability-report/1.0"
 OFFLINE_BENCHMARK_SCHEMA = "geoembeddings-offline-benchmark/1.0"
 ONLINE_WORKLOAD_SCHEMA = "geoembeddings-online-workload/1.0"
 ONLINE_BENCHMARK_SCHEMA = "geoembeddings-online-benchmark/1.0"
+CONTEXT_PAIR_MANIFEST_SCHEMA = "geoembeddings-context-pair-manifest/1.0"
+CONTEXT_PAIR_PREFLIGHT_SCHEMA = "geoembeddings-context-pair-preflight/1.0"
 
 OBSERVED_FILES = {
     "users": "users_observed.csv.gz",

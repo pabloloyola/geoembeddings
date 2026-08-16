@@ -71,6 +71,17 @@ def test_reliability_and_benchmark_use_canonical_roots() -> None:
     assert not hasattr(benchmark, "truth_dir")
 
 
+def test_context_pair_preflight_uses_canonical_roots_and_future_base_config() -> None:
+    args = build_parser().parse_args([
+        "context-pair-preflight", "--run-dir", "runs/pilot",
+        "--experiment-dir", "experiments/prepared", "--output-dir", "/tmp/pairs",
+    ])
+    assert str(args.run_dir) == "runs/pilot"
+    assert str(args.experiment_dir) == "experiments/prepared"
+    assert str(args.embedding_config).endswith("configs/embedding/two_timescale_pc.yaml")
+    assert not hasattr(args, "truth_dir") and not hasattr(args, "observed_dir")
+
+
 def test_pair_manifest_uses_run_roots_and_canonical_output() -> None:
     args = build_parser().parse_args(["pair-manifest", "--reference-run-dir", "runs/ref",
         "--intervention-run-dir", "runs/int", "--output", "pairs/pair_manifest.json"])

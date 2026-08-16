@@ -15,6 +15,8 @@ from .layout import DatasetLayout, ExperimentLayout, PairLayout
 DEFAULT_SIMULATION_CONFIG = Path("configs/simulation/kanto_v1.yaml")
 DEFAULT_EMBEDDING_CONFIG = Path("configs/embedding/single_vector.yaml")
 DEFAULT_PRIVACY_CONFIG = Path("configs/privacy/diagnostic_v1.yaml")
+DEFAULT_CONTEXT_PAIR_CONFIG = Path("configs/preflight/context_session_v1.yaml")
+DEFAULT_CONTEXT_EMBEDDING_CONFIG = Path("configs/embedding/two_timescale_pc.yaml")
 
 
 class ScientificMetricUnavailable(RuntimeError):
@@ -117,6 +119,15 @@ def build_parser() -> argparse.ArgumentParser:
     calibrate.add_argument("--config", type=Path, default=Path("configs/reliability/diagnostic_v1.yaml"))
     calibrate.add_argument("--output-dir", required=True, type=Path)
     calibrate.add_argument("--overwrite", action="store_true")
+
+    context_preflight = commands.add_parser(
+        "context-pair-preflight", help="Build an observed-only context-session pair manifest"
+    )
+    context_preflight.add_argument("--run-dir", required=True, type=Path)
+    context_preflight.add_argument("--experiment-dir", required=True, type=Path)
+    context_preflight.add_argument("--config", type=Path, default=DEFAULT_CONTEXT_PAIR_CONFIG)
+    context_preflight.add_argument("--embedding-config", type=Path, default=DEFAULT_CONTEXT_EMBEDDING_CONFIG)
+    context_preflight.add_argument("--output-dir", required=True, type=Path)
 
     prepare = commands.add_parser("prepare", help="Fit leakage-safe preprocessing")
     _add_embedding_arguments(prepare)
@@ -612,6 +623,11 @@ def _run_command(args: argparse.Namespace) -> dict[str, Any]:
         from .calibration import calibrate_reliability
         result = calibrate_reliability(args.run_dir, _named_roots(args.experiment_dir),
             args.config, args.output_dir, overwrite=args.overwrite)
+    elif args.command == "context-pair-preflight":
+        from .context_pair_preflight import run_context_pair_preflight
+        result = run_context_pair_preflight(
+            args.run_dir, args.experiment_dir, args.config, args.embedding_config, args.output_dir
+        )
     elif args.command in {"prepare", "train", "baseline", "export", "export-dense", "evaluate", "robustness", "benchmark"}:
         run = DatasetLayout.from_path(args.run_dir)
         experiment = ExperimentLayout.from_path(args.experiment_dir)
