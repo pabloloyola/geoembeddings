@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import platform
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -73,6 +76,17 @@ def _distribution(values: list[float]) -> dict[str, Any]:
         "p95": float(series.quantile(.95)),
         "max": float(series.max()),
     }
+
+
+def _local_calendar_day(value: Any, timezone_name: str) -> Any:
+    try:
+        timezone_value = ZoneInfo(str(timezone_name))
+    except Exception as exc:
+        raise ValueError(f"unknown local-day timezone: {timezone_name!r}") from exc
+    timestamp = pd.Timestamp(value)
+    if timestamp.tzinfo is None:
+        raise ValueError("local-day evaluation requires timezone-aware timestamps")
+    return timestamp.tz_convert(timezone_value).date()
 
 
 def _validate_pair_identity(pair: Mapping[str, Any]) -> None:
@@ -166,6 +180,8 @@ def build_context_pairs(
     positive_pairs_per_anchor: int,
     negative_pairs_per_anchor: int,
     seed: int,
+    positive_local_day_timezone: str | None = None,
+    positive_same_local_day: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Build deterministic pairs from observed events at or before train_end."""
     if min_history_events < 1 or session_gap_hours <= 0:
@@ -235,6 +251,14 @@ def build_context_pairs(
             positive_candidates = [candidate for candidate in later
                                    if candidate["session_id"] == anchor["session_id"]
                                    and candidate["position"] - anchor["position"] - 1 >= min_intervening_groups_for_positive]
+            if positive_same_local_day:
+                if not positive_local_day_timezone:
+                    raise ValueError("positive_same_local_day requires positive_local_day_timezone")
+                positive_candidates = [
+                    candidate for candidate in positive_candidates
+                    if _local_calendar_day(anchor["timestamp"], positive_local_day_timezone)
+                    == _local_calendar_day(candidate["timestamp"], positive_local_day_timezone)
+                ]
             negative_candidates = [candidate for candidate in later
                                    if candidate["session_id"] != anchor["session_id"]]
             if not positive_candidates:
@@ -317,11 +341,294 @@ def build_context_pairs(
     return pairs, diagnostics
 
 
+def _sensitivity_groups(
+    events: pd.DataFrame,
+    *,
+    train_end: str | pd.Timestamp,
+    session_gap_hours: float,
+) -> tuple[dict[str, list[dict[str, Any]]], pd.DataFrame, int]:
+    """Create atomic observed timestamp groups for one session definition."""
+    if session_gap_hours <= 0:
+        raise ValueError("session gap must be positive")
+    cutoff = pd.Timestamp(train_end)
+    if cutoff.tzinfo is None:
+        raise ValueError("training cutoff must be timezone-aware")
+    frame = events.copy()
+    frame["user_id"] = frame["user_id"].astype(str)
+    frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True, errors="raise")
+    if frame["timestamp"].isna().any():
+        raise ValueError("observed events contain invalid timestamps")
+    if frame.duplicated(keep=False).any():
+        raise ValueError("duplicate observed event records have conflicting identities")
+    cross_cutoff_count = int((frame["timestamp"] > cutoff).sum())
+    frame = frame.loc[frame["timestamp"] <= cutoff].copy()
+    frame = frame.sort_values(["user_id", "timestamp"], kind="stable")
+
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for user_id, user_frame in frame.groupby("user_id", sort=True):
+        user_groups: list[dict[str, Any]] = []
+        history_count = 0
+        session_ordinal = -1
+        previous_timestamp: pd.Timestamp | None = None
+        for timestamp, group in user_frame.groupby("timestamp", sort=True):
+            timestamp = pd.Timestamp(timestamp)
+            gap_hours = None if previous_timestamp is None else (
+                (timestamp - previous_timestamp).total_seconds() / 3600.0
+            )
+            if gap_hours is None or gap_hours > session_gap_hours:
+                session_ordinal += 1
+            timestamp_text = _canonical_timestamp(timestamp)
+            services = []
+            if "service_id" in group:
+                services = sorted({str(value) for value in group["service_id"].dropna()})
+            user_groups.append({
+                "user_id": str(user_id),
+                "timestamp": timestamp,
+                "timestamp_text": timestamp_text,
+                "group_id": _group_id(str(user_id), timestamp_text),
+                "event_count": int(len(group)),
+                "history_event_count": history_count,
+                "services": services,
+                "previous_gap_hours": gap_hours,
+                "session_id": _session_id(str(user_id), session_ordinal),
+                "position": len(user_groups),
+            })
+            history_count += int(len(group))
+            previous_timestamp = timestamp
+        groups[str(user_id)] = user_groups
+    return groups, frame, cross_cutoff_count
+
+
+def _decile_coverage(
+    training_user_ids: set[str],
+    training_event_counts: Mapping[str, int],
+    positive_pairs_by_user: Counter[str],
+) -> list[dict[str, Any]]:
+    ordered = sorted(
+        ((user_id, int(training_event_counts.get(user_id, 0))) for user_id in training_user_ids),
+        key=lambda item: (item[1], item[0]),
+    )
+    if not ordered:
+        return []
+    rows: list[dict[str, Any]] = []
+    for decile in range(1, 11):
+        members = [
+            (user_id, count) for rank, (user_id, count) in enumerate(ordered)
+            if min(10, math.floor(rank * 10 / len(ordered)) + 1) == decile
+        ]
+        if not members:
+            continue
+        pair_count = sum(positive_pairs_by_user[user_id] for user_id, _ in members)
+        covered_users = sum(positive_pairs_by_user[user_id] > 0 for user_id, _ in members)
+        rows.append({
+            "decile": decile,
+            "user_count": len(members),
+            "training_event_count_min": min(count for _, count in members),
+            "training_event_count_max": max(count for _, count in members),
+            "users_with_positive": covered_users,
+            "positive_pair_count": pair_count,
+            "positive_user_coverage": covered_users / len(members),
+        })
+    return rows
+
+
+def build_session_definition_sensitivity(
+    events: pd.DataFrame,
+    *,
+    train_end: str | pd.Timestamp,
+    min_history_events: int,
+    training_user_ids: set[str],
+    session_gap_hours: list[float],
+    min_intervening_groups: list[int],
+    positive_pairs_per_anchor: int,
+    seed: int,
+    daily_gap_flag_hours: float,
+    adjacent_prefix_flag_share: float,
+    high_overlap_ratio: float,
+    high_overlap_flag_share: float,
+    daily_span_flag_share: float,
+) -> list[dict[str, Any]]:
+    """Report deterministic positive-pair support across observed session definitions."""
+    if min_history_events < 1 or positive_pairs_per_anchor < 1:
+        raise ValueError("invalid sensitivity history or pair cap")
+    if not training_user_ids:
+        raise ValueError("sensitivity requires authenticated training users")
+    training_user_ids = {str(user_id) for user_id in training_user_ids}
+    training_event_counts = (
+        events.assign(user_id=events["user_id"].astype(str))
+        .loc[lambda frame: frame["user_id"].isin(training_user_ids)]
+        .groupby("user_id").size().to_dict()
+    )
+    results: list[dict[str, Any]] = []
+    for gap in session_gap_hours:
+        for min_intervening in min_intervening_groups:
+            if float(gap) <= 0 or int(min_intervening) < 0:
+                raise ValueError("invalid sensitivity session definition")
+            groups, frame, cross_cutoff_count = _sensitivity_groups(
+                events,
+                train_end=train_end,
+                session_gap_hours=float(gap),
+            )
+            pairs: list[dict[str, Any]] = []
+            positive_pairs_by_user: Counter[str] = Counter()
+            valid_anchor_count = 0
+            positive_anchor_count = 0
+            excluded_insufficient = 0
+            excluded_no_positive = 0
+            group_service_signatures: set[tuple[str, ...]] = set()
+            for user_groups in groups.values():
+                for group in user_groups:
+                    group_service_signatures.add(tuple(group["services"]))
+                valid = [
+                    group for group in user_groups
+                    if group["history_event_count"] >= min_history_events
+                ]
+                excluded_insufficient += len(user_groups) - len(valid)
+                valid_anchor_count += len(valid)
+                for anchor in valid:
+                    candidates = [
+                        candidate for candidate in valid
+                        if candidate["position"] > anchor["position"]
+                        and candidate["session_id"] == anchor["session_id"]
+                        and candidate["position"] - anchor["position"] - 1 >= int(min_intervening)
+                    ]
+                    if not candidates:
+                        excluded_no_positive += 1
+                        continue
+                    positive_anchor_count += 1
+                    user_id = str(anchor["user_id"])
+                    selected = sorted(
+                        candidates,
+                        key=lambda candidate: _selection_key(
+                            seed,
+                            f"sensitivity-positive-{float(gap):g}-{int(min_intervening)}",
+                            user_id,
+                            anchor["group_id"],
+                            candidate["group_id"],
+                        ),
+                    )[:positive_pairs_per_anchor]
+                    for candidate in selected:
+                        between = [
+                            group["previous_gap_hours"] for group in user_groups
+                            if anchor["position"] < group["position"] <= candidate["position"]
+                            and group["previous_gap_hours"] is not None
+                        ]
+                        anchor_history = int(anchor["history_event_count"])
+                        paired_history = int(candidate["history_event_count"])
+                        overlap_ratio = anchor_history / max(1, paired_history)
+                        record = {
+                            "user_id": user_id,
+                            "anchor_group_id": str(anchor["group_id"]),
+                            "paired_group_id": str(candidate["group_id"]),
+                            "anchor_timestamp": _canonical_timestamp(anchor["timestamp"]),
+                            "paired_timestamp": _canonical_timestamp(candidate["timestamp"]),
+                            "anchor_history_event_count": anchor_history,
+                            "paired_history_event_count": paired_history,
+                            "gap_hours": float((candidate["timestamp"] - anchor["timestamp"]).total_seconds() / 3600.0),
+                            "intervening_group_count": int(candidate["position"] - anchor["position"] - 1),
+                            "anchor_services": list(anchor["services"]),
+                            "paired_services": list(candidate["services"]),
+                            "overlap_ratio": float(overlap_ratio),
+                            "max_intervening_gap_hours": float(max(between, default=0.0)),
+                            "crosses_calendar_day": anchor["timestamp"].date() != candidate["timestamp"].date(),
+                        }
+                        pairs.append(record)
+                        positive_pairs_by_user[user_id] += 1
+            pairs.sort(key=lambda pair: (pair["user_id"], pair["anchor_timestamp"], pair["paired_timestamp"]))
+            pair_count = len(pairs)
+            positive_users = sum(count > 0 for count in positive_pairs_by_user.values())
+            pair_counts = sorted(
+                ((user_id, positive_pairs_by_user[user_id]) for user_id in training_user_ids),
+                key=lambda item: (-item[1], item[0]),
+            )
+            top_user_count = max(1, math.ceil(len(training_user_ids) * 0.10))
+            top_user_pairs = sum(count for _, count in pair_counts[:top_user_count])
+            adjacent_share = sum(pair["intervening_group_count"] == 0 for pair in pairs) / max(1, pair_count)
+            overlap_share = sum(pair["overlap_ratio"] >= high_overlap_ratio for pair in pairs) / max(1, pair_count)
+            daily_span_share = sum(
+                pair["max_intervening_gap_hours"] >= daily_gap_flag_hours for pair in pairs
+            ) / max(1, pair_count)
+            day_cross_count = sum(pair["crosses_calendar_day"] for pair in pairs)
+            service_combinations = Counter(
+                (tuple(pair["anchor_services"]), tuple(pair["paired_services"])) for pair in pairs
+            )
+            combination_rows = [
+                {
+                    "anchor_services": list(key[0]),
+                    "paired_services": list(key[1]),
+                    "positive_pair_count": count,
+                }
+                for key, count in sorted(service_combinations.items())
+            ]
+            flags = []
+            if adjacent_share >= adjacent_prefix_flag_share:
+                flags.append("adjacent_prefix_dominant")
+            if overlap_share >= high_overlap_flag_share:
+                flags.append("highly_overlapping_pairs")
+            if daily_span_share >= daily_span_flag_share:
+                flags.append("merges_clearly_distinct_daily_activity")
+            results.append({
+                "setting": {
+                    "session_gap_hours": float(gap),
+                    "min_intervening_timestamp_groups": int(min_intervening),
+                },
+                "sessions": int(len({group["session_id"] for user in groups.values() for group in user})),
+                "timestamp_groups": int(sum(len(user) for user in groups.values())),
+                "positive_pair_count": pair_count,
+                "positive_anchor_count": positive_anchor_count,
+                "valid_anchor_count": valid_anchor_count,
+                "positive_anchor_coverage": positive_anchor_count / max(1, valid_anchor_count),
+                "users_with_at_least_one_positive": positive_users,
+                "positive_time_gap_distribution_hours": _distribution([pair["gap_hours"] for pair in pairs]),
+                "training_event_count_decile_coverage": _decile_coverage(
+                    training_user_ids, training_event_counts, positive_pairs_by_user,
+                ),
+                "service_combination_coverage": {
+                    "definition": "ordered anchor timestamp-group service set x paired timestamp-group service set",
+                    "observed_group_service_set_count": len(group_service_signatures),
+                    "unique_service_combinations_covered": len(service_combinations),
+                    "possible_service_combinations_denominator": len(group_service_signatures) ** 2,
+                    "coverage_fraction": len(service_combinations) / max(1, len(group_service_signatures) ** 2),
+                    "combinations": combination_rows,
+                },
+                "calendar_day_boundary": {
+                    "pairs_crossing_calendar_day": day_cross_count,
+                    "pair_share": day_cross_count / max(1, pair_count),
+                    "any_pairs_crossing": bool(day_cross_count),
+                },
+                "pair_concentration": {
+                    "top_user_fraction": 0.10,
+                    "top_user_count": top_user_count,
+                    "top_user_positive_pairs": top_user_pairs,
+                    "top_user_positive_share": top_user_pairs / max(1, pair_count),
+                },
+                "exclusions": {
+                    "cross_cutoff_events": cross_cutoff_count,
+                    "insufficient_history_timestamp_groups": excluded_insufficient,
+                    "valid_anchors_without_positive": excluded_no_positive,
+                },
+                "diagnostic_flags": {
+                    "adjacent_prefix_share": adjacent_share,
+                    "high_overlap_share": overlap_share,
+                    "long_within_session_gap_share": daily_span_share,
+                    "thresholds": {
+                        "adjacent_prefix_flag_share": adjacent_prefix_flag_share,
+                        "high_overlap_ratio": high_overlap_ratio,
+                        "high_overlap_flag_share": high_overlap_flag_share,
+                        "daily_gap_flag_hours": daily_gap_flag_hours,
+                        "daily_span_flag_share": daily_span_flag_share,
+                    },
+                    "flags": flags,
+                },
+            })
+    return results
+
+
 def _auth_metadata(
     run_dir: str | Path,
     experiment_dir: str | Path,
     embedding_config_path: str | Path,
-) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any], dict[str, Any]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any], dict[str, Any], set[str]]:
     run = DatasetLayout.from_path(run_dir)
     manifest = run.validate(require_truth=False)
     experiment = ExperimentLayout.from_path(experiment_dir)
@@ -406,7 +713,7 @@ def _auth_metadata(
             "user_role_protocol": metadata.get("user_role_protocol"),
         },
     }
-    return users, train_events, auth, embedding_config
+    return users, train_events, auth, embedding_config, train_users
 
 
 def _load_pair_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -419,15 +726,39 @@ def _load_pair_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]
     required = {
         "session_gap_hours", "min_intervening_groups_for_positive",
         "positive_pairs_per_anchor", "negative_pairs_per_anchor", "seed",
+        "positive_local_day_timezone", "positive_same_local_day",
     }
     if set(pairing) != required:
         raise ValueError("context-session preflight pairing configuration is not frozen")
+    sensitivity = config.get("sensitivity")
+    sensitivity_required = {
+        "session_gap_hours", "min_intervening_groups", "daily_gap_flag_hours",
+        "adjacent_prefix_flag_share", "high_overlap_ratio", "high_overlap_flag_share",
+        "daily_span_flag_share",
+    }
+    if not isinstance(sensitivity, Mapping) or set(sensitivity) != sensitivity_required:
+        raise ValueError("context-session preflight sensitivity configuration is not frozen")
+    if sorted(float(value) for value in sensitivity["session_gap_hours"]) != [2.0, 4.0, 6.0, 8.0, 12.0]:
+        raise ValueError("context-session preflight sensitivity session gaps are not frozen")
+    if sorted(int(value) for value in sensitivity["min_intervening_groups"]) != [0, 1]:
+        raise ValueError("context-session preflight sensitivity intervening groups are not frozen")
     normalized = {
         "session_gap_hours": float(pairing["session_gap_hours"]),
         "min_intervening_groups_for_positive": int(pairing["min_intervening_groups_for_positive"]),
         "positive_pairs_per_anchor": int(pairing["positive_pairs_per_anchor"]),
         "negative_pairs_per_anchor": int(pairing["negative_pairs_per_anchor"]),
         "seed": int(pairing["seed"]),
+        "positive_local_day_timezone": str(pairing["positive_local_day_timezone"]),
+        "positive_same_local_day": bool(pairing["positive_same_local_day"]),
+    }
+    normalized["sensitivity"] = {
+        "session_gap_hours": [float(value) for value in sensitivity["session_gap_hours"]],
+        "min_intervening_groups": [int(value) for value in sensitivity["min_intervening_groups"]],
+        "daily_gap_flag_hours": float(sensitivity["daily_gap_flag_hours"]),
+        "adjacent_prefix_flag_share": float(sensitivity["adjacent_prefix_flag_share"]),
+        "high_overlap_ratio": float(sensitivity["high_overlap_ratio"]),
+        "high_overlap_flag_share": float(sensitivity["high_overlap_flag_share"]),
+        "daily_span_flag_share": float(sensitivity["daily_span_flag_share"]),
     }
     return config, normalized
 
@@ -459,12 +790,26 @@ def run_context_pair_preflight(
 ) -> dict[str, Any]:
     """Authenticate an existing preparation and publish an immutable pair preflight."""
     pair_config, pairing = _load_pair_config(pair_config_path)
-    users, train_events, auth, embedding_config = _auth_metadata(run_dir, experiment_dir, embedding_config_path)
+    users, train_events, auth, embedding_config, training_user_ids = _auth_metadata(
+        run_dir, experiment_dir, embedding_config_path,
+    )
     pairs, diagnostics = build_context_pairs(
         train_events,
         train_end=auth["preparation_authentication"]["train_cutoff"],
         min_history_events=int(embedding_config["data"]["min_history_events"]),
-        **pairing,
+        **{key: value for key, value in pairing.items() if key != "sensitivity"},
+    )
+    sensitivity = pairing["sensitivity"]
+    sensitivity_results = build_session_definition_sensitivity(
+        train_events,
+        train_end=auth["preparation_authentication"]["train_cutoff"],
+        min_history_events=int(embedding_config["data"]["min_history_events"]),
+        training_user_ids=training_user_ids,
+        session_gap_hours=sensitivity["session_gap_hours"],
+        min_intervening_groups=sensitivity["min_intervening_groups"],
+        positive_pairs_per_anchor=pairing["positive_pairs_per_anchor"],
+        seed=pairing["seed"],
+        **{key: value for key, value in sensitivity.items() if key not in {"session_gap_hours", "min_intervening_groups"}},
     )
     pair_configuration = {
         "schema_version": pair_config["schema_version"],
@@ -474,11 +819,13 @@ def run_context_pair_preflight(
         "negative_rule": "same_user_different_observed_session",
         "fallback_policy": "exclude",
         "embedding_base": "two_timescale_pc_future_intended_base",
+        "sensitivity": sensitivity,
     }
     manifest = {
         "schema_version": CONTEXT_PAIR_MANIFEST_SCHEMA,
         **auth,
         "pair_configuration": pair_configuration,
+        "coverage": diagnostics["coverage"],
         "pairs": pairs,
         "creation_provenance": {
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -497,6 +844,7 @@ def run_context_pair_preflight(
         **auth,
         "pair_configuration": pair_configuration,
         **diagnostics,
+        "session_definition_sensitivity": sensitivity_results,
         "coverage_sufficiency": {
             "status": "manual_review",
             "manual_review_required": True,

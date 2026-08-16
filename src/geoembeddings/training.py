@@ -12,6 +12,13 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 
+from .context_contrastive import (
+    ContextProjectionHead,
+    FrozenContextTripletDataset,
+    collate_context_triplets,
+    context_infonce_loss,
+    select_epoch_triplets,
+)
 from .data import (PARTICIPATION_HASH_DEFINITION, TARGET_FIELDS, EventWindowDataset,
                    collate_windows, participation_roles)
 from .io import read_json, sha256_file, write_json
@@ -61,6 +68,41 @@ def train_model(
 
     train_dataset = EventWindowDataset(observed_dir, prepared_dir, "train", config)
     validation_dataset = EventWindowDataset(observed_dir, prepared_dir, "validation", config)
+    contrastive_weight = float(config["objectives"].get("context_session_contrastive", 0.0))
+    contrastive_dataset: FrozenContextTripletDataset | None = None
+    contrastive_head: ContextProjectionHead | None = None
+    contrastive_spec: dict[str, Any] | None = None
+    if contrastive_weight > 0:
+        contrastive_spec = _context_contrastive_spec(config)
+        contrastive_dataset = FrozenContextTripletDataset(
+            train_dataset,
+            contrastive_spec["manifest_path"],
+            negative_pairs_per_anchor=contrastive_spec["negative_pairs_per_anchor"],
+            max_sequence_length=int(config["data"]["max_sequence_length"]),
+            expected_session_gap_hours=contrastive_spec["session_gap_hours"],
+            expected_intervening_groups=contrastive_spec["min_intervening_groups"],
+            expected_local_day_timezone=contrastive_spec["local_day_timezone"],
+            expected_same_local_day=contrastive_spec["same_local_day"],
+        )
+        coverage_report = {
+            **contrastive_dataset.joint_coverage_report,
+            "mode": contrastive_spec["mode"],
+            "configured_joint_coverage_min_ratio": contrastive_spec["min_joint_coverage_ratio"],
+            "coverage_gate": "joint_anchor_coverage >= reported_positive_anchor_coverage * min_ratio",
+        }
+        ratio = float(coverage_report["joint_to_positive_anchor_ratio"])
+        coverage_report["status"] = (
+            "passed" if coverage_report["joint_anchor_count"] > 0
+            and ratio >= contrastive_spec["min_joint_coverage_ratio"] else "failed"
+        )
+        joint_report_path = output_dir / "context_contrastive_joint_coverage.json"
+        if joint_report_path.exists():
+            raise FileExistsError(f"Immutable joint-coverage report already exists: {joint_report_path}")
+        write_json(coverage_report, joint_report_path)
+        if coverage_report["status"] != "passed":
+            raise ValueError(
+                "context contrastive joint coverage is zero or materially below positive coverage"
+            )
     loader_settings = {
         "batch_size": int(config["training"]["batch_size"]),
         "num_workers": int(config["training"].get("num_workers", 0)),
@@ -80,12 +122,27 @@ def train_model(
         config,
         categorical_fields=categorical_fields,
     ).to(device)
-    parameter_counts = {
-        "total": sum(parameter.numel() for parameter in model.parameters()),
-        "trainable": sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad),
-    }
+    if contrastive_spec is not None:
+        contrastive_head = ContextProjectionHead(
+            int(config["model"]["user_embedding_dim"]),
+            contrastive_spec["projection_dim"],
+        ).to(device)
+    encoder_total = sum(parameter.numel() for parameter in model.parameters())
+    encoder_trainable = sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
+    parameter_counts = {"total": encoder_total, "trainable": encoder_trainable}
+    if contrastive_head is not None:
+        parameter_counts["encoder_total"] = encoder_total
+        parameter_counts["encoder_trainable"] = encoder_trainable
+        parameter_counts["context_projection_head"] = sum(
+            parameter.numel() for parameter in contrastive_head.parameters()
+        )
+        parameter_counts["total"] = encoder_total + parameter_counts["context_projection_head"]
+        parameter_counts["trainable"] = encoder_trainable + parameter_counts["context_projection_head"]
+    optimizer_parameters = list(model.parameters())
+    if contrastive_head is not None:
+        optimizer_parameters.extend(contrastive_head.parameters())
     optimizer = AdamW(
-        model.parameters(),
+        optimizer_parameters,
         lr=float(config["training"]["learning_rate"]),
         weight_decay=float(config["training"]["weight_decay"]),
     )
@@ -95,6 +152,29 @@ def train_model(
     checkpoint_path = output_dir / "best_model.pt"
     for epoch in range(1, int(config["training"]["epochs"]) + 1):
         train_metrics = _run_epoch(model, train_loader, config, device, optimizer)
+        if contrastive_dataset is not None and contrastive_head is not None and contrastive_spec is not None:
+            selected_triplets = select_epoch_triplets(
+                contrastive_dataset.triplets,
+                max_positive_anchors_per_user=contrastive_spec["max_positive_anchors_per_user"],
+                seed=contrastive_spec["selection_seed"],
+                epoch=epoch,
+            )
+            selected_dataset = contrastive_dataset.selected(selected_triplets)
+            contrastive_loader = DataLoader(
+                selected_dataset,
+                batch_size=contrastive_spec["batch_size"],
+                shuffle=False,
+                num_workers=0,
+                collate_fn=collate_context_triplets,
+            )
+            train_metrics.update(_run_context_contrastive_epoch(
+                model,
+                contrastive_head,
+                contrastive_loader,
+                contrastive_spec,
+                device,
+                optimizer,
+            ))
         with torch.no_grad():
             validation_metrics = _run_epoch(model, validation_loader, config, device, None)
         epoch_record = {"epoch": epoch, "train": train_metrics, "validation": validation_metrics}
@@ -123,6 +203,9 @@ def train_model(
                     "epoch": epoch,
                     "validation_metrics": validation_metrics,
                     "parameter_counts": parameter_counts,
+                    "context_contrastive_head_state": (
+                        contrastive_head.state_dict() if contrastive_head is not None else None
+                    ),
                     "capacity_match": getattr(model, "capacity_match", None),
                     "seed": seed,
                     "preparation_identity": {
@@ -167,6 +250,11 @@ def train_model(
         "best_validation_loss": best_validation,
         "checkpoint": str(checkpoint_path.resolve()),
         "history": history,
+        "context_contrastive": {
+            **(contrastive_spec or {"enabled": False}),
+            "joint_coverage_report": str(output_dir / "context_contrastive_joint_coverage.json")
+            if contrastive_dataset is not None else None,
+        },
     }
     participation = {
         "schema_version": "geoembeddings-training-participation/1.0",
@@ -200,6 +288,113 @@ def train_model(
     write_json(participation, participation_path)
     write_json(report, output_dir / "training_report.json")
     return report
+
+
+def _context_contrastive_spec(config: dict[str, Any]) -> dict[str, Any]:
+    raw = config.get("context_contrastive")
+    if not isinstance(raw, dict):
+        raise ValueError("context_contrastive configuration is required for its objective")
+    required = {
+        "manifest_path", "mode", "projection_dim", "temperature", "negative_pairs_per_anchor",
+        "max_positive_anchors_per_user", "selection_seed", "batch_size", "min_joint_coverage_ratio",
+        "session_gap_hours", "min_intervening_groups", "local_day_timezone", "same_local_day",
+    }
+    if set(raw) != required:
+        raise ValueError(f"context_contrastive configuration is not frozen: {sorted(set(raw) ^ required)}")
+    mode = str(raw["mode"])
+    if mode not in {"candidate", "detached_control"}:
+        raise ValueError("context_contrastive.mode must be candidate or detached_control")
+    result = {
+        "enabled": True,
+        "manifest_path": str(Path(raw["manifest_path"]).expanduser().resolve()),
+        "mode": mode,
+        "projection_dim": int(raw["projection_dim"]),
+        "temperature": float(raw["temperature"]),
+        "negative_pairs_per_anchor": int(raw["negative_pairs_per_anchor"]),
+        "max_positive_anchors_per_user": int(raw["max_positive_anchors_per_user"]),
+        "selection_seed": int(raw["selection_seed"]),
+        "batch_size": int(raw["batch_size"]),
+        "min_joint_coverage_ratio": float(raw["min_joint_coverage_ratio"]),
+        "session_gap_hours": float(raw["session_gap_hours"]),
+        "min_intervening_groups": int(raw["min_intervening_groups"]),
+        "local_day_timezone": str(raw["local_day_timezone"]),
+        "same_local_day": bool(raw["same_local_day"]),
+        "objective_weight": float(config["objectives"]["context_session_contrastive"]),
+        "gradient_clip_norm": float(config["training"]["gradient_clip_norm"]),
+    }
+    if result["projection_dim"] <= 0 or result["temperature"] <= 0:
+        raise ValueError("context contrastive projection dimension and temperature must be positive")
+    if result["negative_pairs_per_anchor"] < 1 or result["max_positive_anchors_per_user"] < 1:
+        raise ValueError("context contrastive pair caps must be positive")
+    if not 0.0 < result["min_joint_coverage_ratio"] <= 1.0:
+        raise ValueError("context contrastive joint coverage ratio must lie in (0, 1]")
+    return result
+
+
+def _move_context_batch(batch: dict[str, Any], device: torch.device) -> dict[str, Any]:
+    moved: dict[str, Any] = {}
+    for key, value in batch.items():
+        if isinstance(value, torch.Tensor):
+            moved[key] = value if key.endswith("lengths") else value.to(device)
+        else:
+            moved[key] = value
+    return moved
+
+
+def _run_context_contrastive_epoch(
+    model: torch.nn.Module,
+    projection_head: ContextProjectionHead,
+    loader: DataLoader,
+    spec: dict[str, Any],
+    device: torch.device,
+    optimizer: AdamW,
+) -> dict[str, float]:
+    model.train(True)
+    projection_head.train(True)
+    total_loss = 0.0
+    total_pairs = 0
+    detach_context = spec["mode"] == "detached_control"
+    for batch in loader:
+        batch = _move_context_batch(batch, device)
+        optimizer.zero_grad(set_to_none=True)
+        anchor = model.encode_components(
+            batch["anchor_categorical"], batch["anchor_continuous"], batch["anchor_lengths"], augment=False
+        ).context
+        positive = model.encode_components(
+            batch["positive_categorical"], batch["positive_continuous"], batch["positive_lengths"], augment=False
+        ).context
+        batch_size, negative_count, time_steps, field_count = batch["negative_categorical"].shape
+        negative_categorical = batch["negative_categorical"].reshape(
+            batch_size * negative_count, time_steps, field_count
+        )
+        negative_continuous = batch["negative_continuous"].reshape(
+            batch_size * negative_count, time_steps, batch["negative_continuous"].shape[-1]
+        )
+        negative_lengths = batch["negative_lengths"].reshape(batch_size * negative_count)
+        negative = model.encode_components(
+            negative_categorical, negative_continuous, negative_lengths, augment=False
+        ).context.reshape(batch_size, negative_count, -1)
+        loss = context_infonce_loss(
+            anchor,
+            positive,
+            negative,
+            projection_head,
+            temperature=spec["temperature"],
+            detach_context=detach_context,
+        ) * float(spec["objective_weight"])
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(
+            list(model.parameters()) + list(projection_head.parameters()),
+            float(spec["gradient_clip_norm"]),
+        )
+        optimizer.step()
+        count = int(batch_size)
+        total_loss += float(loss.detach()) * count
+        total_pairs += count
+    return {
+        "context_session_contrastive_loss": total_loss / max(1, total_pairs),
+        "context_session_contrastive_pairs": float(total_pairs),
+    }
 
 
 def _run_epoch(

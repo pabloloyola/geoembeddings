@@ -1,11 +1,19 @@
 schema_version: geoembeddings-context-session-preflight/1.0
 
 pairing:
-  # Observed-session boundaries are timestamp hypotheses, not simulator truth.
-  session_gap_hours: 4.0
+  session_gap_hours: 6.0
   min_intervening_groups_for_positive: 1
   positive_pairs_per_anchor: 1
   negative_pairs_per_anchor: 1
   seed: 20260806
   positive_local_day_timezone: Asia/Tokyo
   positive_same_local_day: true
+
+sensitivity:
+  session_gap_hours: [2, 4, 6, 8, 12]
+  min_intervening_groups: [0, 1]
+  daily_gap_flag_hours: 8.0
+  adjacent_prefix_flag_share: 0.5
+  high_overlap_ratio: 0.9
+  high_overlap_flag_share: 0.8
+  daily_span_flag_share: 0.1

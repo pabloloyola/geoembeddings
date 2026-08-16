@@ -11,6 +11,7 @@ import yaml
 
 from geoembeddings.context_pair_preflight import (
     build_context_pairs,
+    build_session_definition_sensitivity,
     run_context_pair_preflight,
     validate_context_pair_manifest,
 )
@@ -37,6 +38,8 @@ def _pairs(**overrides):
         "positive_pairs_per_anchor": 1,
         "negative_pairs_per_anchor": 1,
         "seed": 7,
+        "positive_local_day_timezone": "Asia/Tokyo",
+        "positive_same_local_day": True,
     }
     values.update(overrides)
     return build_context_pairs(_events(), **values)
@@ -97,6 +100,32 @@ def test_pair_sampling_is_deterministic_and_does_not_use_canonical_event_id() ->
     assert all("canonical_event_id" not in pair for pair in first)
 
 
+def test_session_definition_sensitivity_is_deterministic_and_flags_adjacent_prefixes() -> None:
+    values = {
+        "train_end": "2026-01-01T23:00:00+00:00",
+        "min_history_events": 2,
+        "training_user_ids": {"u1"},
+        "session_gap_hours": [2, 4, 6, 8, 12],
+        "min_intervening_groups": [0, 1],
+        "positive_pairs_per_anchor": 1,
+        "seed": 7,
+        "daily_gap_flag_hours": 8.0,
+        "adjacent_prefix_flag_share": 0.5,
+        "high_overlap_ratio": 0.9,
+        "high_overlap_flag_share": 0.8,
+        "daily_span_flag_share": 0.1,
+    }
+    first = build_session_definition_sensitivity(_events(), **values)
+    second = build_session_definition_sensitivity(_events(), **values)
+    assert first == second
+    assert len(first) == 10
+    adjacent = next(row for row in first if row["setting"] == {
+        "session_gap_hours": 4.0, "min_intervening_timestamp_groups": 0,
+    })
+    assert adjacent["positive_pair_count"] > 0
+    assert "adjacent_prefix_dominant" in adjacent["diagnostic_flags"]["flags"]
+
+
 def _write_observed_fixture(root: Path) -> tuple[Path, Path, Path, Path]:
     run = root / "run"
     observed = run / "observed"
@@ -151,7 +180,12 @@ def _write_observed_fixture(root: Path) -> tuple[Path, Path, Path, Path]:
     pair_config.write_text(yaml.safe_dump({
         "schema_version": "geoembeddings-context-session-preflight/1.0",
         "pairing": {"session_gap_hours": 4.0, "min_intervening_groups_for_positive": 1,
-                    "positive_pairs_per_anchor": 1, "negative_pairs_per_anchor": 1, "seed": 7},
+                    "positive_pairs_per_anchor": 1, "negative_pairs_per_anchor": 1, "seed": 7,
+                    "positive_local_day_timezone": "Asia/Tokyo", "positive_same_local_day": True},
+        "sensitivity": {"session_gap_hours": [2, 4, 6, 8, 12], "min_intervening_groups": [0, 1],
+                        "daily_gap_flag_hours": 8.0, "adjacent_prefix_flag_share": 0.5,
+                        "high_overlap_ratio": 0.9, "high_overlap_flag_share": 0.8,
+                        "daily_span_flag_share": 0.1},
     }))
     embedding_config = root / "embedding.yaml"
     embedding_config.write_text(yaml.safe_dump(config, sort_keys=False))
@@ -165,6 +199,8 @@ def test_preflight_has_no_truth_directory_dependency_and_publishes_immutable_out
     assert result["status"] == "passed"
     assert (output / "context_pair_manifest.json").is_file()
     assert (output / "context_pair_preflight.json").is_file()
+    report = json.loads((output / "context_pair_preflight.json").read_text())
+    assert len(report["session_definition_sensitivity"]) == 10
     assert not (run / "truth").exists()
     with pytest.raises(FileExistsError, match="immutable"):
         run_context_pair_preflight(run, experiment, pair_config, embedding_config, output)
