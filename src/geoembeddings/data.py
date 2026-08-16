@@ -27,11 +27,77 @@ TARGET_FIELDS = {
 }
 
 
+PROFILE_OBJECTIVE_SCHEMA = "geoembeddings-multihorizon-profile/1.0"
+PROFILE_ROUTES = {"persistent", "context", "combined"}
+FIXED_PROFILE_CLASS_COUNTS = {"time_bin_4h": 6, "day_type": 2}
+
+
+@dataclass(frozen=True)
+class FutureProfileObjective:
+    """A distribution over later observed events within one temporal split."""
+
+    name: str
+    field: str
+    horizon_events: int
+    route: str
+    weight: float
+    class_count: int
+
+
+def future_profile_objectives(
+    config: dict[str, Any], vocabularies: dict[str, dict[str, int]]
+) -> tuple[FutureProfileObjective, ...]:
+    """Validate configured future targets without opening protected truth."""
+    specification = config.get("representation_objectives")
+    if specification is None:
+        return ()
+    if not isinstance(specification, dict):
+        raise ValueError("representation objectives must be a mapping")
+    if specification.get("schema_version") != PROFILE_OBJECTIVE_SCHEMA:
+        raise ValueError("Unsupported representation objective schema")
+    horizons = specification.get("horizons", {})
+    fields = specification.get("fields", {})
+    if not isinstance(horizons, dict) or not isinstance(fields, dict) or not horizons or not fields:
+        raise ValueError("representation objectives require non-empty horizons and fields")
+    objectives: list[FutureProfileObjective] = []
+    seen: set[str] = set()
+    for horizon_name, horizon in horizons.items():
+        if not isinstance(horizon, dict):
+            raise ValueError("representation objective horizon must be a mapping")
+        events = int(horizon.get("events", 0))
+        route = str(horizon.get("route", ""))
+        if events <= 0 or route not in PROFILE_ROUTES:
+            raise ValueError("representation objective horizon has invalid events or route")
+        for field, weight in fields.items():
+            normalized_field = str(field)
+            if normalized_field in FIXED_PROFILE_CLASS_COUNTS:
+                class_count = FIXED_PROFILE_CLASS_COUNTS[normalized_field]
+            elif normalized_field in vocabularies:
+                class_count = len(vocabularies[normalized_field])
+            else:
+                raise ValueError(f"Unknown representation objective field: {normalized_field}")
+            name = f"{horizon_name}_{normalized_field}"
+            if name in seen:
+                raise ValueError(f"Duplicate representation objective: {name}")
+            seen.add(name)
+            numeric_weight = float(weight)
+            if not np.isfinite(numeric_weight) or numeric_weight < 0:
+                raise ValueError("representation objective weights must be finite and non-negative")
+            objectives.append(FutureProfileObjective(
+                name=name, field=normalized_field, horizon_events=events, route=route,
+                weight=numeric_weight, class_count=class_count,
+            ))
+    if not any(objective.weight > 0 for objective in objectives):
+        raise ValueError("at least one representation objective weight must be positive")
+    return tuple(objectives)
+
+
 @dataclass(frozen=True)
 class SampleReference:
     user_id: str
     context_indices: tuple[int, ...]
     target_index: int
+    future_indices: tuple[int, ...] = ()
 
 
 class EventWindowDataset(Dataset[dict[str, Any]]):
@@ -60,6 +126,7 @@ class EventWindowDataset(Dataset[dict[str, Any]]):
         self.events = events
         self.encoded_categories = self._encode_categories(events)
         self.continuous = self._encode_continuous(events)
+        self.profile_objectives = future_profile_objectives(config, self.vocabularies)
         self.references = self._make_references(events, split, config["data"])
         if not self.references:
             raise ValueError(f"No usable {split} windows after applying min_history_events")
@@ -90,6 +157,7 @@ class EventWindowDataset(Dataset[dict[str, Any]]):
             for objective, field in TARGET_FIELDS.items()
             if field in self.vocabularies
         }
+        profile_targets = self._profile_targets(reference)
         return {
             "user_id": reference.user_id,
             "categorical": categorical,
@@ -99,7 +167,30 @@ class EventWindowDataset(Dataset[dict[str, Any]]):
             "late_categorical": torch.from_numpy(self.encoded_categories[late_indices]).long(),
             "late_continuous": torch.from_numpy(self.continuous[late_indices]).float(),
             "targets": targets,
+            "profile_targets": profile_targets,
         }
+
+    def _profile_targets(self, reference: SampleReference) -> dict[str, torch.Tensor]:
+        targets: dict[str, torch.Tensor] = {}
+        if not self.profile_objectives:
+            return targets
+        if not reference.future_indices:
+            raise ValueError("profile objective reference has no future observed events")
+        future = self.events.iloc[list(reference.future_indices)]
+        for objective in self.profile_objectives:
+            rows = future.iloc[:objective.horizon_events]
+            if objective.field == "time_bin_4h":
+                values = rows["timestamp"].dt.hour.to_numpy(dtype=np.int64) // 4
+            elif objective.field == "day_type":
+                values = (rows["timestamp"].dt.dayofweek.to_numpy(dtype=np.int64) >= 5).astype(np.int64)
+            else:
+                values = np.asarray([
+                    self._token_id(objective.field, value)
+                    for value in rows[objective.field]
+                ], dtype=np.int64)
+            counts = np.bincount(values, minlength=objective.class_count).astype(np.float32)
+            targets[objective.name] = torch.from_numpy(counts / counts.sum())
+        return targets
 
     def _encode_categories(self, events: pd.DataFrame) -> np.ndarray:
         columns = []
@@ -152,21 +243,38 @@ class EventWindowDataset(Dataset[dict[str, Any]]):
         minimum = int(data_config["min_history_events"])
         maximum = int(data_config["max_sequence_length"])
         references: list[SampleReference] = []
+        max_profile_horizon = max(
+            (objective.horizon_events for objective in self.profile_objectives), default=1
+        )
         for user_id, indices in events.groupby("user_id", sort=False).indices.items():
             if self.user_roles is not None and self.user_roles[str(user_id)] != f"target_{split}":
                 continue
             ordered = np.asarray(indices, dtype=np.int64)
-            for offset in range(minimum, len(ordered)):
+            timestamps = events.iloc[ordered]["timestamp"].to_numpy()
+            splits = np.asarray([
+                _timestamp_split(timestamp, train_end, validation_end) for timestamp in timestamps
+            ])
+            for offset in range(len(ordered)):
                 target_index = int(ordered[offset])
-                timestamp = events.iloc[target_index]["timestamp"]
-                if _timestamp_split(timestamp, train_end, validation_end) != split:
+                timestamp = timestamps[offset]
+                if splits[offset] != split:
                     continue
-                context = ordered[max(0, offset - maximum) : offset]
+                # Inputs are strictly earlier than the target timestamp. This
+                # prevents arbitrary row order among simultaneous events from
+                # leaking target information into the history.
+                context = ordered[timestamps < timestamp]
+                if len(context) < minimum:
+                    continue
+                future = ordered[(timestamps > timestamp) & (splits == split)][:max_profile_horizon]
+                if self.profile_objectives and len(future) == 0:
+                    continue
+                context = context[-maximum:]
                 references.append(
                     SampleReference(
                         user_id=str(user_id),
                         context_indices=tuple(int(value) for value in context),
                         target_index=target_index,
+                        future_indices=tuple(int(value) for value in future),
                     )
                 )
         return references
@@ -268,6 +376,13 @@ def collate_windows(samples: Iterable[dict[str, Any]]) -> dict[str, Any]:
     batch["targets"] = {
         name: torch.tensor([sample["targets"][name] for sample in samples], dtype=torch.long)
         for name in target_names
+    }
+    profile_names = sorted(samples[0].get("profile_targets", {}))
+    if any(sorted(sample.get("profile_targets", {})) != profile_names for sample in samples):
+        raise ValueError("profile targets are inconsistent across batch samples")
+    batch["profile_targets"] = {
+        name: torch.stack([sample["profile_targets"][name] for sample in samples])
+        for name in profile_names
     }
     return batch
 

@@ -8,7 +8,7 @@ from typing import Any
 import torch
 from torch import nn
 
-from .data import TARGET_FIELDS
+from .data import TARGET_FIELDS, future_profile_objectives
 
 
 @dataclass(frozen=True)
@@ -563,6 +563,66 @@ class CausalTransformerPCEncoder(TwoTimescalePCEncoder):
         return EncoderOutput(persistent=persistent, context=context, combined=combined)
 
 
+class MultiHorizonProfileGRU(TwoTimescalePCEncoder):
+    """Two-timescale encoder with observed future-distribution supervision.
+
+    Profile heads are training-only. The public representation remains the
+    established persistent/context/combined contract. The detached control
+    keeps the same heads and labels while preventing their gradients from
+    shaping the representation trunk.
+    """
+
+    def __init__(self, vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+                 config: dict[str, Any], categorical_fields: list[str] | None = None) -> None:
+        super().__init__(vocabularies, continuous_dim, config, categorical_fields)
+        self.profile_objectives = future_profile_objectives(config, vocabularies)
+        if not self.profile_objectives:
+            raise ValueError("multihorizon profile model requires representation_objectives")
+        self.detach_profile_representation = bool(
+            config["model"].get("detach_profile_representation", False)
+        )
+        dimensions = {
+            "persistent": int(config["model"]["user_embedding_dim"]),
+            "context": int(config["model"]["user_embedding_dim"]),
+            "combined": int(config["model"]["user_embedding_dim"]),
+        }
+        self.profile_heads = nn.ModuleDict({
+            objective.name: nn.Linear(dimensions[objective.route], objective.class_count)
+            for objective in self.profile_objectives
+        })
+
+    def _decode_profiles(self, output: EncoderOutput) -> dict[str, torch.Tensor]:
+        logits: dict[str, torch.Tensor] = {}
+        for objective in self.profile_objectives:
+            representation = getattr(output, objective.route)
+            if self.detach_profile_representation:
+                representation = representation.detach()
+            logits[objective.name] = self.profile_heads[objective.name](representation)
+        return logits
+
+    def forward_with_profiles(
+        self,
+        categorical: torch.Tensor,
+        continuous: torch.Tensor,
+        lengths: torch.Tensor,
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor], dict[str, torch.Tensor]]:
+        output = self.encode_components(categorical, continuous, lengths, augment=True)
+        logits = {
+            name: head(getattr(output, self.loss_routes[name]))
+            for name, head in self.heads.items()
+        }
+        return output.combined, logits, self._decode_profiles(output)
+
+    def forward(
+        self,
+        categorical: torch.Tensor,
+        continuous: torch.Tensor,
+        lengths: torch.Tensor,
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+        embedding, logits, _ = self.forward_with_profiles(categorical, continuous, lengths)
+        return embedding, logits
+
+
 ModelFactory = Callable[
     [dict[str, dict[str, int]], int, dict[str, Any], list[str] | None],
     SingleVectorEncoder,
@@ -631,6 +691,23 @@ def _build_causal_transformer_pc(
     return CausalTransformerPCEncoder(
         vocabularies, continuous_dim, config, categorical_fields
     )
+
+
+@register_model("multihorizon_profile_gru")
+def _build_multihorizon_profile_gru(
+    vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+    config: dict[str, Any], categorical_fields: list[str] | None = None,
+) -> SingleVectorEncoder:
+    return MultiHorizonProfileGRU(vocabularies, continuous_dim, config, categorical_fields)
+
+
+@register_model("multihorizon_profile_detached_control")
+def _build_multihorizon_profile_detached_control(
+    vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+    config: dict[str, Any], categorical_fields: list[str] | None = None,
+) -> SingleVectorEncoder:
+    copied = {**config, "model": {**config["model"], "detach_profile_representation": True}}
+    return MultiHorizonProfileGRU(vocabularies, continuous_dim, copied, categorical_fields)
 
 
 def _capacity_matched_single(

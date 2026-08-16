@@ -222,7 +222,13 @@ def _run_epoch(
         batch = _move_batch(batch, device)
         if training:
             optimizer.zero_grad(set_to_none=True)
-        _, logits = model(batch["categorical"], batch["continuous"], batch["lengths"])
+        profile_logits: dict[str, torch.Tensor] = {}
+        if hasattr(model, "forward_with_profiles"):
+            _, logits, profile_logits = model.forward_with_profiles(
+                batch["categorical"], batch["continuous"], batch["lengths"]
+            )
+        else:
+            _, logits = model(batch["categorical"], batch["continuous"], batch["lengths"])
         losses = []
         for name, prediction in logits.items():
             weight = float(objective_weights.get(name, 0.0))
@@ -234,6 +240,22 @@ def _run_epoch(
             k = min(5, prediction.shape[1])
             top5 = prediction.topk(k, dim=1).indices
             top5_correct[name] = top5_correct.get(name, 0) + int((top5 == target[:, None]).any(dim=1).sum())
+
+        profile_objectives = {
+            objective.name: objective
+            for objective in getattr(
+                model.module if hasattr(model, "module") else model,
+                "profile_objectives",
+                (),
+            )
+        }
+        for name, prediction in profile_logits.items():
+            objective = profile_objectives[name]
+            if objective.weight <= 0:
+                continue
+            target = batch["profile_targets"][name]
+            distribution_loss = -(target * F.log_softmax(prediction, dim=1)).sum(dim=1).mean()
+            losses.append(objective.weight * distribution_loss)
 
         consistency_weight = float(objective_weights.get("cross_window_consistency", 0.0))
         if consistency_weight > 0:
@@ -333,6 +355,25 @@ def _validate_batch_values(
             raise ValueError(
                 f"Batch {batch_number} ({user_preview}) has out-of-range targets for "
                 f"{objective}: min={minimum}, max={maximum}, classes={class_count}"
+            )
+
+    profile_heads = getattr(encoder, "profile_heads", {})
+    for objective, target in batch.get("profile_targets", {}).items():
+        if objective not in profile_heads:
+            raise ValueError(
+                f"Batch {batch_number} ({user_preview}) has unknown profile target {objective}"
+            )
+        if target.ndim != 2 or target.shape[1] != profile_heads[objective].out_features:
+            raise ValueError(
+                f"Batch {batch_number} ({user_preview}) has malformed profile target {objective}"
+            )
+        if not bool(torch.isfinite(target).all()) or bool((target < 0).any()):
+            raise ValueError(
+                f"Batch {batch_number} ({user_preview}) has invalid profile distribution {objective}"
+            )
+        if not bool(torch.allclose(target.sum(dim=1), torch.ones(target.shape[0]), atol=1e-5)):
+            raise ValueError(
+                f"Batch {batch_number} ({user_preview}) profile distribution does not sum to one"
             )
 
 
