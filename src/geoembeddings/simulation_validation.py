@@ -117,6 +117,14 @@ def duplicate_count(rows: list[dict[str, str]], key: str) -> int:
 
 def validate(root: Path) -> dict[str, Any]:
     manifest, data = load_dataset(root)
+    requested_scenario = manifest.get("requested_scenario", manifest.get("scenario"))
+    resolved_scenario = manifest.get("resolved_scenario", manifest.get("scenario"))
+    resolution = manifest.get("scenario_resolution") or {}
+    explicit_override = (
+        requested_scenario != resolved_scenario
+        and resolution.get("declaration_version") == "geoembeddings-scenario-resolution/1.0"
+        and resolution.get("override_declaration_version")
+    )
     events = data["events"]
     users = data["users"]
     latents = data["latents"]
@@ -126,6 +134,13 @@ def validate(root: Path) -> dict[str, Any]:
     trajectories = data["trajectories"]
     observation = data["observation"]
     checks: list[dict[str, Any]] = []
+    checks.append(check(
+        "Scenario resolution is authenticated",
+        bool(requested_scenario) and bool(resolved_scenario) and (requested_scenario == resolved_scenario or explicit_override),
+        {"requested_scenario": requested_scenario, "resolved_scenario": resolved_scenario, "explicit_override": bool(explicit_override)},
+        "Requested and resolved scenarios are equal unless an explicit versioned override is declared",
+        "integrity",
+    ))
 
     identity_error = None
     try:
@@ -382,6 +397,8 @@ def validate(root: Path) -> dict[str, Any]:
         "status": "passed" if not error_failures else "failed",
         "dataset": str(root.resolve()),
         "scenario": manifest["scenario"],
+        "requested_scenario": requested_scenario,
+        "resolved_scenario": resolved_scenario,
         "simulator_version": manifest["simulator_version"],
         "summary": {
             "checks_passed": sum(item["passed"] for item in checks),

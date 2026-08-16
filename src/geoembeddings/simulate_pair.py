@@ -40,6 +40,9 @@ def _diagnostics(layout: DatasetLayout) -> dict[str, float]:
                                          for row in choices if row["choice_context"] == "routine") /
                                     max(1, sum(row["choice_context"] == "routine" for row in choices)),
     }
+    schedule_events = layout.truth / "temporary_schedule_shift_events.csv.gz"
+    if schedule_events.is_file():
+        result["temporary_schedule_shift_event_count"] = float(len(_rows(schedule_events)))
     change_path = layout.truth / "change_points_truth.csv.gz"
     if change_path.is_file():
         point = _rows(change_path)[0]
@@ -116,7 +119,7 @@ def _set_path(config: dict[str, Any], dotted: str, value: Any) -> None:
 def simulate_pair(config_path: str | Path, reference_run_dir: str | Path,
                   intervention_run_dir: str | Path, pair_dir: str | Path, *,
                   intervention: str, users: int | None = None, days: int | None = None,
-                  seed: int | None = None) -> dict[str, Any]:
+                  seed: int | None = None, scenario: str | None = None) -> dict[str, Any]:
     """Generate, structurally validate, declare, and field-validate one pair."""
     config_path = Path(config_path).expanduser().resolve()
     reference = DatasetLayout.from_path(reference_run_dir)
@@ -132,6 +135,7 @@ def simulate_pair(config_path: str | Path, reference_run_dir: str | Path,
     base = simulator.load_config(config_path)
     if intervention not in base["interventions"]:
         raise ValueError(f"unknown configured intervention: {intervention!r}")
+    requested_scenario, resolved_scenario = simulator.resolve_scenario(base, scenario)
     definition = copy.deepcopy(base["interventions"][intervention])
     reference_config = copy.deepcopy(base)
     intervention_config = copy.deepcopy(base)
@@ -141,7 +145,8 @@ def simulate_pair(config_path: str | Path, reference_run_dir: str | Path,
     for config, output in ((reference_config, reference.root), (intervention_config, changed.root)):
         config["run"].update(users=int(users if users is not None else base["run"]["users"]),
                              days=int(days if days is not None else base["run"]["days"]),
-                             seed=resolved_seed, output=str(output))
+                             seed=resolved_seed, output=str(output), scenario=resolved_scenario,
+                             requested_scenario=requested_scenario, resolved_scenario=resolved_scenario)
     overrides = dict(intervention_config["run"].get("random_streams", {}))
     for stream in definition.get("reseed_streams", []):
         overrides[stream] = simulator.derive_stream_seed(resolved_seed, stream) + int(definition["stream_seed_offset"])
@@ -157,7 +162,13 @@ def simulate_pair(config_path: str | Path, reference_run_dir: str | Path,
         "declaration_version": definition.get("declaration_version"),
         "change": definition.get("change"),
         "schedule_shift": definition.get("schedule_shift"),
+        "eligible_time_flexibility_min": definition.get("eligible_time_flexibility_min"),
+        "selected_user_fraction": definition.get("selected_user_fraction"),
     }
+    if intervention == "temporary_schedule_shift_v1":
+        intervention_config["run"]["intervention"]["apply"] = True
+        reference_config["run"]["intervention"] = copy.deepcopy(intervention_config["run"]["intervention"])
+        reference_config["run"]["intervention"]["apply"] = False
     if intervention in {"temporary-trip", "sustained-preference"}:
         reference_config["run"]["intervention"] = copy.deepcopy(intervention_config["run"]["intervention"])
         reference_config["run"]["intervention"]["change"] = dict(definition["change"], preference_delta=0.0)
@@ -169,7 +180,8 @@ def simulate_pair(config_path: str | Path, reference_run_dir: str | Path,
         snapshot.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
         args = argparse.Namespace(config=str(snapshot), output=str(layout.root), overwrite=False,
             seed=resolved_seed, users=config["run"]["users"], days=config["run"]["days"],
-            start_date=config["run"]["start_date"], scenario=config["run"]["scenario"],
+            start_date=config["run"]["start_date"], scenario=config["run"]["resolved_scenario"],
+            requested_scenario=config["run"]["requested_scenario"],
             full_kanto=config["run"]["full_kanto"])
         simulator.activate_config(config)
         simulator.simulate(args)
@@ -186,7 +198,12 @@ def simulate_pair(config_path: str | Path, reference_run_dir: str | Path,
     diagnostics = {}
     for metric, direction in definition["behavioral_diagnostics"].items():
         before, after = reference_metrics[metric], intervention_metrics[metric]
-        passed = after > before if direction == "increase" else after < before
+        if direction == "increase":
+            passed = after > before
+        elif direction == "positive":
+            passed = after > 0
+        else:
+            passed = after < before
         diagnostics[metric] = {"reference": before, "intervention": after,
                                "delta": after - before, "expected_direction": direction,
                                "passed": passed}
@@ -195,6 +212,7 @@ def simulate_pair(config_path: str | Path, reference_run_dir: str | Path,
     behavioral = {"schema_version": "geoembeddings-pair-behavioral-diagnostics/2.0",
                   "status": "passed" if all(item["passed"] for item in diagnostics.values()) else "failed",
                   "intervention": intervention, "seed": resolved_seed,
+                  "scenario": {"requested": requested_scenario, "resolved": resolved_scenario},
                   "experimental_assumption": "Synthetic intervention constants are experimental assumptions, not claims about Tokyo or Kanto.",
                   "diagnostics": diagnostics}
     behavioral_path = pair.root / "behavioral_diagnostics.json"

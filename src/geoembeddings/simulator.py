@@ -49,6 +49,8 @@ SIMULATOR_VERSION = "0.5.0"
 RANDOM_STREAM_ALGORITHM = "sha256-root-seed-and-stream-name/1.0"
 RANDOM_STREAM_NAMES = ("world", "user_latents", "episodes", "choices", "observation")
 IDENTITY_GENERATION_VERSION = "sha256-semantic-key/1.0"
+SCENARIO_RESOLUTION_SCHEMA = "geoembeddings-scenario-resolution/1.0"
+TEMPORARY_SCHEDULE_SHIFT_TYPE = "temporary_schedule_shift_v1"
 
 
 def stable_identifier(namespace: str, *components: object) -> str:
@@ -166,6 +168,74 @@ def activate_config(config: dict[str, Any]) -> None:
         str(name): {str(key): float(value) for key, value in values.items()}
         for name, values in config["scenarios"].items()
     }
+
+
+def resolve_scenario(config: dict[str, Any], requested_scenario: str | None = None) -> tuple[str, str]:
+    """Resolve a requested scenario, preserving legacy configs by default."""
+    scenarios = config.get("scenarios", {})
+    run = config.get("run", {})
+    requested = str(requested_scenario if requested_scenario is not None else run.get("scenario", ""))
+    if requested not in scenarios:
+        raise ValueError(f"Unknown requested scenario {requested!r}; choose one of {sorted(scenarios)}")
+    resolution = config.get("scenario_resolution")
+    configured_resolved = run.get("resolved_scenario")
+    if not resolution:
+        if configured_resolved is not None and str(configured_resolved) != requested:
+            raise ValueError("scenario resolution differs from requested scenario without a versioned override")
+        return requested, requested
+    if resolution.get("declaration_version") != SCENARIO_RESOLUTION_SCHEMA:
+        raise ValueError("scenario_resolution requires the supported versioned declaration")
+    if resolution.get("mode") != "explicit":
+        raise ValueError("scenario_resolution.mode must be explicit")
+    overrides = resolution.get("overrides", {})
+    if not isinstance(overrides, dict):
+        raise ValueError("scenario_resolution.overrides must be a mapping")
+    resolved = str(overrides.get(requested, requested))
+    if resolved != requested and not resolution.get("override_declaration_version"):
+        raise ValueError("scenario resolution differs from requested scenario without an explicit versioned override")
+    if resolved not in scenarios:
+        raise ValueError(f"Resolved scenario {resolved!r} is not declared in scenarios")
+    if configured_resolved is not None and str(configured_resolved) != resolved:
+        raise ValueError("scenario resolution differs from requested scenario without an explicit versioned override")
+    return requested, resolved
+
+
+def _temporary_schedule_assignment(root_seed: int, user: dict[str, Any], declaration: dict[str, Any]) -> bool:
+    """Select users without consuming a simulator stream or exposing truth."""
+    minimum = float(declaration.get("eligible_time_flexibility_min", 0.0))
+    if float(user.get("time_flexibility", 0.0)) < minimum:
+        return False
+    fraction = float(declaration.get("selected_user_fraction", 0.0))
+    if not 0.0 < fraction <= 1.0:
+        raise ValueError("temporary schedule selected_user_fraction must be in (0, 1]")
+    material = f"{TEMPORARY_SCHEDULE_SHIFT_TYPE}/assignment/{root_seed}/{user['user_id']}".encode("utf-8")
+    score = int.from_bytes(hashlib.sha256(material).digest()[:8], "big") / float(2**64)
+    return score < fraction
+
+
+def _temporary_schedule_interval(start_day: date, days: int, declaration: dict[str, Any]) -> tuple[date, date]:
+    start, end = change_interval(start_day, days, declaration["schedule_shift"])
+    if end is None:
+        raise ValueError("temporary schedule shift requires a finite duration")
+    return start, end
+
+
+def _schedule_shift_for_user(intervention: dict[str, Any], user_id: str, current_day: date,
+                             temporary_interval: tuple[date, date] | None,
+                             selected_user_ids: set[str]) -> float:
+    kind = intervention.get("type")
+    if kind == "schedule-shift":
+        values = intervention.get("schedule_shift") or {}
+        return float(values["weekend_hours" if current_day.weekday() >= 5 else "weekday_hours"])
+    if kind != TEMPORARY_SCHEDULE_SHIFT_TYPE or not intervention.get("apply", True):
+        return 0.0
+    if user_id not in selected_user_ids or temporary_interval is None:
+        return 0.0
+    start, end = temporary_interval
+    if not start <= current_day < end:
+        return 0.0
+    values = intervention.get("schedule_shift") or {}
+    return float(values["weekend_hours" if current_day.weekday() >= 5 else "weekday_hours"])
 
 
 def clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
@@ -635,6 +705,14 @@ def write_csv_gz(path: Path, rows: list[dict[str, Any]], fieldnames: Sequence[st
 
 
 def simulate(args: argparse.Namespace) -> dict[str, Any]:
+    requested_scenario, resolved_scenario = resolve_scenario(
+        CONFIG, getattr(args, "requested_scenario", None) or getattr(args, "scenario", None)
+    )
+    args.requested_scenario = requested_scenario
+    args.scenario = resolved_scenario
+    CONFIG["run"]["requested_scenario"] = requested_scenario
+    CONFIG["run"]["resolved_scenario"] = resolved_scenario
+    CONFIG["run"]["scenario"] = resolved_scenario
     streams = make_random_streams(args.seed, CONFIG["run"].get("random_streams"))
     world_rng = streams.generators["world"]
     user_rng = streams.generators["user_latents"]
@@ -671,6 +749,13 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
     change = intervention.get("change") if intervention.get("type") in {"temporary-trip", "sustained-preference"} else None
     interval = change_interval(start_day, args.days, change) if change else None
     change_points: list[dict[str, Any]] = []
+    temporary_schedule_declaration = intervention if intervention.get("type") == TEMPORARY_SCHEDULE_SHIFT_TYPE else None
+    temporary_schedule_interval = (
+        _temporary_schedule_interval(start_day, args.days, temporary_schedule_declaration)
+        if temporary_schedule_declaration else None
+    )
+    selected_schedule_users: set[str] = set()
+    temporary_schedule_truth: list[dict[str, Any]] = []
     schedule = CONFIG["episodes"]["schedule_hours"]
     schedule_shift = intervention.get("schedule_shift") if intervention.get("type") == "schedule-shift" else None
     event_cfg = CONFIG["events"]
@@ -679,6 +764,21 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
         observed_user, latent_user = create_user(user_rng, user_index, args.full_kanto)
         users_observed.append(observed_user)
         user_latents.append(latent_user)
+        if temporary_schedule_declaration:
+            selected = _temporary_schedule_assignment(streams.root_seed, latent_user, temporary_schedule_declaration)
+            if selected:
+                selected_schedule_users.add(str(latent_user["user_id"]))
+            start, end = temporary_schedule_interval
+            temporary_schedule_truth.append({
+                "user_id": latent_user["user_id"],
+                "eligible": int(float(latent_user.get("time_flexibility", 0.0)) >= float(temporary_schedule_declaration.get("eligible_time_flexibility_min", 0.0))),
+                "selected": int(selected),
+                "applied": int(selected and temporary_schedule_declaration.get("apply", True)),
+                "change_start_time": iso_at(start, 0.0),
+                "change_end_time": iso_at(end, 0.0),
+                "weekday_hours": float(temporary_schedule_declaration["schedule_shift"]["weekday_hours"]),
+                "weekend_hours": float(temporary_schedule_declaration["schedule_shift"]["weekend_hours"]),
+            })
         if change:
             change_points.append({"user_id": latent_user["user_id"], "change_type": intervention["type"],
                 "change_start_time": iso_at(interval[0], 0.0), "change_end_time": "" if interval[1] is None else iso_at(interval[1], 0.0),
@@ -748,8 +848,11 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
             ]
             # Move only the recurring routine clock.  Episode selection, persistent
             # latents, and one-off episode timing remain matched controls.
-            routine_shift = (float(schedule_shift["weekend_hours" if weekend else "weekday_hours"])
-                             if schedule_shift and primary == "routine" else 0.0)
+            routine_shift = (
+                _schedule_shift_for_user(intervention, str(latent_user["user_id"]), current_day,
+                                         temporary_schedule_interval, selected_schedule_users)
+                if (schedule_shift or temporary_schedule_declaration) and primary == "routine" else 0.0
+            )
             if not weekend and primary != "travel":
                 stops += [
                     (float(schedule["work_arrival"]) + routine_shift, "commute", work, work_lat, work_lon),
@@ -914,6 +1017,27 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                     )
 
     observed_events.sort(key=lambda row: (row["user_id"], row["timestamp"], row["service_id"]))
+    temporary_schedule_events: list[dict[str, Any]] = []
+    if temporary_schedule_declaration:
+        start, end = temporary_schedule_interval
+        start_time, end_time = iso_at(start, 0.0), iso_at(end, 0.0)
+        for row in observed_events:
+            if row["user_id"] in selected_schedule_users and start_time <= row["timestamp"] < end_time:
+                temporary_schedule_events.append({
+                    "user_id": row["user_id"], "timestamp": row["timestamp"],
+                    "service_id": row["service_id"], "action_type": row["action_type"],
+                    "event_scope": "temporary_schedule_shift_interval",
+                })
+        intervention = dict(intervention)
+        intervention["temporary_schedule_shift"] = {
+            "selected_user_ids": sorted(selected_schedule_users),
+            "selected_user_count": len(selected_schedule_users),
+            "eligible_user_count": sum(int(row["eligible"]) for row in temporary_schedule_truth),
+            "change_start_time": start_time,
+            "change_end_time": end_time,
+            "affected_event_count": len(temporary_schedule_events),
+        }
+        CONFIG["run"]["intervention"] = intervention
     # Recommendation requests are an explicitly public platform surface.  They
     # are generated independently of protected episode/utility rows.
     catalog = []
@@ -995,14 +1119,22 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
         truth_dir / TRUTH_FILES["observation_process"]: observation_process,
         truth_dir / "recommendation_counterfactuals.csv.gz": ranking_truth,
     }
+    if temporary_schedule_declaration:
+        tables[truth_dir / "temporary_schedule_shift_truth.csv.gz"] = temporary_schedule_truth
+        tables[truth_dir / "temporary_schedule_shift_events.csv.gz"] = temporary_schedule_events
     for path, rows in tables.items():
-        write_csv_gz(path, rows)
+        if path.name == "temporary_schedule_shift_events.csv.gz":
+            write_csv_gz(path, rows, ["user_id", "timestamp", "service_id", "action_type", "event_scope"])
+        else:
+            write_csv_gz(path, rows)
     if change:
         write_csv_gz(truth_dir / "change_points_truth.csv.gz", change_points)
 
     report = validate_dataset(
         users_observed, user_latents, observed_events, episodes, candidate_sets, choices, trajectories, observation_process
     )
+    report["requested_scenario"] = requested_scenario
+    report["resolved_scenario"] = resolved_scenario
     resolved_yaml = yaml.safe_dump(CONFIG, sort_keys=False, allow_unicode=True)
     config_hash = hashlib.sha256(resolved_yaml.encode("utf-8")).hexdigest()
     (output / "config.resolved.yaml").write_text(resolved_yaml, encoding="utf-8")
@@ -1043,7 +1175,10 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
         "start_date": args.start_date,
         "days": args.days,
         "users": args.users,
-        "scenario": args.scenario,
+        "scenario": resolved_scenario,
+        "requested_scenario": requested_scenario,
+        "resolved_scenario": resolved_scenario,
+        "scenario_resolution": CONFIG.get("scenario_resolution"),
         "intervention": CONFIG["run"].get("intervention"),
         "full_kanto": args.full_kanto,
         "coordinate_system": "WGS84; continuous synthetic locations sampled from overlapping Kanto hub catchments",

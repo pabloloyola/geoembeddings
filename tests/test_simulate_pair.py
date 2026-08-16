@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import csv
+import gzip
 import json
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -13,6 +16,11 @@ from datetime import date
 
 
 CONFIG = Path("configs/simulation/kanto_v1.yaml")
+
+
+def _rows(path: Path) -> list[dict[str, str]]:
+    with gzip.open(path, "rt", encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
 
 
 @pytest.mark.parametrize("kind", ["exposure", "opportunity", "observation"])
@@ -47,6 +55,37 @@ def test_simulate_pair_is_immutable(tmp_path: Path) -> None:
                       users=10, days=2, seed=17)
 
 
+def test_explicit_clean_scenario_is_authoritative(tmp_path: Path) -> None:
+    result = simulate_pair(CONFIG, tmp_path / "reference", tmp_path / "intervention", tmp_path / "pair",
+                           intervention="sustained-preference", scenario="clean", users=10, days=9, seed=17)
+    for name in ("reference", "intervention"):
+        manifest = json.loads((tmp_path / name / "manifest.json").read_text())
+        assert manifest["requested_scenario"] == "clean"
+        assert manifest["resolved_scenario"] == "clean"
+        assert manifest["scenario"] == "clean"
+        report = json.loads((tmp_path / name / "deep_validation_report.json").read_text())
+        assert report["requested_scenario"] == "clean"
+        assert report["resolved_scenario"] == "clean"
+    assert result["status"] == "passed"
+
+
+def test_explicit_mixed_scenario_remains_mixed(tmp_path: Path) -> None:
+    simulate_pair(CONFIG, tmp_path / "reference", tmp_path / "intervention", tmp_path / "pair",
+                  intervention="sustained-preference", scenario="mixed", users=10, days=9, seed=17)
+    manifest = json.loads((tmp_path / "reference" / "manifest.json").read_text())
+    assert manifest["requested_scenario"] == "mixed"
+    assert manifest["resolved_scenario"] == "mixed"
+
+
+def test_unknown_or_unversioned_mismatched_scenario_fails() -> None:
+    config = simulator.load_config(CONFIG)
+    with pytest.raises(ValueError, match="Unknown requested scenario"):
+        simulator.resolve_scenario(config, "not-a-scenario")
+    config["run"]["resolved_scenario"] = "mixed"
+    with pytest.raises(ValueError, match="differs from requested"):
+        simulator.resolve_scenario(config, "clean")
+
+
 def test_schedule_shift_preserves_preferences_and_one_off_context(tmp_path: Path) -> None:
     result = simulate_pair(CONFIG, tmp_path / "reference", tmp_path / "intervention", tmp_path / "pair",
                            intervention="schedule-shift", users=12, days=7, seed=20260811)
@@ -57,6 +96,50 @@ def test_schedule_shift_preserves_preferences_and_one_off_context(tmp_path: Path
     assert integrity["table_results"]["truth.user_latents"]["allowed_changes"] == {}
     assert integrity["table_results"]["truth.episodes"]["allowed_changes"] == {}
     assert integrity["table_results"]["truth.choices"]["allowed_changes"]["truth.choices.timestamp"] > 0
+
+
+def test_temporary_schedule_shift_is_finite_and_interval_bounded(tmp_path: Path) -> None:
+    result = simulate_pair(CONFIG, tmp_path / "reference", tmp_path / "intervention", tmp_path / "pair",
+                           intervention="temporary_schedule_shift_v1", scenario="clean",
+                           users=20, days=8, seed=20260811)
+    manifest = json.loads(Path(result["pair_manifest"]).read_text())
+    intervention_manifest = json.loads((tmp_path / "intervention" / "manifest.json").read_text())
+    truth = _rows(tmp_path / "intervention" / "truth" / "temporary_schedule_shift_truth.csv.gz")
+    assert result["status"] == "passed"
+    assert manifest["intervention_type"] == "temporary_schedule_shift_v1"
+    assert manifest["intervention_parameters"]["declaration_version"] == "geoembeddings-temporary-schedule-intervention/1.0"
+    assert intervention_manifest["requested_scenario"] == intervention_manifest["resolved_scenario"] == "clean"
+    assert truth and all(row["change_start_time"] < row["change_end_time"] for row in truth)
+    selected = {row["user_id"] for row in truth if row["selected"] == "1"}
+    assert selected
+    start = truth[0]["change_start_time"]
+    end = truth[0]["change_end_time"]
+    reference_events = _rows(tmp_path / "reference" / "observed" / "observed_events.csv.gz")
+    changed_events = _rows(tmp_path / "intervention" / "observed" / "observed_events.csv.gz")
+
+    def outside(rows: list[dict[str, str]]) -> Counter[str]:
+        return Counter(json.dumps(row, sort_keys=True) for row in rows
+                       if row["timestamp"] < start or row["timestamp"] >= end)
+
+    assert outside(reference_events) == outside(changed_events)
+    affected = _rows(tmp_path / "intervention" / "truth" / "temporary_schedule_shift_events.csv.gz")
+    assert affected
+    assert {row["user_id"] for row in affected} <= selected
+    assert all(start <= row["timestamp"] < end for row in affected)
+
+
+def test_sustained_and_temporary_schedule_truth_are_independent(tmp_path: Path) -> None:
+    sustained = simulate_pair(CONFIG, tmp_path / "s-ref", tmp_path / "s-int", tmp_path / "s-pair",
+                              intervention="sustained-preference", scenario="clean", users=12, days=9, seed=20260811)
+    temporary = simulate_pair(CONFIG, tmp_path / "t-ref", tmp_path / "t-int", tmp_path / "t-pair",
+                              intervention="temporary_schedule_shift_v1", scenario="clean", users=12, days=9, seed=20260811)
+    assert json.loads(Path(sustained["pair_manifest"]).read_text())["intervention_type"] == "sustained-preference"
+    assert json.loads(Path(temporary["pair_manifest"]).read_text())["intervention_type"] == "temporary_schedule_shift_v1"
+    for prefix in ("s", "t"):
+        assert (tmp_path / f"{prefix}-int" / "truth" / "user_latents.csv.gz").read_bytes() == (tmp_path / f"{prefix}-ref" / "truth" / "user_latents.csv.gz").read_bytes()
+        assert (tmp_path / f"{prefix}-int" / "truth" / "episodes_truth.csv.gz").read_bytes() == (tmp_path / f"{prefix}-ref" / "truth" / "episodes_truth.csv.gz").read_bytes()
+    assert (tmp_path / "s-int" / "truth" / "change_points_truth.csv.gz").is_file()
+    assert (tmp_path / "t-int" / "truth" / "temporary_schedule_shift_truth.csv.gz").is_file()
 
 
 def test_change_interval_duration_and_censoring() -> None:

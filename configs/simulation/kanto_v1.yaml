@@ -33,6 +33,11 @@ run:
   # replaces this with --run-dir and saves that resolved value in the run.
   output: runs/kanto_pilot
 
+scenario_resolution:
+  declaration_version: geoembeddings-scenario-resolution/1.0
+  mode: explicit
+  overrides: {}
+
 world:
   spatial:
     # Standard deviations, not hard boundaries. Unbounded Gaussian catchments
@@ -235,6 +240,18 @@ interventions:
     permitted_changes: [truth.choices.timestamp, truth.trajectories.*, observed.events.*]
     schedule_shift: {weekday_hours: 2.0, weekend_hours: -1.0}
     behavioral_diagnostics: {mean_routine_choice_hour: increase}
+  temporary_schedule_shift_v1:
+    declaration_version: geoembeddings-temporary-schedule-intervention/1.0
+    config_overrides: {}
+    affected_random_streams: []
+    reseed_streams: []
+    stream_seed_offset: 0
+    invariant_entities: [users, regions, pois, episodes, choices]
+    permitted_changes: [truth.temporary_schedule_shift.*, truth.temporary_schedule_shift_events.*, truth.choices.timestamp, truth.trajectories.*, observed.events.*]
+    eligible_time_flexibility_min: 0.25
+    selected_user_fraction: 0.50
+    schedule_shift: {start_day_offset: 3, duration_days: 2, weekday_hours: 2.0, weekend_hours: -1.0}
+    behavioral_diagnostics: {temporary_schedule_shift_event_count: positive}
   temporary-trip:
     declaration_version: geoembeddings-change-intervention/1.0
     config_overrides: {}

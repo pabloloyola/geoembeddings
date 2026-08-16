@@ -45,6 +45,10 @@ TABLES = (
     TableSpec("truth.observation_process", "truth/observation_process.csv.gz", ("user_id", "source_service")),
 )
 CHANGE_TABLE = TableSpec("truth.change_points", "truth/change_points_truth.csv.gz", ("user_id",))
+TEMPORARY_SCHEDULE_TABLES = (
+    TableSpec("truth.temporary_schedule_shift", "truth/temporary_schedule_shift_truth.csv.gz", ("user_id",)),
+    TableSpec("truth.temporary_schedule_shift_events", "truth/temporary_schedule_shift_events.csv.gz", ()),
+)
 SAMPLE_LIMIT = 10
 
 
@@ -173,7 +177,11 @@ def validate_pair(pair_manifest_path: str | Path) -> dict[str, Any]:
                                "intervention": int_manifest["identity"]["random_streams"]}:
         raise ValueError("pair stream lineage is stale")
     allowed = pair.allowed_to_change_fields
-    table_specs = TABLES + ((CHANGE_TABLE,) if pair.intervention_type in {"temporary-trip", "sustained-preference"} else ())
+    table_specs = TABLES
+    if pair.intervention_type in {"temporary-trip", "sustained-preference"}:
+        table_specs += (CHANGE_TABLE,)
+    if pair.intervention_type == "temporary_schedule_shift_v1":
+        table_specs += TEMPORARY_SCHEDULE_TABLES
     results: dict[str, Any] = {}
     for spec in table_specs:
         ref_schema, ref_rows = _read_table(reference.root / spec.relative_path)
@@ -243,7 +251,8 @@ def require_passing_pair_integrity(pair_manifest_path: str | Path) -> dict[str, 
     if (not isinstance(entity_results, dict) or not entity_results
             or not isinstance(table_results, dict) or set(table_results) not in (
                 {spec.name for spec in TABLES} | {"truth.world_regions", "truth.world_pois"},
-                {spec.name for spec in TABLES + (CHANGE_TABLE,)} | {"truth.world_regions", "truth.world_pois"})
+                {spec.name for spec in TABLES + (CHANGE_TABLE,)} | {"truth.world_regions", "truth.world_pois"},
+                {spec.name for spec in TABLES + TEMPORARY_SCHEDULE_TABLES} | {"truth.world_regions", "truth.world_pois"})
             or not isinstance(allowed_results, dict)
             or not prerequisite_results or not all(isinstance(item, dict) and item.get("passed") is True
                                                    for item in prerequisite_results)):

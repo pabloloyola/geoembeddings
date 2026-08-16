@@ -57,7 +57,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     simulate_pair = commands.add_parser("simulate-pair", help="Generate and validate a configured matched intervention")
     simulate_pair.add_argument("--config", type=Path, default=DEFAULT_SIMULATION_CONFIG)
-    simulate_pair.add_argument("--intervention", required=True, choices=("exposure", "opportunity", "observation", "temporary-trip", "sustained-preference", "schedule-shift"))
+    simulate_pair.add_argument("--intervention", required=True, choices=("exposure", "opportunity", "observation", "temporary-trip", "sustained-preference", "schedule-shift", "temporary_schedule_shift_v1"))
+    simulate_pair.add_argument("--scenario", help="Explicit scenario requested for both matched runs")
     simulate_pair.add_argument("--reference-run-dir", required=True, type=Path)
     simulate_pair.add_argument("--intervention-run-dir", required=True, type=Path)
     simulate_pair.add_argument("--pair-dir", required=True, type=Path)
@@ -289,12 +290,13 @@ def _simulate(args: argparse.Namespace) -> dict[str, Any]:
     config_path = Path(args.config).expanduser().resolve()
     config = simulator.load_config(config_path)
     run = config["run"]
+    requested_scenario = args.scenario if args.scenario is not None else run["scenario"]
     values = {
         "users": args.users,
         "days": args.days,
         "start_date": args.start_date,
         "seed": args.seed,
-        "scenario": args.scenario,
+        "scenario": requested_scenario,
         "full_kanto": args.full_kanto,
     }
     for name, value in values.items():
@@ -305,11 +307,13 @@ def _simulate(args: argparse.Namespace) -> dict[str, Any]:
     args.output = str(DatasetLayout.from_path(args.run_dir).root)
     run["output"] = args.output
     args.config = str(config_path)
+    requested_scenario, resolved_scenario = simulator.resolve_scenario(config, requested_scenario)
+    run["requested_scenario"] = requested_scenario
+    run["resolved_scenario"] = resolved_scenario
+    args.requested_scenario = requested_scenario
+    args.scenario = resolved_scenario
+    run["scenario"] = resolved_scenario
     simulator.activate_config(config)
-    if args.scenario not in simulator.SCENARIO_SETTINGS:
-        raise ValueError(
-            f"Unknown scenario {args.scenario!r}; choose one of {sorted(simulator.SCENARIO_SETTINGS)}"
-        )
     if args.users < 10 or args.days < 2:
         raise ValueError("Use at least 10 users and 2 days so validation is meaningful")
     return simulator.simulate(args)
@@ -582,7 +586,7 @@ def _run_command(args: argparse.Namespace) -> dict[str, Any]:
         from .simulate_pair import simulate_pair
         result = simulate_pair(args.config, args.reference_run_dir, args.intervention_run_dir,
                                args.pair_dir, intervention=args.intervention, users=args.users,
-                               days=args.days, seed=args.seed)
+                               days=args.days, seed=args.seed, scenario=args.scenario)
     elif args.command == "validate":
         result = _validate(DatasetLayout.from_path(args.run_dir), args.output)
     elif args.command == "pair-manifest":

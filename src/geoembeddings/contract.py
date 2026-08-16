@@ -19,7 +19,7 @@ _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PAIR_MANIFEST_SCHEMA = "geoembeddings-pair-manifest/1.0"
 PAIR_INTEGRITY_SCHEMA = "geoembeddings-pair-integrity/1.0"
 COUNTERFACTUAL_COMPARISON_SCHEMA = "geoembeddings-counterfactual-comparison/1.0"
-PAIR_INTERVENTIONS = ("identity", "observation", "exposure", "opportunity", "temporary-trip", "sustained-preference", "schedule-shift")
+PAIR_INTERVENTIONS = ("identity", "observation", "exposure", "opportunity", "temporary-trip", "sustained-preference", "schedule-shift", "temporary_schedule_shift_v1")
 
 
 @dataclass(frozen=True)

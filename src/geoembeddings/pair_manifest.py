@@ -32,6 +32,7 @@ ALLOWED_FIELDS = {
     "temporary-trip": ("truth.candidate_sets.*", "truth.choices.chosen_poi_id", "truth.choices.chosen_category", "truth.trajectories.*", "truth.change_points.*", "observed.events.*"),
     "sustained-preference": ("truth.candidate_sets.*", "truth.choices.chosen_poi_id", "truth.choices.chosen_category", "truth.trajectories.*", "truth.change_points.*", "observed.events.*"),
     "schedule-shift": ("truth.choices.timestamp", "truth.trajectories.*", "observed.events.*"),
+    "temporary_schedule_shift_v1": ("truth.temporary_schedule_shift.*", "truth.temporary_schedule_shift_events.*", "truth.choices.timestamp", "truth.trajectories.*", "observed.events.*"),
 }
 INVARIANTS = {
     "identity": IDENTITY_ENTITY_NAMES,
@@ -41,6 +42,7 @@ INVARIANTS = {
     "temporary-trip": ("users", "regions", "pois", "episodes", "choices"),
     "sustained-preference": ("users", "regions", "pois", "episodes", "choices"),
     "schedule-shift": ("users", "regions", "pois", "episodes", "choices"),
+    "temporary_schedule_shift_v1": ("users", "regions", "pois", "episodes", "choices"),
 }
 
 
@@ -72,7 +74,7 @@ def _identity(layout: DatasetLayout, manifest: dict[str, Any]) -> PairRunIdentit
 
 def _intervention_type(reference: dict[str, Any], intervention: dict[str, Any]) -> str:
     declaration = intervention.get("intervention")
-    if isinstance(declaration, dict) and declaration.get("type") in {"exposure", "opportunity", "observation", "temporary-trip", "sustained-preference", "schedule-shift"}:
+    if isinstance(declaration, dict) and declaration.get("type") in {"exposure", "opportunity", "observation", "temporary-trip", "sustained-preference", "schedule-shift", "temporary_schedule_shift_v1"}:
         return str(declaration["type"])
     changed_streams = [name for name, seed in reference["identity"]["random_streams"]["seeds"].items()
                        if intervention["identity"]["random_streams"]["seeds"].get(name) != seed]
