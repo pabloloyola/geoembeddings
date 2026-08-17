@@ -14,6 +14,7 @@ from .model import build_model
 from .representation_schema import COMPONENT_NAMES, EXPORT_SCHEMA_VERSION
 from .training import _checkpoint_categorical_fields, resolve_device
 from .user_roles import protocol_config
+from .schema import EVENT_FILE, USER_FILE
 
 
 def export_embeddings(
@@ -60,6 +61,8 @@ def export_embeddings(
                 batch["continuous"].to(device),
                 batch["lengths"],
                 augment=False,
+                elapsed_hours=batch.get("elapsed_hours", None).to(device)
+                if batch.get("elapsed_hours") is not None else None,
             )
             user_ids.extend(batch["user_id"])
             cutoffs.extend(batch["cutoff"])
@@ -97,6 +100,7 @@ def export_dense_embeddings(
     config: dict[str, Any],
     *,
     event_stride: int = 1,
+    allow_source_drift: bool = False,
 ) -> dict[str, Any]:
     """Export event-aligned histories using observed timestamps and no truth labels."""
     device = resolve_device(str(config["training"].get("device", "auto")))
@@ -104,7 +108,8 @@ def export_dense_embeddings(
     if protocol_config(config) != protocol_config(checkpoint["config"]):
         raise ValueError("Export user-role configuration drifted from the frozen checkpoint")
     dataset = DenseUserCutoffDataset(
-        observed_dir, prepared_dir, checkpoint["config"], event_stride=event_stride
+        observed_dir, prepared_dir, checkpoint["config"], event_stride=event_stride,
+        allow_source_drift=allow_source_drift,
     )
     model = build_model(
         checkpoint["vocabularies"],
@@ -136,6 +141,8 @@ def export_dense_embeddings(
                 batch["continuous"].to(device),
                 batch["lengths"],
                 augment=False,
+                elapsed_hours=batch.get("elapsed_hours", None).to(device)
+                if batch.get("elapsed_hours") is not None else None,
             )
             user_ids.extend(batch["user_id"])
             timestamps.extend(batch["timestamp"])
@@ -157,7 +164,14 @@ def export_dense_embeddings(
         cutoff_kind=np.asarray(cutoff_kinds, dtype=str),
         embedding=matrix,
         history_event_count=np.asarray(history_event_counts, dtype=np.int64),
-        **_export_metadata(prepared_dir, checkpoint, sorted(set(timestamps)), matrices),
+        **_export_metadata(
+            prepared_dir, checkpoint, sorted(set(timestamps)), matrices,
+            source_hashes_override=dataset.base.metadata.get("source_files")
+            if not allow_source_drift else {
+                USER_FILE: sha256_file(Path(observed_dir) / USER_FILE),
+                EVENT_FILE: sha256_file(Path(observed_dir) / EVENT_FILE),
+            },
+        ),
         **{f"component_{name}": value for name, value in matrices.items()},
     )
     return {
@@ -177,6 +191,7 @@ def _export_metadata(
     checkpoint: dict[str, Any],
     cutoffs: list[str],
     matrices: dict[str, np.ndarray],
+    source_hashes_override: dict[str, str] | None = None,
 ) -> dict[str, np.ndarray]:
     prepared_path = Path(prepared_dir) / "prepared_metadata.json"
     prepared = read_json(prepared_path)
@@ -194,7 +209,7 @@ def _export_metadata(
             mismatches.append("continuous_fields")
         if mismatches:
             raise ValueError(f"Checkpoint/preparation representation schema mismatch: {mismatches}")
-    source_files = dict(prepared["source_files"])
+    source_files = dict(source_hashes_override or prepared["source_files"])
     return {
         "schema_version": np.asarray(EXPORT_SCHEMA_VERSION),
         "component_names": np.asarray(COMPONENT_NAMES, dtype=str),

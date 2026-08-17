@@ -26,6 +26,12 @@ TARGET_FIELDS = {
     "next_geohash_7": "geohash_7",
 }
 
+SPECIAL_TARGETS = {
+    "persistent_future_category_histogram": "distribution",
+    "next_time_bucket": "classification",
+    "next_elapsed_time_bucket": "classification",
+}
+
 
 @dataclass(frozen=True)
 class SampleReference:
@@ -41,6 +47,8 @@ class EventWindowDataset(Dataset[dict[str, Any]]):
         prepared_dir: str | Path,
         split: str,
         config: dict[str, Any],
+        *,
+        allow_source_drift: bool = False,
     ) -> None:
         if split not in {"train", "validation", "test"}:
             raise ValueError(f"Unknown split: {split}")
@@ -52,15 +60,22 @@ class EventWindowDataset(Dataset[dict[str, Any]]):
         self.categorical_fields = list(self.metadata["categorical_fields"])
         self.continuous_fields = list(self.metadata["continuous_fields"])
         self._validate_prepared_contract(config)
+        self._targets_config = {
+            name: value for name, value in config.get("targets", {}).items()
+            if name in SPECIAL_TARGETS
+        }
         current_sources = {USER_FILE: sha256_file(Path(observed_dir) / USER_FILE),
                            EVENT_FILE: sha256_file(Path(observed_dir) / EVENT_FILE)}
-        if current_sources != self.metadata.get("source_files"):
+        if not allow_source_drift and current_sources != self.metadata.get("source_files"):
             raise ValueError("Observed source files changed after preparation")
         self.user_roles = authenticate_roles(self.metadata, config, users["user_id"].astype(str))
         self.events = events
         self.encoded_categories = self._encode_categories(events)
         self.continuous = self._encode_continuous(events)
+        self.elapsed_hours = self._elapsed_hours(events)
         self.references = self._make_references(events, split, config["data"])
+        self._future_user_index = self._build_future_user_index()
+        self._special_target_cache: dict[int, tuple[dict[str, Any], dict[str, bool]]] = {}
         if not self.references:
             raise ValueError(f"No usable {split} windows after applying min_history_events")
 
@@ -90,15 +105,22 @@ class EventWindowDataset(Dataset[dict[str, Any]]):
             for objective, field in TARGET_FIELDS.items()
             if field in self.vocabularies
         }
+        special_targets, target_masks = self._special_targets(reference)
+        targets.update(special_targets)
+        elapsed = torch.from_numpy(self.elapsed_hours[context_indices]).float()
         return {
             "user_id": reference.user_id,
             "categorical": categorical,
             "continuous": continuous,
+            "elapsed_hours": elapsed,
             "early_categorical": torch.from_numpy(self.encoded_categories[early_indices]).long(),
             "early_continuous": torch.from_numpy(self.continuous[early_indices]).float(),
             "late_categorical": torch.from_numpy(self.encoded_categories[late_indices]).long(),
             "late_continuous": torch.from_numpy(self.continuous[late_indices]).float(),
+            "early_elapsed_hours": torch.from_numpy(self.elapsed_hours[early_indices]).float(),
+            "late_elapsed_hours": torch.from_numpy(self.elapsed_hours[late_indices]).float(),
             "targets": targets,
+            "target_masks": target_masks,
         }
 
     def _encode_categories(self, events: pd.DataFrame) -> np.ndarray:
@@ -141,16 +163,120 @@ class EventWindowDataset(Dataset[dict[str, Any]]):
             columns.append(normalized.to_numpy(dtype=np.float32))
         return np.stack(columns, axis=1)
 
+    @staticmethod
+    def _elapsed_hours(events: pd.DataFrame) -> np.ndarray:
+        timestamps = pd.to_datetime(events["timestamp"], utc=True)
+        delta = (
+            events.assign(_timestamp=timestamps)
+            .groupby("user_id", sort=False)["_timestamp"]
+            .diff()
+            .dt.total_seconds()
+            .div(3600.0)
+            .fillna(0.0)
+            .clip(lower=0.0)
+        )
+        return delta.to_numpy(dtype=np.float32)
+
+    def _special_targets(self, reference: SampleReference) -> tuple[dict[str, Any], dict[str, bool]]:
+        cached = self._special_target_cache.get(reference.target_index)
+        if cached is not None:
+            return cached
+        targets: dict[str, Any] = {}
+        masks: dict[str, bool] = {}
+        if not self._targets_config:
+            return targets, masks
+        anchor_index = int(reference.context_indices[-1])
+        anchor_time = pd.Timestamp(self.events.iloc[anchor_index]["timestamp"])
+        target_time = pd.Timestamp(self.events.iloc[reference.target_index]["timestamp"])
+        if "next_time_bucket" in self._targets_config:
+            edges = [float(value) for value in self._targets_config["next_time_bucket"]["edges_hours"]]
+            local = target_time.tz_convert("Asia/Tokyo")
+            targets["next_time_bucket"] = _bucket_index(local.hour + local.minute / 60.0, edges)
+            masks["next_time_bucket"] = True
+        if "next_elapsed_time_bucket" in self._targets_config:
+            edges = [float(value) for value in self._targets_config["next_elapsed_time_bucket"]["edges_hours"]]
+            delta = max(0.0, (target_time - anchor_time).total_seconds() / 3600.0)
+            targets["next_elapsed_time_bucket"] = _bucket_index(delta, edges)
+            masks["next_elapsed_time_bucket"] = True
+        if "persistent_future_category_histogram" in self._targets_config:
+            spec = self._targets_config["persistent_future_category_histogram"]
+            user_index = self._future_user_index[reference.user_id]
+            times = user_index["times_ns"]
+            anchor_ns = int(anchor_time.value)
+            split = self._timestamp_split_for(reference.target_index)
+            split_start, split_end = self._split_bounds_ns(split)
+            lower = max(anchor_ns, split_start)
+            upper = min(anchor_ns + int(pd.Timedelta(days=float(spec["horizon_days"])).value), split_end)
+            left = int(np.searchsorted(times, lower, side="right"))
+            right = int(np.searchsorted(times, upper, side="right"))
+            histogram = user_index["prefix_counts"][right] - user_index["prefix_counts"][left]
+            valid = bool(histogram.sum() > 0)
+            if valid:
+                histogram /= histogram.sum()
+            targets["persistent_future_category_histogram"] = histogram
+            masks["persistent_future_category_histogram"] = valid
+        result = (targets, masks)
+        self._special_target_cache[reference.target_index] = result
+        return result
+
+    def _build_future_user_index(self) -> dict[str, dict[str, np.ndarray]]:
+        vocabulary = self.vocabularies["object_category"]
+        unknown = int(vocabulary[UNK_TOKEN])
+        result: dict[str, dict[str, np.ndarray]] = {}
+        for user_id, rows in self.events.groupby("user_id", sort=False):
+            ordered = rows.sort_values("timestamp")
+            times_ns = pd.to_datetime(ordered["timestamp"], utc=True).astype("int64").to_numpy()
+            codes = ordered["object_category"].fillna(UNK_TOKEN).astype(str).map(
+                lambda value: vocabulary.get(value, unknown)
+            ).to_numpy(dtype=np.int64)
+            one_hot = np.zeros((len(codes), len(vocabulary)), dtype=np.float32)
+            if len(codes):
+                one_hot[np.arange(len(codes)), codes] = 1.0
+            result[str(user_id)] = {
+                "times_ns": times_ns,
+                "prefix_counts": np.vstack([np.zeros((1, len(vocabulary)), dtype=np.float32), np.cumsum(one_hot, axis=0)]),
+            }
+        return result
+
+    def _split_bounds_ns(self, split: str) -> tuple[int, int]:
+        minimum = pd.Timestamp.min.value
+        maximum = pd.Timestamp.max.value
+        train_end = pd.Timestamp(self.metadata["train_end"]).value
+        validation_end = pd.Timestamp(self.metadata["validation_end"]).value
+        if split == "train":
+            return minimum, train_end
+        if split == "validation":
+            return train_end, validation_end
+        if split == "test":
+            return validation_end, maximum
+        raise ValueError(f"Unknown timestamp split: {split}")
+
+    def _timestamp_split_for(self, index: int) -> str:
+        return _timestamp_split(
+            pd.Timestamp(self.events.iloc[index]["timestamp"]),
+            pd.Timestamp(self.metadata["train_end"]),
+            pd.Timestamp(self.metadata["validation_end"]),
+        )
+
+    def _timestamp_split_value(self, value: Any) -> str:
+        return _timestamp_split(
+            pd.Timestamp(value),
+            pd.Timestamp(self.metadata["train_end"]),
+            pd.Timestamp(self.metadata["validation_end"]),
+        )
+
     def _make_references(
         self,
         events: pd.DataFrame,
         split: str,
         data_config: dict[str, Any],
     ) -> list[SampleReference]:
-        train_end = pd.Timestamp(self.metadata["train_end"])
-        validation_end = pd.Timestamp(self.metadata["validation_end"])
+        train_end = pd.Timestamp(self.metadata["train_end"]).value
+        validation_end = pd.Timestamp(self.metadata["validation_end"]).value
         minimum = int(data_config["min_history_events"])
         maximum = int(data_config["max_sequence_length"])
+        event_times = pd.to_datetime(events["timestamp"], utc=True).astype("int64").to_numpy()
+        split_values = np.where(event_times <= train_end, "train", np.where(event_times <= validation_end, "validation", "test"))
         references: list[SampleReference] = []
         for user_id, indices in events.groupby("user_id", sort=False).indices.items():
             if self.user_roles is not None and self.user_roles[str(user_id)] != f"target_{split}":
@@ -158,10 +284,13 @@ class EventWindowDataset(Dataset[dict[str, Any]]):
             ordered = np.asarray(indices, dtype=np.int64)
             for offset in range(minimum, len(ordered)):
                 target_index = int(ordered[offset])
-                timestamp = events.iloc[target_index]["timestamp"]
-                if _timestamp_split(timestamp, train_end, validation_end) != split:
+                if split_values[target_index] != split:
                     continue
                 context = ordered[max(0, offset - maximum) : offset]
+                if event_times[target_index] <= event_times[int(context[-1])]:
+                    # A target must be strictly after the final visible event;
+                    # rows sharing a timestamp are an atomic observation group.
+                    continue
                 references.append(
                     SampleReference(
                         user_id=str(user_id),
@@ -187,6 +316,13 @@ def _timestamp_split(
     if timestamp <= validation_end:
         return "validation"
     return "test"
+
+
+def _bucket_index(value: float, edges: list[float]) -> int:
+    values = np.asarray(edges, dtype=float)
+    if len(values) < 2 or not np.all(np.diff(values) > 0):
+        raise ValueError("target bucket edges must be strictly increasing")
+    return min(int(np.searchsorted(values, value, side="right") - 1), len(values) - 2)
 
 
 PARTICIPATION_HASH_DEFINITION = "sha256-canonical-sorted-identifiers/1.0"
@@ -263,12 +399,24 @@ def collate_windows(samples: Iterable[dict[str, Any]]) -> dict[str, Any]:
         batch[f"{prefix}lengths"] = torch.tensor(
             [len(sequence) for sequence in categorical_sequences], dtype=torch.long
         )
+        elapsed_key = f"{prefix}elapsed_hours"
+        batch[elapsed_key] = pad_sequence(
+            [sample[elapsed_key] for sample in samples], batch_first=True, padding_value=0.0
+        )
 
     target_names = sorted(samples[0]["targets"])
-    batch["targets"] = {
-        name: torch.tensor([sample["targets"][name] for sample in samples], dtype=torch.long)
-        for name in target_names
-    }
+    batch["targets"] = {}
+    batch["target_masks"] = {}
+    for name in target_names:
+        values = [sample["targets"][name] for sample in samples]
+        if np.asarray(values[0]).ndim == 1:
+            batch["targets"][name] = torch.tensor(np.asarray(values), dtype=torch.float32)
+        else:
+            batch["targets"][name] = torch.tensor(values, dtype=torch.long)
+        batch["target_masks"][name] = torch.tensor(
+            [bool(sample.get("target_masks", {}).get(name, True)) for sample in samples],
+            dtype=torch.bool,
+        )
     return batch
 
 
@@ -283,6 +431,7 @@ class UserCutoffDataset(Dataset[dict[str, Any]]):
         *,
         events: pd.DataFrame | None = None,
         min_history_events: int = 1,
+        allow_source_drift: bool = False,
     ) -> None:
         base = EventWindowDataset.__new__(EventWindowDataset)
         if events is None:
@@ -297,12 +446,13 @@ class UserCutoffDataset(Dataset[dict[str, Any]]):
         base._validate_prepared_contract(config)
         current_sources = {USER_FILE: sha256_file(Path(observed_dir) / USER_FILE),
                            EVENT_FILE: sha256_file(Path(observed_dir) / EVENT_FILE)}
-        if current_sources != base.metadata.get("source_files"):
+        if not allow_source_drift and current_sources != base.metadata.get("source_files"):
             raise ValueError("Observed source files changed after preparation")
         base.user_roles = authenticate_roles(base.metadata, config, users["user_id"].astype(str))
         base.events = events
         base.encoded_categories = base._encode_categories(events)
         base.continuous = base._encode_continuous(events)
+        base.elapsed_hours = base._elapsed_hours(events)
         self.base = base
         self.maximum = int(config["data"]["max_sequence_length"])
         self.items: list[tuple[str, str, np.ndarray]] = []
@@ -331,6 +481,7 @@ class UserCutoffDataset(Dataset[dict[str, Any]]):
             "cutoff": cutoff,
             "categorical": torch.from_numpy(self.base.encoded_categories[indices]).long(),
             "continuous": torch.from_numpy(self.base.continuous[indices]).float(),
+            "elapsed_hours": torch.from_numpy(self.base.elapsed_hours[indices]).float(),
         }
 
 
@@ -355,6 +506,8 @@ class DenseUserCutoffDataset(Dataset[dict[str, Any]]):
         prepared_dir: str | Path,
         config: dict[str, Any],
         event_stride: int = 1,
+        *,
+        allow_source_drift: bool = False,
     ) -> None:
         base = EventWindowDataset.__new__(EventWindowDataset)
         users, events = load_observed(observed_dir)
@@ -365,12 +518,13 @@ class DenseUserCutoffDataset(Dataset[dict[str, Any]]):
         base._validate_prepared_contract(config)
         current_sources = {USER_FILE: sha256_file(Path(observed_dir) / USER_FILE),
                            EVENT_FILE: sha256_file(Path(observed_dir) / EVENT_FILE)}
-        if current_sources != base.metadata.get("source_files"):
+        if not allow_source_drift and current_sources != base.metadata.get("source_files"):
             raise ValueError("Observed source files changed after preparation")
         base.user_roles = authenticate_roles(base.metadata, config, users["user_id"].astype(str))
         base.events = events
         base.encoded_categories = base._encode_categories(events)
         base.continuous = base._encode_continuous(events)
+        base.elapsed_hours = base._elapsed_hours(events)
         self.base = base
         self.maximum = int(config["data"]["max_sequence_length"])
         self.items: list[tuple[str, str, int, np.ndarray]] = []
@@ -402,6 +556,7 @@ class DenseUserCutoffDataset(Dataset[dict[str, Any]]):
             "history_event_count": history_count,
             "categorical": torch.from_numpy(self.base.encoded_categories[indices]).long(),
             "continuous": torch.from_numpy(self.base.continuous[indices]).float(),
+            "elapsed_hours": torch.from_numpy(self.base.elapsed_hours[indices]).float(),
         }
 
 
@@ -414,6 +569,9 @@ def collate_user_cutoffs(samples: Iterable[dict[str, Any]]) -> dict[str, Any]:
         "categorical": pad_sequence(categorical, batch_first=True, padding_value=0),
         "continuous": pad_sequence(continuous, batch_first=True, padding_value=0.0),
         "lengths": torch.tensor([len(sequence) for sequence in categorical], dtype=torch.long),
+        "elapsed_hours": pad_sequence(
+            [sample["elapsed_hours"] for sample in samples], batch_first=True, padding_value=0.0
+        ),
     }
     for key in ("cutoff", "timestamp", "cutoff_kind", "history_event_count"):
         if key in samples[0]:

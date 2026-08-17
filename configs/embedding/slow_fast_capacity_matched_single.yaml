@@ -1,0 +1,73 @@
+seed: 20260823
+
+data:
+  max_sequence_length: 64
+  min_history_events: 2
+  train_fraction: 0.70
+  validation_fraction: 0.15
+  include_object_id: false
+  categorical_fields: [service_id, action_type, observation_mode, object_category, region_id, geohash_5, geohash_7]
+  continuous_fields: [latitude, longitude, log_delta_minutes, hour_sin, hour_cos, dow_sin, dow_cos, log_location_accuracy_m]
+
+model:
+  variant: slow_fast_capacity_matched_single
+  capacity_control_for: slow_fast_v1
+  matched_output_dim: 128
+  capacity_search_max_hidden_dim: 2048
+  categorical_embedding_dim: 24
+  event_dim: 128
+  hidden_dim: 128
+  user_embedding_dim: 128
+  gru_layers: 1
+  dropout: 0.10
+  event_dropout: 0.10
+  loss_routing:
+    persistent_future_category_histogram: combined
+    next_time_bucket: combined
+    next_elapsed_time_bucket: combined
+    next_service: combined
+    next_action: combined
+    next_category: combined
+    next_region: combined
+    next_geohash_5: combined
+    next_geohash_7: combined
+
+targets:
+  persistent_future_category_histogram:
+    horizon_days: 7
+  next_time_bucket:
+    edges_hours: [0, 6, 10, 16, 20, 24]
+  next_elapsed_time_bucket:
+    edges_hours: [0, 1, 3, 6, 12, 24, 72, 168, 336]
+
+objectives:
+  next_service: 0.20
+  next_action: 0.40
+  next_category: 1.00
+  next_region: 0.75
+  next_geohash_5: 0.50
+  next_geohash_7: 0.25
+  persistent_future_category_histogram: 0.0
+  next_time_bucket: 0.0
+  next_elapsed_time_bucket: 0.0
+
+training:
+  batch_size: 128
+  epochs: 8
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  gradient_clip_norm: 1.0
+  num_workers: 0
+  device: auto
+
+evaluation:
+  probe_train_fraction: 0.80
+  ridge_alpha: 10.0
+  transfer:
+    schema_version: spatial-transfer-slices/1.0
+    distance_metric: haversine_km
+    distance_relevance_quantile: 0.50
+    retrieval_k: [1, 5]
+    geohash_fields: [geohash_5, geohash_7]
+    held_out_regions: [hakone]
+    boundary_max_distance_km: 2.0

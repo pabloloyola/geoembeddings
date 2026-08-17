@@ -19,6 +19,13 @@ from .context_contrastive import (
     context_infonce_loss,
     select_epoch_triplets,
 )
+from .predictive_state import (
+    FutureWindowProjectionHead,
+    FrozenFutureWindowDataset,
+    collate_future_windows,
+    future_window_infonce_loss,
+    select_epoch_future_windows,
+)
 from .data import (PARTICIPATION_HASH_DEFINITION, TARGET_FIELDS, EventWindowDataset,
                    collate_windows, participation_roles)
 from .io import read_json, sha256_file, write_json
@@ -69,9 +76,15 @@ def train_model(
     train_dataset = EventWindowDataset(observed_dir, prepared_dir, "train", config)
     validation_dataset = EventWindowDataset(observed_dir, prepared_dir, "validation", config)
     contrastive_weight = float(config["objectives"].get("context_session_contrastive", 0.0))
+    future_state_weight = float(config["objectives"].get("future_state", 0.0))
+    if contrastive_weight > 0 and future_state_weight > 0:
+        raise ValueError("context_session_contrastive and future_state cannot be enabled together")
     contrastive_dataset: FrozenContextTripletDataset | None = None
     contrastive_head: ContextProjectionHead | None = None
     contrastive_spec: dict[str, Any] | None = None
+    future_dataset: FrozenFutureWindowDataset | None = None
+    future_head: FutureWindowProjectionHead | None = None
+    future_spec: dict[str, Any] | None = None
     if contrastive_weight > 0:
         contrastive_spec = _context_contrastive_spec(config)
         contrastive_dataset = FrozenContextTripletDataset(
@@ -103,6 +116,32 @@ def train_model(
             raise ValueError(
                 "context contrastive joint coverage is zero or materially below positive coverage"
             )
+    if future_state_weight > 0:
+        future_spec = _future_state_spec(config)
+        future_dataset = FrozenFutureWindowDataset(
+            train_dataset,
+            future_spec["manifest_path"],
+            split="train",
+            negative_windows_per_anchor=future_spec["negative_windows_per_anchor"],
+            max_sequence_length=int(config["data"]["max_sequence_length"]),
+        )
+        coverage_report = {
+            **future_dataset.joint_coverage_report,
+            "mode": future_spec["mode"],
+            "configured_joint_coverage_min_ratio": future_spec["min_joint_coverage_ratio"],
+            "coverage_gate": "joint_anchor_coverage >= positive_anchor_coverage * min_ratio",
+        }
+        ratio = float(coverage_report["joint_to_positive_anchor_ratio"])
+        coverage_report["status"] = (
+            "passed" if coverage_report["joint_anchor_count"] > 0
+            and ratio >= future_spec["min_joint_coverage_ratio"] else "failed"
+        )
+        joint_report_path = output_dir / "future_state_joint_coverage.json"
+        if joint_report_path.exists():
+            raise FileExistsError(f"Immutable future-state joint-coverage report already exists: {joint_report_path}")
+        write_json(coverage_report, joint_report_path)
+        if coverage_report["status"] != "passed":
+            raise ValueError("future-state joint coverage is zero or materially below positive coverage")
     loader_settings = {
         "batch_size": int(config["training"]["batch_size"]),
         "num_workers": int(config["training"].get("num_workers", 0)),
@@ -138,9 +177,26 @@ def train_model(
         )
         parameter_counts["total"] = encoder_total + parameter_counts["context_projection_head"]
         parameter_counts["trainable"] = encoder_trainable + parameter_counts["context_projection_head"]
+    if future_spec is not None:
+        future_head = FutureWindowProjectionHead(
+            int(config["model"]["user_embedding_dim"]), future_spec["projection_dim"]
+        ).to(device)
+        parameter_counts["encoder_total"] = encoder_total
+        parameter_counts["encoder_trainable"] = encoder_trainable
+        parameter_counts["future_state_projection_head"] = sum(
+            parameter.numel() for parameter in future_head.parameters()
+        )
+        parameter_counts["total"] = parameter_counts.get("total", encoder_total) + parameter_counts[
+            "future_state_projection_head"
+        ]
+        parameter_counts["trainable"] = parameter_counts.get("trainable", encoder_trainable) + parameter_counts[
+            "future_state_projection_head"
+        ]
     optimizer_parameters = list(model.parameters())
     if contrastive_head is not None:
         optimizer_parameters.extend(contrastive_head.parameters())
+    if future_head is not None:
+        optimizer_parameters.extend(future_head.parameters())
     optimizer = AdamW(
         optimizer_parameters,
         lr=float(config["training"]["learning_rate"]),
@@ -175,6 +231,24 @@ def train_model(
                 device,
                 optimizer,
             ))
+        if future_dataset is not None and future_head is not None and future_spec is not None:
+            selected_examples = select_epoch_future_windows(
+                future_dataset.examples,
+                max_positive_anchors_per_user=future_spec["max_positive_anchors_per_user"],
+                seed=future_spec["selection_seed"],
+                epoch=epoch,
+            )
+            selected_dataset = future_dataset.selected(selected_examples)
+            future_loader = DataLoader(
+                selected_dataset,
+                batch_size=future_spec["batch_size"],
+                shuffle=False,
+                num_workers=0,
+                collate_fn=collate_future_windows,
+            )
+            train_metrics.update(_run_future_state_epoch(
+                model, future_head, future_loader, future_spec, device, optimizer
+            ))
         with torch.no_grad():
             validation_metrics = _run_epoch(model, validation_loader, config, device, None)
         epoch_record = {"epoch": epoch, "train": train_metrics, "validation": validation_metrics}
@@ -187,8 +261,10 @@ def train_model(
                     "model_variant": model_variant,
                     "representation_schema": checkpoint_schema(
                         model_variant=model_variant,
-                        component_dimensions={name: int(config["model"]["user_embedding_dim"])
-                                              for name in ("persistent", "context", "combined")},
+                        component_dimensions=dict(getattr(model, "component_dimensions", {
+                            name: int(config["model"]["user_embedding_dim"])
+                            for name in ("persistent", "context", "combined")
+                        })),
                         categorical_fields=categorical_fields,
                         continuous_fields=list(train_dataset.continuous_fields),
                         preparation_hash=sha256_file(prepared_metadata_path),
@@ -205,6 +281,9 @@ def train_model(
                     "parameter_counts": parameter_counts,
                     "context_contrastive_head_state": (
                         contrastive_head.state_dict() if contrastive_head is not None else None
+                    ),
+                    "future_state_projection_head_state": (
+                        future_head.state_dict() if future_head is not None else None
                     ),
                     "capacity_match": getattr(model, "capacity_match", None),
                     "seed": seed,
@@ -254,6 +333,11 @@ def train_model(
             **(contrastive_spec or {"enabled": False}),
             "joint_coverage_report": str(output_dir / "context_contrastive_joint_coverage.json")
             if contrastive_dataset is not None else None,
+        },
+        "future_state": {
+            **(future_spec or {"enabled": False}),
+            "joint_coverage_report": str(output_dir / "future_state_joint_coverage.json")
+            if future_dataset is not None else None,
         },
     }
     participation = {
@@ -331,7 +415,60 @@ def _context_contrastive_spec(config: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _future_state_spec(config: dict[str, Any]) -> dict[str, Any]:
+    raw = config.get("future_state_contrastive")
+    if not isinstance(raw, dict):
+        raise ValueError("future_state_contrastive configuration is required for its objective")
+    required = {
+        "manifest_path", "mode", "projection_dim", "temperature", "negative_windows_per_anchor",
+        "max_positive_anchors_per_user", "selection_seed", "batch_size", "min_joint_coverage_ratio",
+        "horizon_hours", "target_min_groups", "target_max_groups", "local_timezone",
+    }
+    if set(raw) != required:
+        raise ValueError(f"future_state_contrastive configuration is not frozen: {sorted(set(raw) ^ required)}")
+    mode = str(raw["mode"])
+    if mode not in {"candidate", "detached_control"}:
+        raise ValueError("future_state_contrastive.mode must be candidate or detached_control")
+    result = {
+        "enabled": True,
+        "manifest_path": str(Path(raw["manifest_path"]).expanduser().resolve()),
+        "mode": mode,
+        "projection_dim": int(raw["projection_dim"]),
+        "temperature": float(raw["temperature"]),
+        "negative_windows_per_anchor": int(raw["negative_windows_per_anchor"]),
+        "max_positive_anchors_per_user": int(raw["max_positive_anchors_per_user"]),
+        "selection_seed": int(raw["selection_seed"]),
+        "batch_size": int(raw["batch_size"]),
+        "min_joint_coverage_ratio": float(raw["min_joint_coverage_ratio"]),
+        "horizon_hours": float(raw["horizon_hours"]),
+        "target_min_groups": int(raw["target_min_groups"]),
+        "target_max_groups": int(raw["target_max_groups"]),
+        "local_timezone": str(raw["local_timezone"]),
+        "objective_weight": float(config["objectives"]["future_state"]),
+        "gradient_clip_norm": float(config["training"]["gradient_clip_norm"]),
+    }
+    if result["projection_dim"] <= 0 or result["temperature"] <= 0:
+        raise ValueError("future-state projection dimension and temperature must be positive")
+    if result["negative_windows_per_anchor"] < 1 or result["max_positive_anchors_per_user"] < 1:
+        raise ValueError("future-state pair caps must be positive")
+    if not 0.0 < result["min_joint_coverage_ratio"] <= 1.0:
+        raise ValueError("future-state joint coverage ratio must lie in (0, 1]")
+    if result["horizon_hours"] != 6.0 or result["target_min_groups"] != 2 or result["target_max_groups"] != 4:
+        raise ValueError("future-state window geometry is fixed at 2-4 groups and 6 hours")
+    return result
+
+
 def _move_context_batch(batch: dict[str, Any], device: torch.device) -> dict[str, Any]:
+    moved: dict[str, Any] = {}
+    for key, value in batch.items():
+        if isinstance(value, torch.Tensor):
+            moved[key] = value if key.endswith("lengths") else value.to(device)
+        else:
+            moved[key] = value
+    return moved
+
+
+def _move_future_batch(batch: dict[str, Any], device: torch.device) -> dict[str, Any]:
     moved: dict[str, Any] = {}
     for key, value in batch.items():
         if isinstance(value, torch.Tensor):
@@ -397,6 +534,61 @@ def _run_context_contrastive_epoch(
     }
 
 
+def _run_future_state_epoch(
+    model: torch.nn.Module,
+    projection_head: FutureWindowProjectionHead,
+    loader: DataLoader,
+    spec: dict[str, Any],
+    device: torch.device,
+    optimizer: AdamW,
+) -> dict[str, float]:
+    model.train(True)
+    projection_head.train(True)
+    total_loss = 0.0
+    total_pairs = 0
+    detach_context = spec["mode"] == "detached_control"
+    for batch in loader:
+        batch = _move_future_batch(batch, device)
+        optimizer.zero_grad(set_to_none=True)
+        anchor = model.encode_components(
+            batch["anchor_categorical"], batch["anchor_continuous"],
+            batch["anchor_lengths"], augment=False,
+        ).context
+        with torch.no_grad():
+            target = model.encode_components(
+                batch["target_categorical"], batch["target_continuous"],
+                batch["target_lengths"], augment=False,
+            ).context
+            batch_size, negative_count, time_steps, field_count = batch["negative_categorical"].shape
+            negative_categorical = batch["negative_categorical"].reshape(
+                batch_size * negative_count, time_steps, field_count
+            )
+            negative_continuous = batch["negative_continuous"].reshape(
+                batch_size * negative_count, time_steps, batch["negative_continuous"].shape[-1]
+            )
+            negative_lengths = batch["negative_lengths"].reshape(batch_size * negative_count)
+            negative = model.encode_components(
+                negative_categorical, negative_continuous, negative_lengths, augment=False,
+            ).context.reshape(batch_size, negative_count, -1)
+        loss = future_window_infonce_loss(
+            anchor, target, negative, projection_head,
+            temperature=spec["temperature"], detach_context=detach_context,
+        ) * float(spec["objective_weight"])
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(
+            list(model.parameters()) + list(projection_head.parameters()),
+            float(spec["gradient_clip_norm"]),
+        )
+        optimizer.step()
+        count = int(batch["anchor_categorical"].shape[0])
+        total_loss += float(loss.detach()) * count
+        total_pairs += count
+    return {
+        "future_state_loss": total_loss / max(1, total_pairs),
+        "future_state_pairs": float(total_pairs),
+    }
+
+
 def _run_epoch(
     model: torch.nn.Module,
     loader: DataLoader,
@@ -417,18 +609,28 @@ def _run_epoch(
         batch = _move_batch(batch, device)
         if training:
             optimizer.zero_grad(set_to_none=True)
-        _, logits = model(batch["categorical"], batch["continuous"], batch["lengths"])
+        _, logits = model(
+            batch["categorical"], batch["continuous"], batch["lengths"],
+            batch.get("elapsed_hours"),
+        )
         losses = []
         for name, prediction in logits.items():
             weight = float(objective_weights.get(name, 0.0))
             if weight <= 0:
                 continue
             target = batch["targets"][name]
-            losses.append(weight * F.cross_entropy(prediction, target))
-            correct[name] = correct.get(name, 0) + int((prediction.argmax(dim=1) == target).sum())
-            k = min(5, prediction.shape[1])
-            top5 = prediction.topk(k, dim=1).indices
-            top5_correct[name] = top5_correct.get(name, 0) + int((top5 == target[:, None]).any(dim=1).sum())
+            mask = batch.get("target_masks", {}).get(name)
+            kind = getattr(model, "head_loss_kinds", {}).get(name, "classification")
+            if kind == "distribution":
+                valid = torch.ones(target.shape[0], dtype=torch.bool, device=target.device) if mask is None else mask.to(target.device)
+                if bool(valid.any()):
+                    losses.append(weight * F.binary_cross_entropy_with_logits(prediction[valid], target[valid]))
+            else:
+                losses.append(weight * F.cross_entropy(prediction, target))
+                correct[name] = correct.get(name, 0) + int((prediction.argmax(dim=1) == target).sum())
+                k = min(5, prediction.shape[1])
+                top5 = prediction.topk(k, dim=1).indices
+                top5_correct[name] = top5_correct.get(name, 0) + int((top5 == target[:, None]).any(dim=1).sum())
 
         consistency_weight = float(objective_weights.get("cross_window_consistency", 0.0))
         if consistency_weight > 0:
@@ -437,12 +639,14 @@ def _run_epoch(
                 batch["early_continuous"],
                 batch["early_lengths"],
                 augment=True,
+                elapsed_hours=batch.get("early_elapsed_hours"),
             )
             late = model.encode_components(
                 batch["late_categorical"],
                 batch["late_continuous"],
                 batch["late_lengths"],
                 augment=True,
+                elapsed_hours=batch.get("late_elapsed_hours"),
             )
             route = str(config.get("model", {}).get("consistency_route", "combined"))
             if route not in {"persistent", "context", "combined"}:
@@ -510,7 +714,10 @@ def _validate_batch_values(
             values = categorical[:, :, field_index]
             minimum = int(values.min())
             maximum = int(values.max())
-            vocabulary_size = encoder.categorical_embeddings[field].num_embeddings
+            embeddings = getattr(encoder, "categorical_embeddings", None)
+            if embeddings is None:
+                embeddings = encoder.persistent_branch.categorical_embeddings
+            vocabulary_size = embeddings[field].num_embeddings
             if minimum < 0 or maximum >= vocabulary_size:
                 raise ValueError(
                     f"Batch {batch_number} ({user_preview}) has out-of-range IDs for "
@@ -520,6 +727,12 @@ def _validate_batch_values(
 
     for objective, target in batch["targets"].items():
         if objective not in encoder.heads:
+            continue
+        if getattr(encoder, "head_loss_kinds", {}).get(objective) == "distribution":
+            if not bool(torch.isfinite(target).all()) or bool((target < 0).any()) or bool((target > 1).any()):
+                raise ValueError(
+                    f"Batch {batch_number} ({user_preview}) has invalid distribution targets for {objective}"
+                )
             continue
         minimum = int(target.min())
         maximum = int(target.max())
@@ -579,7 +792,10 @@ def evaluate_next_event(
         for batch_number, batch in enumerate(loader, start=1):
             _validate_batch_values(batch, model, batch_number)
             moved = _move_batch(batch, device)
-            _, logits = model(moved["categorical"], moved["continuous"], moved["lengths"])
+            _, logits = model(
+                moved["categorical"], moved["continuous"], moved["lengths"],
+                moved.get("elapsed_hours"),
+            )
             for objective, values in logits.items():
                 if objective not in moved["targets"]:
                     continue

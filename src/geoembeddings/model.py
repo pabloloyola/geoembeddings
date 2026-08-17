@@ -7,8 +7,9 @@ from typing import Any
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 
-from .data import TARGET_FIELDS
+from .data import SPECIAL_TARGETS, TARGET_FIELDS
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,33 @@ class SingleVectorOutputAdapter:
         )
 
 
+def _component_dimensions(config: dict[str, Any]) -> dict[str, int]:
+    """Declare component widths before objective heads are constructed."""
+    model_config = config["model"]
+    output_dim = int(model_config["user_embedding_dim"])
+    combined_dim = output_dim
+    variant = str(model_config.get("variant", LEGACY_SINGLE_VECTOR_VARIANT))
+    if variant == "slow_fast_v1":
+        combined_dim = output_dim * 2
+    elif (
+        variant == "two_timescale_pc"
+        and str(model_config.get("ablation", "fusion")) == "fusion"
+        and str(model_config.get("combined_fusion", "gated_residual")) == "normalized_concat"
+    ):
+        combined_dim = output_dim * 2
+    return {"persistent": output_dim, "context": output_dim, "combined": combined_dim}
+
+
+def _target_class_count(objective: str, vocabularies: dict[str, dict[str, int]], config: dict[str, Any]) -> int | None:
+    if objective == "persistent_future_category_histogram":
+        return len(vocabularies["object_category"])
+    if objective == "next_time_bucket":
+        return len(config["targets"][objective]["edges_hours"]) - 1
+    if objective == "next_elapsed_time_bucket":
+        return len(config["targets"][objective]["edges_hours"]) - 1
+    return None
+
+
 class SingleVectorEncoder(nn.Module):
     """Structured event encoder followed by a GRU and one user-history vector."""
 
@@ -78,6 +106,7 @@ class SingleVectorEncoder(nn.Module):
         event_dim = int(model_config["event_dim"])
         hidden_dim = int(model_config["hidden_dim"])
         output_dim = int(model_config["user_embedding_dim"])
+        self.component_dimensions = _component_dimensions(config)
         dropout = float(model_config["dropout"])
         self.event_dropout = float(model_config.get("event_dropout", 0.0))
 
@@ -115,9 +144,28 @@ class SingleVectorEncoder(nn.Module):
         self.loss_routes = {
             objective: "combined" for objective in config.get("objectives", {})
         }
+        routes = model_config.get("loss_routing", {})
         for objective, field in TARGET_FIELDS.items():
             if objective in config["objectives"] and field in vocabularies:
-                self.heads[objective] = nn.Linear(output_dim, len(vocabularies[field]))
+                route = str(routes.get(objective, "combined"))
+                if route not in self.component_dimensions:
+                    raise ValueError(f"Invalid loss routing: {route!r}")
+                self.heads[objective] = nn.Linear(
+                    self.component_dimensions[route], len(vocabularies[field])
+                )
+        self.head_loss_kinds: dict[str, str] = {}
+        for objective, kind in SPECIAL_TARGETS.items():
+            if objective not in config.get("objectives", {}):
+                continue
+            class_count = _target_class_count(objective, vocabularies, config)
+            if class_count is None or class_count <= 0:
+                raise ValueError(f"Missing target class declaration for {objective}")
+            route = str(routes.get(objective, "combined"))
+            if route not in self.component_dimensions:
+                raise ValueError(f"Invalid loss routing: {route!r}")
+            self.heads[objective] = nn.Linear(self.component_dimensions[route], class_count)
+            self.head_loss_kinds[objective] = kind
+        self.head_loss_kinds.update({name: "classification" for name in self.heads if name not in self.head_loss_kinds})
 
     def _event_tensor(
         self,
@@ -156,6 +204,7 @@ class SingleVectorEncoder(nn.Module):
         continuous: torch.Tensor,
         lengths: torch.Tensor,
         augment: bool = False,
+        elapsed_hours: torch.Tensor | None = None,
     ) -> torch.Tensor:
         self._validate_batch(categorical, continuous, lengths)
         event = self._event_tensor(categorical, continuous, augment=augment)
@@ -200,8 +249,9 @@ class SingleVectorEncoder(nn.Module):
         categorical: torch.Tensor,
         continuous: torch.Tensor,
         lengths: torch.Tensor,
+        elapsed_hours: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
-        embedding = self.encode(categorical, continuous, lengths, augment=True)
+        embedding = self.encode(categorical, continuous, lengths, augment=True, elapsed_hours=elapsed_hours)
         logits = {name: head(embedding) for name, head in self.heads.items()}
         return embedding, logits
 
@@ -211,10 +261,11 @@ class SingleVectorEncoder(nn.Module):
         continuous: torch.Tensor,
         lengths: torch.Tensor,
         augment: bool = False,
+        elapsed_hours: torch.Tensor | None = None,
     ) -> EncoderOutput:
         """Return the legacy representation through the named output boundary."""
         return self.output_adapter(
-            self.encode(categorical, continuous, lengths, augment=augment)
+            self.encode(categorical, continuous, lengths, augment=augment, elapsed_hours=elapsed_hours)
         )
 
 
@@ -265,7 +316,8 @@ class FactorizedPCEncoder(SingleVectorEncoder):
             raise ValueError(f"Invalid loss routing: {invalid}")
 
     def encode_components(self, categorical: torch.Tensor, continuous: torch.Tensor,
-                          lengths: torch.Tensor, augment: bool = False) -> EncoderOutput:
+                          lengths: torch.Tensor, augment: bool = False,
+                          elapsed_hours: torch.Tensor | None = None) -> EncoderOutput:
         self._validate_batch(categorical, continuous, lengths)
         event = self._event_tensor(categorical, continuous, augment=augment)
         persistent_sequence, _ = self.gru(event)
@@ -300,7 +352,8 @@ class FactorizedPCEncoder(SingleVectorEncoder):
         return self.encode_components(categorical, continuous, lengths, augment).combined
 
     def forward(self, categorical: torch.Tensor, continuous: torch.Tensor,
-                lengths: torch.Tensor) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+                lengths: torch.Tensor, elapsed_hours: torch.Tensor | None = None
+                ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         output = self.encode_components(categorical, continuous, lengths, augment=True)
         logits = {name: head(getattr(output, self.loss_routes[name]))
                   for name, head in self.heads.items()}
@@ -346,8 +399,15 @@ class TwoTimescalePCEncoder(SingleVectorEncoder):
             nn.GELU(),
             nn.LayerNorm(output_dim),
         )
-        self.fusion_gate = nn.Linear(output_dim * 2, output_dim)
-        self.fusion_normalization = nn.LayerNorm(output_dim)
+        self.combined_fusion = str(model_config.get("combined_fusion", "gated_residual"))
+        if self.combined_fusion not in {"gated_residual", "normalized_concat"}:
+            raise ValueError(
+                "Unknown two-timescale combined_fusion "
+                f"{self.combined_fusion!r}; expected gated_residual or normalized_concat"
+            )
+        if self.combined_fusion == "gated_residual":
+            self.fusion_gate = nn.Linear(output_dim * 2, output_dim)
+            self.fusion_normalization = nn.LayerNorm(output_dim)
         ablation = str(model_config.get("ablation", "fusion"))
         allowed = {"fusion", "persistent_only", "context_only"}
         if ablation not in allowed:
@@ -387,7 +447,8 @@ class TwoTimescalePCEncoder(SingleVectorEncoder):
         return weights.to(device=device, dtype=dtype)
 
     def encode_components(self, categorical: torch.Tensor, continuous: torch.Tensor,
-                          lengths: torch.Tensor, augment: bool = False) -> EncoderOutput:
+                          lengths: torch.Tensor, augment: bool = False,
+                          elapsed_hours: torch.Tensor | None = None) -> EncoderOutput:
         self._validate_batch(categorical, continuous, lengths)
         event = self._event_tensor(categorical, continuous, augment=augment)
         sequence, _ = self.gru(event)
@@ -409,8 +470,11 @@ class TwoTimescalePCEncoder(SingleVectorEncoder):
         fast_state = (sequence * fast_weights.unsqueeze(-1)).sum(dim=1)
         persistent = self.output_projection(slow_state)
         context = self.context_projection(fast_state - slow_state)
-        gate = torch.sigmoid(self.fusion_gate(torch.cat((persistent, context), dim=1)))
-        combined = self.fusion_normalization(persistent + gate * context)
+        if self.combined_fusion == "normalized_concat":
+            combined = torch.cat((F.normalize(persistent, dim=1), F.normalize(context, dim=1)), dim=1)
+        else:
+            gate = torch.sigmoid(self.fusion_gate(torch.cat((persistent, context), dim=1)))
+            combined = self.fusion_normalization(persistent + gate * context)
         if self.ablation == "persistent_only":
             context, combined = torch.zeros_like(context), persistent
         elif self.ablation == "context_only":
@@ -422,12 +486,136 @@ class TwoTimescalePCEncoder(SingleVectorEncoder):
         return self.encode_components(categorical, continuous, lengths, augment).combined
 
     def forward(self, categorical: torch.Tensor, continuous: torch.Tensor,
-                lengths: torch.Tensor) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+                lengths: torch.Tensor, elapsed_hours: torch.Tensor | None = None
+                ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         output = self.encode_components(categorical, continuous, lengths, augment=True)
         logits = {
             name: head(getattr(output, self.loss_routes[name]))
             for name, head in self.heads.items()
         }
+        return output.combined, logits
+
+
+class _IndependentEventBranch(nn.Module):
+    """One private observed-event encoder used by exactly one slow/fast branch."""
+
+    def __init__(self, vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+                 config: dict[str, Any], categorical_fields: list[str]) -> None:
+        super().__init__()
+        model_config = config["model"]
+        categorical_dim = int(model_config["categorical_embedding_dim"])
+        event_dim = int(model_config["event_dim"])
+        hidden_dim = int(model_config["hidden_dim"])
+        layers = int(model_config["gru_layers"])
+        dropout = float(model_config["dropout"]) if layers > 1 else 0.0
+        self.categorical_fields = list(categorical_fields)
+        self.categorical_embeddings = nn.ModuleDict({
+            field: nn.Embedding(len(vocabularies[field]), categorical_dim, padding_idx=0)
+            for field in self.categorical_fields
+        })
+        self.categorical_projection = nn.Linear(categorical_dim, event_dim)
+        self.continuous_projection = nn.Sequential(
+            nn.Linear(continuous_dim, event_dim), nn.GELU(), nn.Linear(event_dim, event_dim)
+        )
+        self.event_normalization = nn.LayerNorm(event_dim)
+        self.gru = nn.GRU(event_dim, hidden_dim, num_layers=layers, batch_first=True, dropout=dropout)
+
+    def forward(self, categorical: torch.Tensor, continuous: torch.Tensor) -> torch.Tensor:
+        category_sum = None
+        for index, field in enumerate(self.categorical_fields):
+            embedded = self.categorical_embeddings[field](categorical[:, :, index])
+            category_sum = embedded if category_sum is None else category_sum + embedded
+        event = self.categorical_projection(category_sum) + self.continuous_projection(continuous)
+        return self.event_normalization(event)
+
+
+class SlowFastV1Encoder(SingleVectorEncoder):
+    """Independent elapsed-time-aware slow and causal recent-event branches."""
+
+    def __init__(self, vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+                 config: dict[str, Any], categorical_fields: list[str] | None = None) -> None:
+        fields = list(categorical_fields or vocabularies)
+        super().__init__(vocabularies, continuous_dim, config, categorical_fields=fields)
+        model_config = config["model"]
+        output_dim = int(model_config["user_embedding_dim"])
+        # Remove the base single-vector path. The two branches own all event
+        # projections and recurrent state; no recurrent module is shared.
+        del self.categorical_embeddings, self.categorical_projection
+        del self.continuous_projection, self.event_normalization, self.gru, self.output_projection
+        self.persistent_branch = _IndependentEventBranch(vocabularies, continuous_dim, config, fields)
+        self.context_branch = _IndependentEventBranch(vocabularies, continuous_dim, config, fields)
+        self.persistent_projection = nn.Sequential(
+            nn.Linear(int(model_config["hidden_dim"]), output_dim), nn.GELU(), nn.LayerNorm(output_dim)
+        )
+        self.context_projection = nn.Sequential(
+            nn.Linear(int(model_config["hidden_dim"]), output_dim), nn.GELU(), nn.LayerNorm(output_dim)
+        )
+        self.persistent_decay_horizon_hours = float(
+            model_config.get("persistent_decay_horizon_hours", 168.0)
+        )
+        self.context_recent_history_events = int(model_config.get("context_recent_history_events", 16))
+        if self.persistent_decay_horizon_hours <= 24.0:
+            raise ValueError("persistent_decay_horizon_hours must declare a multi-day horizon")
+        if self.context_recent_history_events <= 0:
+            raise ValueError("context_recent_history_events must be positive")
+        routes = model_config.get("loss_routing", {})
+        self.loss_routes = {objective: str(routes.get(objective, "combined")) for objective in self.heads}
+        invalid = {name: route for name, route in self.loss_routes.items()
+                   if route not in {"persistent", "context", "combined"}}
+        if invalid:
+            raise ValueError(f"Invalid loss routing: {invalid}")
+
+    def _slow_state(self, sequence: torch.Tensor, lengths: torch.Tensor,
+                    elapsed_hours: torch.Tensor | None) -> torch.Tensor:
+        batch, time_steps, _ = sequence.shape
+        if elapsed_hours is None:
+            elapsed_hours = torch.ones((batch, time_steps), device=sequence.device, dtype=sequence.dtype)
+            elapsed_hours[:, 0] = 0.0
+        elapsed_hours = elapsed_hours.to(device=sequence.device, dtype=sequence.dtype).clamp_min(0.0)
+        decay = torch.exp(-elapsed_hours / self.persistent_decay_horizon_hours)
+        valid = (torch.arange(time_steps, device="cpu").unsqueeze(0) < lengths.detach().cpu().unsqueeze(1))
+        decay = torch.where(valid.to(sequence.device), decay, torch.ones_like(decay))
+        decay[:, 0] = 0.0
+        state = torch.zeros((batch, sequence.shape[2]), device=sequence.device, dtype=sequence.dtype)
+        for position in range(time_steps):
+            state = decay[:, position:position + 1] * state + (1.0 - decay[:, position:position + 1]) * sequence[:, position]
+        return state
+
+    def encode_components(self, categorical: torch.Tensor, continuous: torch.Tensor,
+                          lengths: torch.Tensor, augment: bool = False,
+                          elapsed_hours: torch.Tensor | None = None) -> EncoderOutput:
+        self._validate_batch(categorical, continuous, lengths)
+        persistent_event = self.persistent_branch(categorical, continuous)
+        context_event = self.context_branch(categorical, continuous)
+        if augment and self.training and self.event_dropout > 0:
+            keep = (torch.rand(persistent_event.shape[:2], device=persistent_event.device) >= self.event_dropout)
+            keep[:, 0] = True
+            persistent_event = persistent_event * keep.unsqueeze(-1)
+            context_event = context_event * keep.unsqueeze(-1)
+        persistent_sequence, _ = self.persistent_branch.gru(persistent_event)
+        context_mask = (torch.arange(categorical.shape[1], device="cpu").unsqueeze(0)
+                        >= (lengths.detach().cpu() - self.context_recent_history_events).clamp_min(0).unsqueeze(1))
+        context_mask &= torch.arange(categorical.shape[1], device="cpu").unsqueeze(0) < lengths.detach().cpu().unsqueeze(1)
+        context_sequence, _ = self.context_branch.gru(
+            context_event * context_mask.to(device=context_event.device, dtype=context_event.dtype).unsqueeze(-1)
+        )
+        slow = self.persistent_projection(self._slow_state(persistent_sequence, lengths, elapsed_hours))
+        fast = self.context_projection(self._floating_final(context_sequence, lengths))
+        persistent = F.normalize(slow, dim=1)
+        context = F.normalize(fast, dim=1)
+        combined = torch.cat((persistent, context), dim=1)
+        return EncoderOutput(persistent=persistent, context=context, combined=combined)
+
+    def encode(self, categorical: torch.Tensor, continuous: torch.Tensor,
+               lengths: torch.Tensor, augment: bool = False,
+               elapsed_hours: torch.Tensor | None = None) -> torch.Tensor:
+        return self.encode_components(categorical, continuous, lengths, augment, elapsed_hours).combined
+
+    def forward(self, categorical: torch.Tensor, continuous: torch.Tensor,
+                lengths: torch.Tensor, elapsed_hours: torch.Tensor | None = None
+                ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+        output = self.encode_components(categorical, continuous, lengths, augment=True, elapsed_hours=elapsed_hours)
+        logits = {name: head(getattr(output, self.loss_routes[name])) for name, head in self.heads.items()}
         return output.combined, logits
 
 
@@ -538,7 +726,8 @@ class CausalTransformerPCEncoder(TwoTimescalePCEncoder):
         return torch.where(valid_device, sequence, torch.zeros_like(sequence))
 
     def encode_components(self, categorical: torch.Tensor, continuous: torch.Tensor,
-                          lengths: torch.Tensor, augment: bool = False) -> EncoderOutput:
+                          lengths: torch.Tensor, augment: bool = False,
+                          elapsed_hours: torch.Tensor | None = None) -> EncoderOutput:
         self._validate_batch(categorical, continuous, lengths)
         event = self._event_tensor(categorical, continuous, augment=augment)
         sequence = self._transformer_sequence(event, lengths)
@@ -619,6 +808,13 @@ def _build_two_timescale_pc(vocabularies: dict[str, dict[str, int]], continuous_
                             config: dict[str, Any], categorical_fields: list[str] | None = None
                             ) -> SingleVectorEncoder:
     return TwoTimescalePCEncoder(vocabularies, continuous_dim, config, categorical_fields)
+
+
+@register_model("slow_fast_v1")
+def _build_slow_fast_v1(vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+                        config: dict[str, Any], categorical_fields: list[str] | None = None
+                        ) -> SingleVectorEncoder:
+    return SlowFastV1Encoder(vocabularies, continuous_dim, config, categorical_fields)
 
 
 @register_model("causal_transformer_pc")
@@ -711,6 +907,21 @@ def _build_two_timescale_capacity_matched_single(
     return _capacity_matched_single(
         TwoTimescalePCEncoder,
         "two_timescale_pc",
+        vocabularies,
+        continuous_dim,
+        config,
+        categorical_fields,
+    )
+
+
+@register_model("slow_fast_capacity_matched_single")
+def _build_slow_fast_capacity_matched_single(
+    vocabularies: dict[str, dict[str, int]], continuous_dim: int,
+    config: dict[str, Any], categorical_fields: list[str] | None = None,
+) -> SingleVectorEncoder:
+    return _capacity_matched_single(
+        SlowFastV1Encoder,
+        "slow_fast_v1",
         vocabularies,
         continuous_dim,
         config,
