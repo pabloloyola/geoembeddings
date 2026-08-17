@@ -48,23 +48,11 @@ def _affinity_baseline(run_dir: Path, spec: dict[str, Any], seed: int) -> dict[s
     latent["user_id"] = latent["user_id"].astype(str)
     truth = latent.set_index("user_id")
     labels = pd.to_numeric(truth["stable_affinity_label"], errors="coerce").reindex(users).dropna().astype(int)
-    pair_by_user = truth["stable_affinity_pair_id"].reindex(labels.index)
-    category_by_user = truth["stable_affinity_category"].reindex(labels.index)
     pair_map = {
         str(pair["pair_id"]): list(pair["categories"])
         for pair in spec["protocol"]["affinity_pairs"]
     }
-    counts = pd.DataFrame(0.0, index=labels.index, columns=["first", "second", "total"])
-    for user_id, rows in events.loc[events["user_id"].isin(labels.index)].groupby("user_id"):
-        categories = pair_map[str(pair_by_user.loc[user_id])]
-        counts.loc[user_id, "first"] = float((rows["object_category"] == categories[0]).sum())
-        counts.loc[user_id, "second"] = float((rows["object_category"] == categories[1]).sum())
-        counts.loc[user_id, "total"] = float(rows["object_category"].isin(categories).sum())
-    # Keep the feature model-visible: use the declared pair's canonical order,
-    # never the evaluator-only preferred category, to orient the count signal.
-    difference = pd.Series(0.0, index=labels.index)
-    for user_id in labels.index:
-        difference.loc[user_id] = counts.loc[user_id, "second"] - counts.loc[user_id, "first"]
+    difference = gate._observed_category_count_difference(run_dir, labels.index, pair_map).iloc[:, 0]
     scores = 1.0 / (1.0 + np.exp(-np.clip(difference.to_numpy(dtype=float), -30.0, 30.0)))
     matched_mask, matching = gate._matched_user_mask(labels, strata)
     selected = matched_mask.to_numpy(dtype=bool)
@@ -200,6 +188,13 @@ def _evaluate(root: Path, spec_path: Path, seed: int, phase: str) -> dict[str, A
         persistent = gate.evaluate_sustained_preference(
             root / "reference", registry, folds=5, bootstrap_replicates=300,
             permutation_count=100, seed=seed, gate_profile="v2", probe_alpha=alpha,
+            feature_overrides={
+                "stable_affinity_label": gate._observed_category_count_difference(
+                    root / "reference", gate._observed_history_matrix(root / "reference")[0],
+                    {str(pair["pair_id"]): list(pair["categories"])
+                     for pair in resolved["spec"]["protocol"]["affinity_pairs"]},
+                )
+            },
         )
         report["persistent_preference"] = persistent
         report["track_a"] = {
