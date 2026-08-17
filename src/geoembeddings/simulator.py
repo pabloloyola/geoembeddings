@@ -895,7 +895,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                         "choice_context": primary,
                         "origin_region_id": origin.region_id,
                         "chosen_poi_id": chosen["poi_id"],
-                        "chosen_category": category,
+                        "chosen_category": chosen["category"],
                         "candidate_count": len(scored),
                     }
                 )
@@ -912,7 +912,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                             "local_commerce",
                             action,
                             "transaction" if action == "payment" else "user_triggered",
-                            category,
+                            chosen["category"],
                             chosen["poi_id"],
                             chosen_region,
                             chosen["lat"],
