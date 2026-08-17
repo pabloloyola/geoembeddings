@@ -119,6 +119,8 @@ CONFIG: dict[str, Any] = {}
 REGIONS: tuple[Region, ...] = ()
 POI_CATEGORIES: dict[str, tuple[float, float]] = {}
 SCENARIO_SETTINGS: dict[str, dict[str, float]] = {}
+_INDEXED_POIS_ID: int | None = None
+_POIS_BY_CATEGORY: dict[str, list[dict[str, Any]]] = {}
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -428,6 +430,20 @@ def create_user(rng: random.Random, index: int, full_kanto: bool) -> tuple[dict[
     }
     for category in population["preference_categories"]:
         latent[f"pref_{category}"] = normal01(rng, float(population["preference_mean"]), latent_sd)
+    affinity_config = CONFIG.get("choice", {}).get("stable_category_affinity", {})
+    affinity_pairs = list(affinity_config.get("pairs", []))
+    if affinity_config.get("enabled", False):
+        if not affinity_pairs:
+            raise ValueError("stable category affinity requires at least one declared pair")
+        pair_index = (index - 1) % len(affinity_pairs)
+        label = ((index - 1) // len(affinity_pairs)) % 2
+        pair = affinity_pairs[pair_index]
+        categories = list(pair["categories"])
+        if len(categories) != 2:
+            raise ValueError("stable category affinity pairs must contain exactly two categories")
+        latent["stable_affinity_pair_id"] = str(pair["pair_id"])
+        latent["stable_affinity_label"] = int(label)
+        latent["stable_affinity_category"] = str(categories[label])
     observed = {
         "user_id": latent["user_id"],
         "age_group": age_group,
@@ -516,11 +532,45 @@ def select_episode(rng: random.Random, user: dict[str, Any], day: date, is_weeke
 def nearby_candidates(
     pois: list[dict[str, Any]], category: str, lat: float, lon: float, scenario: str
 ) -> list[dict[str, Any]]:
-    distances = [(haversine_km(lat, lon, poi["lat"], poi["lon"]), poi) for poi in pois if poi["category"] == category]
+    pool = _POIS_BY_CATEGORY.get(category) if id(pois) == _INDEXED_POIS_ID else None
+    pool = pool if pool is not None else [poi for poi in pois if poi["category"] == category]
+    distances = [(haversine_km(lat, lon, poi["lat"], poi["lon"]), poi) for poi in pool]
     distances.sort(key=lambda pair: pair[0])
     limits = CONFIG["choice"]["candidate_count"]
     limit = int(limits["opportunity_confounded"] if scenario == "opportunity_confounded" else limits["default"])
     return [poi | {"distance_km": distance} for distance, poi in distances[:limit]]
+
+
+def preference_discriminating_candidates(
+    pois: list[dict[str, Any]], preferred_category: str, alternative_category: str,
+    lat: float, lon: float, per_category: int,
+) -> list[dict[str, Any]]:
+    """Build locally matched preferred/non-preferred category alternatives."""
+    pools: dict[str, list[dict[str, Any]]] = {}
+    for category in (preferred_category, alternative_category):
+        pool = _POIS_BY_CATEGORY.get(category) if id(pois) == _INDEXED_POIS_ID else None
+        pool = pool if pool is not None else [poi for poi in pois if poi["category"] == category]
+        rows = [(haversine_km(lat, lon, poi["lat"], poi["lon"]), poi) for poi in pool]
+        rows.sort(key=lambda pair: (pair[0], str(pair[1]["poi_id"])))
+        pools[category] = [poi | {"distance_km": distance} for distance, poi in rows[: max(12, per_category * 4)]]
+    if any(len(pools[category]) < per_category for category in (preferred_category, alternative_category)):
+        return []
+    pairs = sorted(
+        ((abs(float(preferred["distance_km"]) - float(alternative["distance_km"]))
+          + abs(float(preferred["price"]) - float(alternative["price"])), preferred, alternative)
+         for preferred in pools[preferred_category] for alternative in pools[alternative_category]),
+        key=lambda item: (item[0], str(item[1]["poi_id"]), str(item[2]["poi_id"])),
+    )
+    chosen: list[dict[str, Any]] = []
+    used_preferred: set[str] = set(); used_alternative: set[str] = set()
+    for _, preferred, alternative in pairs:
+        if preferred["poi_id"] in used_preferred or alternative["poi_id"] in used_alternative:
+            continue
+        used_preferred.add(preferred["poi_id"]); used_alternative.add(alternative["poi_id"])
+        chosen.extend([preferred, alternative])
+        if len(used_preferred) == per_category:
+            break
+    return chosen
 
 
 def category_weights_for_user(episode: str, user: dict[str, Any]) -> dict[str, float]:
@@ -530,7 +580,15 @@ def category_weights_for_user(episode: str, user: dict[str, Any]) -> dict[str, f
     constructed.  Adding it only to candidate utility is observationally inert
     because every candidate in that set receives the same additive term.
     """
-    options = CONFIG["episodes"]["category_weights"][episode]
+    options = dict(CONFIG["episodes"]["category_weights"][episode])
+    affinity = CONFIG.get("choice", {}).get("stable_category_affinity", {})
+    if affinity.get("enabled", False) and affinity.get("balance_normal_category_exposure", False):
+        for pair in affinity.get("pairs", []):
+            categories = list(pair["categories"])
+            pair_weight = max((float(options.get(category, 0.0)) for category in categories), default=0.0)
+            if pair_weight > 0.0:
+                for category in categories:
+                    options[category] = pair_weight
     choice = CONFIG["choice"]
     default = float(choice["default_category_preference"])
     scale = float(choice["category_preference_scale"])
@@ -571,6 +629,10 @@ def choose_poi(
             else float(choice["episode_fit_default"])
         )
         preference_utility = float(choice["preference_weight"]) * pref + float(choice["quality_weight"]) * float(candidate["quality"]) + family_fit + episode_fit
+        affinity_utility = (
+            float(choice.get("stable_category_affinity", {}).get("effect_size", 0.0))
+            if category == user.get("stable_affinity_category") else 0.0
+        )
         price_penalty = float(choice["price_weight"]) * float(user["price_sensitivity"]) * float(candidate["price"])
         distance_penalty = (
             settings["distance_scale"]
@@ -587,7 +649,7 @@ def choose_poi(
             float(choice["exposure_positive"]) if exposed else float(choice["exposure_negative"])
         )
         noise = rng.gammavariate(float(choice["noise_shape"]), float(choice["noise_scale"]))
-        total = preference_utility - price_penalty - distance_penalty + exposure_utility + noise
+        total = preference_utility + affinity_utility - price_penalty - distance_penalty + exposure_utility + noise
         scored.append(
             {
                 "decision_id": decision_id,
@@ -599,6 +661,7 @@ def choose_poi(
                 "quality": round(float(candidate["quality"]), 4),
                 "exposed": int(exposed),
                 "utility_preference": round(preference_utility, 5),
+                "utility_affinity": round(affinity_utility, 5),
                 "utility_price_penalty": round(price_penalty, 5),
                 "utility_distance_penalty": round(distance_penalty, 5),
                 "utility_exposure": round(exposure_utility, 5),
@@ -736,6 +799,11 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
 
     regions_by_id = {region.region_id: region for region in REGIONS}
     pois = make_world(world_rng)
+    global _INDEXED_POIS_ID, _POIS_BY_CATEGORY
+    _INDEXED_POIS_ID = id(pois)
+    _POIS_BY_CATEGORY = defaultdict(list)
+    for poi in pois:
+        _POIS_BY_CATEGORY[poi["category"]].append(poi)
     users_observed: list[dict[str, Any]] = []
     user_latents: list[dict[str, Any]] = []
     observation_process: list[dict[str, Any]] = []
@@ -744,6 +812,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
     trajectories: list[dict[str, Any]] = []
     candidate_sets: list[dict[str, Any]] = []
     choices: list[dict[str, Any]] = []
+    stable_affinity_opportunities: list[dict[str, Any]] = []
     start_day = date.fromisoformat(args.start_date)
     intervention = CONFIG["run"].get("intervention") or {}
     change = intervention.get("change") if intervention.get("type") in {"temporary-trip", "sustained-preference"} else None
@@ -760,6 +829,8 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
     schedule_shift = intervention.get("schedule_shift") if intervention.get("type") == "schedule-shift" else None
     event_cfg = CONFIG["events"]
     spatial = CONFIG["world"]["spatial"]
+    preference_opportunity_cfg = CONFIG.get("choice", {}).get("preference_discriminating_opportunities", {})
+    affinity_cfg = CONFIG.get("choice", {}).get("stable_category_affinity", {})
     for user_index in range(1, args.users + 1):
         observed_user, latent_user = create_user(user_rng, user_index, args.full_kanto)
         users_observed.append(observed_user)
@@ -790,6 +861,15 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
         work = regions_by_id[str(latent_user["work_region_id"])]
         home_lat, home_lon = float(latent_user["home_latitude"]), float(latent_user["home_longitude"])
         work_lat, work_lon = float(latent_user["work_latitude"]), float(latent_user["work_longitude"])
+        preference_opportunity_count = 0
+        preference_categories = list(preference_opportunity_cfg.get("categories", []))
+        preferred_category = max(
+            preference_categories,
+            key=lambda item: float(latent_user.get(f"pref_{item}", 0.5)),
+        ) if preference_categories else ""
+        affinity_opportunity_count = 0
+        affinity_pair = next((pair for pair in affinity_cfg.get("pairs", [])
+                              if str(pair["pair_id"]) == str(latent_user.get("stable_affinity_pair_id"))), None)
 
         for day_offset in range(args.days):
             current_day = start_day + timedelta(days=day_offset)
@@ -875,6 +955,39 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
             else:
                 origin, origin_lat, origin_lon = home, home_lat, home_lon
             candidates = nearby_candidates(pois, category, origin_lat, origin_lon, args.scenario)
+            injected_affinity = False
+            injected_affinity_alternative = ""
+            if (
+                affinity_cfg.get("enabled", False)
+                and affinity_pair is not None
+                and affinity_opportunity_count < int(affinity_cfg.get("minimum_per_user", 0))
+            ):
+                pair_categories = list(affinity_pair["categories"])
+                matched = preference_discriminating_candidates(
+                    pois, pair_categories[0], pair_categories[1], origin_lat, origin_lon,
+                    int(affinity_cfg.get("candidates_per_category", 4)),
+                )
+                if matched:
+                    candidates = matched
+                    affinity_opportunity_count += 1
+                    injected_affinity = True
+                    injected_affinity_alternative = next(
+                        item for item in pair_categories if item != latent_user["stable_affinity_category"]
+                    )
+            if (
+                preference_opportunity_cfg.get("enabled", False)
+                and preference_opportunity_count < int(preference_opportunity_cfg.get("minimum_per_user", 0))
+                and len(preference_categories) >= 3
+            ):
+                alternatives = [item for item in preference_categories if item != preferred_category]
+                alternative_category = alternatives[choice_rng.randrange(len(alternatives))]
+                matched = preference_discriminating_candidates(
+                    pois, preferred_category, alternative_category, origin_lat, origin_lon,
+                    int(preference_opportunity_cfg.get("candidates_per_category", 4)),
+                )
+                if matched:
+                    candidates = matched
+                    preference_opportunity_count += 1
             if candidates:
                 decision_id = stable_identifier("decision", episode_id, "primary_poi_choice")
                 chosen, scored = choose_poi(choice_rng, choice_user, candidates, primary, args.scenario, decision_id)
@@ -884,6 +997,21 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                     if primary == "routine"
                     else float(schedule["other_choice_start"]) + choice_rng.random() * float(schedule["other_choice_span"])
                 )
+                affinity_provenance = None
+                if injected_affinity:
+                    affinity_provenance = {
+                        "decision_id": decision_id,
+                        "user_id": latent_user["user_id"],
+                        "timestamp": iso_at(current_day, choice_hour),
+                        "affinity_pair_id": latent_user["stable_affinity_pair_id"],
+                        "affinity_label": latent_user["stable_affinity_label"],
+                        "affinity_category": latent_user["stable_affinity_category"],
+                        "alternative_category": injected_affinity_alternative,
+                        "injection_source": "stable_category_affinity_v1",
+                        "emitted_observed_event_category": "",
+                        "emitted_observed_service_token": "",
+                        "event_visible_before_cutoff": 0,
+                    }
                 chosen_region = regions_by_id[chosen["region_id"]]
                 stops.append((choice_hour, "poi_visit", chosen_region, chosen["lat"], chosen["lon"]))
                 choices.append(
@@ -904,8 +1032,7 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                     local_actions = event_cfg["local_commerce"]["action_weights"]
                     action_names = list(local_actions)
                     action = weighted_choice(observation_rng, action_names, [local_actions[name] for name in action_names])
-                    observed_events.append(
-                        event_row(
+                    emitted_event = event_row(
                             observation_rng,
                             latent_user["user_id"],
                             iso_at(current_day, choice_hour + float(event_cfg["local_commerce"]["event_delay_hours"])),
@@ -921,7 +1048,16 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
                             "local_activity_log",
                             session_id,
                         )
-                    )
+                    observed_events.append(emitted_event)
+                    if affinity_provenance is not None:
+                        affinity_provenance["emitted_observed_event_category"] = emitted_event["object_category"]
+                        affinity_provenance["emitted_observed_service_token"] = emitted_event["action_type"]
+                        affinity_provenance["event_visible_before_cutoff"] = int(
+                            emitted_event["timestamp"] < iso_at(start_day + timedelta(days=args.days), 0.0)
+                        )
+
+                if affinity_provenance is not None:
+                    stable_affinity_opportunities.append(affinity_provenance)
 
             stops.append((float(schedule["evening_home"]), "home", home, home_lat, home_lon))
             stops.sort(key=lambda item: item[0])
@@ -1122,6 +1258,8 @@ def simulate(args: argparse.Namespace) -> dict[str, Any]:
     if temporary_schedule_declaration:
         tables[truth_dir / "temporary_schedule_shift_truth.csv.gz"] = temporary_schedule_truth
         tables[truth_dir / "temporary_schedule_shift_events.csv.gz"] = temporary_schedule_events
+    if affinity_cfg.get("enabled", False):
+        tables[truth_dir / "stable_category_affinity_opportunities_truth.csv.gz"] = stable_affinity_opportunities
     for path, rows in tables.items():
         if path.name == "temporary_schedule_shift_events.csv.gz":
             write_csv_gz(path, rows, ["user_id", "timestamp", "service_id", "action_type", "event_scope"])

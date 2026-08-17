@@ -1,0 +1,85 @@
+schema_version: geoembeddings-recoverable-two-state-benchmark/4.0
+benchmark_id: recoverable_two_state_benchmark_v4
+base_config: configs/simulation/kanto_v1.yaml
+base_config_sha256: 750d34406339bbefbbc79c8eebd3c954225d286438787b1f4c23c9edad5f7f7c
+factor_registry: configs/recoverability/recoverable_two_state_benchmark_v4_factor_registry.json
+
+protocol:
+  amendment_id: recoverable_two_state_benchmark_v4
+  supersedes: recoverable_two_state_benchmark_v3
+  rationale:
+    - v3 causal paths passed after the selected-category observation repair.
+    - v3 abstract pref_cafe labels contradicted the stable preferred-category mechanism.
+    - v4 uses a fixed-pair, event-log-identifiable stable category affinity.
+    - temporary schedule parameters remain unchanged.
+  timezone: Asia/Tokyo
+  users: 2048
+  days: 84
+  start_date: "2026-04-01"
+  scenario: clean
+  persistent_categories: [cafe, restaurant, grocery, mall]
+  affinity_pairs:
+    - {pair_id: cafe_restaurant, categories: [cafe, restaurant]}
+    - {pair_id: grocery_mall, categories: [grocery, mall]}
+  min_affinity_opportunities_per_user: 12
+  min_affinity_eligible_users: 1800
+  min_persistent_eligible_users: 1000
+  min_schedule_events_per_selected_user: 2
+  min_schedule_eligible_users: 1400
+  schedule_start_day_offset: 35
+  schedule_duration_days: 14
+  selected_user_fraction: 0.75
+  development_seeds: [20260821, 20260822]
+  heldout_seed: 20260823
+  oracle_probe_ridge_alpha: 1000.0
+  gates:
+    held_out_balanced_accuracy_min: 0.70
+    held_out_auroc_min: 0.70
+    bootstrap_lower_ci_above_stratified_permutation_null: true
+    required_event_opportunity_coverage: true
+    both_factors_required: true
+  reported_diagnostics:
+    - raw_feature_knn_purity_at_10
+    - raw_feature_standardized_within_between_separation
+  learned_representation_success_metrics:
+    metrics: [knn_purity_at_10, standardized_within_between_separation]
+    statement: kNN purity and separation are primary success metrics for the learned slow-fast representation, not prerequisites for the data generator.
+  calibration:
+    mutable_parameters: []
+    frozen_parameters:
+      - generator.stable_category_affinity.pairs
+      - generator.stable_category_affinity.minimum_per_user
+      - generator.stable_category_affinity.candidates_per_category
+      - generator.stable_category_affinity.effect_size
+      - generator.category_preference_scale
+      - generator.preference_weight
+      - protocol.schedule_start_day_offset
+      - protocol.schedule_duration_days
+      - protocol.oracle_probe_ridge_alpha
+      - generator.schedule_shift.eligible_time_flexibility_min
+      - generator.schedule_shift.weekday_hours
+      - generator.schedule_shift.weekend_hours
+    stop_rule: Freeze only after both factors pass the v4 feasibility gates on every development seed; no persistent calibration variants are permitted.
+
+generator:
+  latent_sd: 0.38
+  preference_mean: 0.52
+  category_preference_scale: 0.0
+  preference_weight: 0.0
+  stable_category_affinity:
+    enabled: true
+    balance_normal_category_exposure: true
+    minimum_per_user: 12
+    candidates_per_category: 4
+    effect_size: 2.40
+    pairs:
+      - {pair_id: cafe_restaurant, categories: [cafe, restaurant]}
+      - {pair_id: grocery_mall, categories: [grocery, mall]}
+    matching:
+      max_mean_distance_gap_km: 2.0
+      max_mean_price_gap: 0.35
+      shared_choice_timestamp_and_service: true
+  schedule_shift:
+    eligible_time_flexibility_min: 0.0
+    weekday_hours: 5.0
+    weekend_hours: -4.0

@@ -1,0 +1,38 @@
+{
+  "schema_version": "geoembeddings-recoverability-factor-registry/4.0",
+  "protocol_amendment": "recoverable_two_state_benchmark_v4",
+  "benchmark_id": "recoverable_two_state_benchmark_v4",
+  "source_contract": "truth/user_latents.csv.gz and truth/stable_category_affinity_opportunities_truth.csv.gz are evaluator-only",
+  "factors": [
+    {
+      "factor_id": "stable_category_affinity",
+      "name": "stable_affinity_label",
+      "factor_class": "persistent_preference",
+      "truth_column": "stable_affinity_label",
+      "truth_pair_column": "stable_affinity_pair_id",
+      "truth_category_column": "stable_affinity_category",
+      "eligible_for_sustained_preference_benchmark": true,
+      "eligible_for_temporary_schedule_benchmark": false,
+      "shortcut_risk": false
+    },
+    {
+      "factor_id": "temporary_schedule_state",
+      "name": "temporary_schedule_state",
+      "factor_class": "temporary_episode_state",
+      "truth_source": "truth/temporary_schedule_shift_truth.csv.gz",
+      "eligible_for_sustained_preference_benchmark": false,
+      "eligible_for_temporary_schedule_benchmark": true,
+      "shortcut_risk": false
+    }
+  ],
+  "label_policy": {
+    "persistent_affinity": "balanced stable binary affinity within each declared fixed category pair",
+    "pairs": ["cafe_restaurant", "grocery_mall"],
+    "matching_strata": ["home_region_id", "observed_service_count", "observation_mode_count", "event_volume_decile", "time_bucket"]
+  },
+  "diagnostic_policy": {
+    "raw_feature_knn_purity_at_10": "reported diagnostic only",
+    "raw_feature_standardized_within_between_separation": "reported diagnostic only",
+    "learned_representation_primary_metrics": "kNN purity and separation are primary success metrics for the learned slow-fast representation, not prerequisites for the data generator"
+  }
+}
